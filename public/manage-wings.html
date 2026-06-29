@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wing Management — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.wing-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.wing-card-header{padding:16px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
+.wing-color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.wing-card-title{font-size:16px;font-weight:700;color:var(--text);flex:1}
+.wing-card-body{padding:18px}
+.sq-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border)}
+.sq-row:last-child{border-bottom:none}
+.sq-name{font-size:13px;color:var(--text);flex:1}
+.sq-callsign{font-family:var(--mono);font-size:12px;color:var(--blue2);background:rgba(74,144,217,.1);padding:2px 8px;border-radius:5px}
+.partner-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:14px;margin-bottom:10px}
+.partner-logo{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border2);flex-shrink:0;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:22px}
+.partner-info{flex:1}
+.partner-name{font-size:15px;font-weight:700;color:var(--text)}
+.partner-meta{font-size:12px;color:var(--text3)}
+.color-pick{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.cpick{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .12s;flex-shrink:0}
+.cpick:hover{transform:scale(1.1)}
+.cpick.sel{border-color:#fff;box-shadow:0 0 0 2px var(--gold)}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links"><a href="/pages/master-admin.html">← Admin Panel</a></div>
+    <div class="nav-right" style="margin-left:auto">
+      <button class="btn btn-outline btn-sm" onclick="auth.signOut().then(()=>window.location.href='/pages/login.html')">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container page-body">
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:28px;flex-wrap:wrap">
+    <div>
+      <h1 style="font-size:26px;font-weight:900;color:var(--text)">Wing Management</h1>
+      <p style="font-size:13px;color:var(--text2)">Add, edit, and manage all wings and partnered squadrons.</p>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="openAddWingModal()">+ Add Wing</button>
+      <button class="btn btn-outline" onclick="openAddPartnerModal()">+ Add Partner Wing</button>
+    </div>
+  </div>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="showTab('our-wings',this)">Our Wings</button>
+    <button class="tab-btn" onclick="showTab('partner-wings',this)">Partner Wings</button>
+  </div>
+
+  <!-- OUR WINGS -->
+  <div id="our-wings" class="tab-panel active" style="padding-top:20px">
+    <div id="wings-list"><div class="empty-state"><div class="icon">✈</div><p>Loading wings...</p></div></div>
+  </div>
+
+  <!-- PARTNER WINGS -->
+  <div id="partner-wings" class="tab-panel" style="padding-top:20px">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Partner and allied virtual squadrons. Their logos appear on your homepage.</div>
+    <div id="partners-list"><div class="empty-state"><div class="icon">🤝</div><p>No partner wings added yet</p></div></div>
+  </div>
+</div>
+
+<!-- ADD WING MODAL -->
+<div class="modal-overlay" id="add-wing-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title" id="wing-modal-title">Add New Wing</div>
+    <div class="modal-sub">Wings appear on the homepage and roster pages. Add squadrons after creating the wing.</div>
+
+    <input type="hidden" id="editing-wing-id">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Wing ID (short, no spaces)</label>
+        <input type="text" id="w-id" placeholder="e.g. 7bw, 509bw, 2bw" maxlength="10">
+        <div class="form-hint">Used in URLs and code. Cannot be changed later.</div>
+      </div>
+      <div class="form-group">
+        <label>Wing name</label>
+        <input type="text" id="w-name" placeholder="e.g. 7th Bomb Wing">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Base name</label>
+        <input type="text" id="w-base" placeholder="e.g. Dyess AFB (KDYS)">
+      </div>
+      <div class="form-group">
+        <label>Location</label>
+        <input type="text" id="w-location" placeholder="e.g. Abilene, TX">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Aircraft (comma separated)</label>
+      <input type="text" id="w-aircraft" placeholder="e.g. B-1B Lancer, B-52H Stratofortress">
+    </div>
+    <div class="form-group">
+      <label>Wing color</label>
+      <div class="color-pick">
+        <div class="cpick sel" style="background:#c8a951" onclick="pickWingColor('#c8a951',this)"></div>
+        <div class="cpick" style="background:#4a90d9" onclick="pickWingColor('#4a90d9',this)"></div>
+        <div class="cpick" style="background:#3dba6e" onclick="pickWingColor('#3dba6e',this)"></div>
+        <div class="cpick" style="background:#d04040" onclick="pickWingColor('#d04040',this)"></div>
+        <div class="cpick" style="background:#9b59b6" onclick="pickWingColor('#9b59b6',this)"></div>
+        <div class="cpick" style="background:#e09030" onclick="pickWingColor('#e09030',this)"></div>
+        <div class="cpick" style="background:#1abc9c" onclick="pickWingColor('#1abc9c',this)"></div>
+        <div class="cpick" style="background:#e74c3c" onclick="pickWingColor('#e74c3c',this)"></div>
+        <input type="color" id="w-color-custom" value="#c8a951" style="width:28px;height:28px;border-radius:50%;padding:0;border:none;cursor:pointer" onchange="pickWingColor(this.value)">
+      </div>
+      <input type="hidden" id="w-color" value="#c8a951">
+    </div>
+
+    <div style="margin-top:4px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">Squadrons</div>
+      <div id="sq-builder-list"></div>
+      <button type="button" class="btn btn-outline btn-sm" onclick="addSqRow()" style="margin-top:8px">+ Add Squadron</button>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('add-wing-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveWing()">Save Wing</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PARTNER MODAL -->
+<div class="modal-overlay" id="add-partner-modal">
+  <div class="modal">
+    <div class="modal-title">Add Partner Wing</div>
+    <div class="modal-sub">Partner wings appear in the homepage logos section and on a dedicated partners page.</div>
+    <div class="form-group">
+      <label>Squadron / Wing name</label>
+      <input type="text" id="p-name" placeholder="e.g. 1st Virtual Fighter Wing">
+    </div>
+    <div class="form-group">
+      <label>Logo image URL</label>
+      <input type="url" id="p-logo" placeholder="https://cdn.discordapp.com/icons/..." oninput="previewPartnerLogo()">
+      <img id="p-logo-preview" src="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;margin-top:8px;display:none;border:2px solid var(--border2)">
+    </div>
+    <div class="form-group">
+      <label>Discord invite link</label>
+      <input type="url" id="p-link" placeholder="https://discord.gg/...">
+    </div>
+    <div class="form-group">
+      <label>Website (optional)</label>
+      <input type="url" id="p-website" placeholder="https://...">
+    </div>
+    <div class="form-group">
+      <label>Primary aircraft</label>
+      <input type="text" id="p-aircraft" placeholder="e.g. F-16C Viper">
+    </div>
+    <div class="form-group">
+      <label>Notes (optional)</label>
+      <input type="text" id="p-notes" placeholder="e.g. Allied squadron, joint ops partner">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('add-partner-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePartner()">Add Partner</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT SQ MODAL -->
+<div class="modal-overlay" id="sq-modal">
+  <div class="modal">
+    <div class="modal-title">Squadron Settings</div>
+    <div id="sq-modal-wing" style="font-size:13px;color:var(--text2);margin-bottom:16px"></div>
+    <input type="hidden" id="sq-modal-wing-id">
+    <input type="hidden" id="sq-modal-sq-id">
+    <div class="form-group"><label>Squadron name</label><input type="text" id="sq-m-name" placeholder="28th Bomb Squadron"></div>
+    <div class="form-group"><label>Callsign</label><input type="text" id="sq-m-callsign" placeholder="e.g. BONE" maxlength="10"></div>
+    <div class="form-group"><label>Nickname (optional)</label><input type="text" id="sq-m-nickname" placeholder="e.g. Mohawks"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('sq-modal')">Cancel</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteSquadron()">Delete</button>
+      <button class="btn btn-primary" onclick="saveSqModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+let allWings = {}, allPartners = [], selectedWingColor = '#c8a951', sqRows = 0;
+
+function onAuthReady(user, pilot) {
+  if (!user) { window.location.href='/pages/login.html'; return; }
+  if (pilot?.role !== 'master_admin') { window.location.href='/index.html'; return; }
+  loadAll();
+}
+
+async function loadAll() {
+  // Load wings — merge Firestore custom wings with defaults
+  allWings = {...WINGS};
+  try {
+    const snap = await db.collection('wings').get();
+    snap.forEach(d => { allWings[d.id] = {...(allWings[d.id]||{}), ...d.data(), id:d.id}; });
+  } catch(e) {}
+  renderWings();
+
+  // Load partners
+  try {
+    const snap = await db.collection('partners').orderBy('createdAt','desc').get();
+    allPartners = snap.docs.map(d=>({id:d.id,...d.data()}));
+  } catch(e) {}
+  renderPartners();
+}
+
+// ── RENDER WINGS ─────────────────────────────────────────────
+function renderWings() {
+  const el = document.getElementById('wings-list');
+  const entries = Object.entries(allWings);
+  if (!entries.length) { el.innerHTML='<div class="empty-state"><div class="icon">✈</div><p>No wings yet. Add one above.</p></div>'; return; }
+  el.innerHTML = entries.map(([wingId, wing]) => {
+    const sqs = wing.squadrons||{};
+    const color = wing.color||'#c8a951';
+    return `
+    <div class="wing-card">
+      <div class="wing-card-header">
+        <div class="wing-color-dot" style="background:${color}"></div>
+        <div class="wing-card-title">${wing.name||wingId}</div>
+        <span style="font-size:12px;color:var(--text3)">${wing.base||''}</span>
+        <div style="display:flex;gap:6px;margin-left:12px">
+          <button class="btn btn-outline btn-xs" onclick="openEditWingModal('${wingId}')">Edit Wing</button>
+          <button class="btn btn-danger btn-xs" onclick="deleteWing('${wingId}')">Delete</button>
+        </div>
+      </div>
+      <div class="wing-card-body">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px">
+          <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Aircraft</div><div style="font-size:13px;color:var(--text)">${(wing.aircraft||[]).join(', ')||'—'}</div></div>
+          <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Location</div><div style="font-size:13px;color:var(--text)">${wing.location||'—'}</div></div>
+          <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Squadrons</div><div style="font-size:13px;color:var(--text)">${Object.keys(sqs).length}</div></div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px">Squadrons</div>
+        ${Object.entries(sqs).map(([sqId,sq])=>`
+          <div class="sq-row">
+            <div class="sq-name">${sq.name||sqId} ${sq.nickname?`<span style="font-size:11px;color:var(--text3)">"${sq.nickname}"</span>`:''}</div>
+            ${sq.callsign?`<span class="sq-callsign">${sq.callsign}</span>`:'<span style="font-size:11px;color:var(--text3)">No callsign</span>'}
+            <button class="btn btn-outline btn-xs" onclick="openSqModal('${wingId}','${sqId}')">Edit</button>
+          </div>`).join('')}
+        <button class="btn btn-outline btn-xs" onclick="openAddSqModal('${wingId}')" style="margin-top:10px">+ Add Squadron</button>
+      </div>
+    </div>`}).join('');
+}
+
+// ── ADD / EDIT WING MODAL ────────────────────────────────────
+let sqBuilderItems = [];
+function openAddWingModal() {
+  document.getElementById('wing-modal-title').textContent = 'Add New Wing';
+  document.getElementById('editing-wing-id').value = '';
+  document.getElementById('w-id').value = '';
+  document.getElementById('w-id').disabled = false;
+  document.getElementById('w-name').value = '';
+  document.getElementById('w-base').value = '';
+  document.getElementById('w-location').value = '';
+  document.getElementById('w-aircraft').value = '';
+  document.getElementById('w-color').value = '#c8a951';
+  sqBuilderItems = [];
+  renderSqBuilder();
+  document.getElementById('add-wing-modal').classList.add('open');
+}
+function openEditWingModal(wingId) {
+  const w = allWings[wingId];
+  document.getElementById('wing-modal-title').textContent = 'Edit Wing';
+  document.getElementById('editing-wing-id').value = wingId;
+  document.getElementById('w-id').value   = wingId;
+  document.getElementById('w-id').disabled = true;
+  document.getElementById('w-name').value  = w.name||'';
+  document.getElementById('w-base').value  = w.base||'';
+  document.getElementById('w-location').value = w.location||'';
+  document.getElementById('w-aircraft').value = (w.aircraft||[]).join(', ');
+  document.getElementById('w-color').value = w.color||'#c8a951';
+  selectedWingColor = w.color||'#c8a951';
+  sqBuilderItems = Object.entries(w.squadrons||{}).map(([id,sq])=>({id,...sq}));
+  renderSqBuilder();
+  document.getElementById('add-wing-modal').classList.add('open');
+}
+function pickWingColor(hex, el) {
+  document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
+  if (el) el.classList.add('sel');
+  selectedWingColor = hex;
+  document.getElementById('w-color').value = hex;
+}
+function addSqRow(data={}) {
+  sqBuilderItems.push({id:'', name:'', callsign:'', nickname:'', ...data});
+  renderSqBuilder();
+}
+function renderSqBuilder() {
+  const el = document.getElementById('sq-builder-list');
+  el.innerHTML = sqBuilderItems.map((sq,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <input type="text" placeholder="Squadron name" value="${sq.name||''}" oninput="sqBuilderItems[${i}].name=this.value" style="font-size:12px">
+      <input type="text" placeholder="Callsign (e.g. BONE)" value="${sq.callsign||''}" oninput="sqBuilderItems[${i}].callsign=this.value.toUpperCase()" maxlength="10" style="font-size:12px">
+      <input type="text" placeholder="Nickname (optional)" value="${sq.nickname||''}" oninput="sqBuilderItems[${i}].nickname=this.value" style="font-size:12px">
+      <button class="btn btn-danger btn-xs" onclick="sqBuilderItems.splice(${i},1);renderSqBuilder()">✕</button>
+    </div>`).join('') || '<div style="font-size:13px;color:var(--text3);padding:8px 0">No squadrons — click Add Squadron below</div>';
+}
+async function saveWing() {
+  const id   = document.getElementById('w-id').value.trim().toLowerCase().replace(/\s+/g,'-');
+  const name = document.getElementById('w-name').value.trim();
+  if (!id||!name) { toast('Wing ID and name are required','error'); return; }
+
+  const squadrons = {};
+  sqBuilderItems.forEach((sq,i) => {
+    const sqId = sq.id || (id+'_sq'+(i+1));
+    squadrons[sqId] = { name:sq.name||'Squadron '+(i+1), callsign:sq.callsign||'', nickname:sq.nickname||'' };
+  });
+
+  const data = {
+    name, color: selectedWingColor,
+    base:     document.getElementById('w-base').value.trim(),
+    location: document.getElementById('w-location').value.trim(),
+    aircraft: document.getElementById('w-aircraft').value.split(',').map(s=>s.trim()).filter(Boolean),
+    squadrons,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+
+  try {
+    await db.collection('wings').doc(id).set(data, {merge:true});
+    allWings[id] = {...data, id};
+    toast('Wing saved!');
+    closeModal('add-wing-modal');
+    renderWings();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+async function deleteWing(wingId) {
+  if (!confirm(`Delete ${allWings[wingId]?.name||wingId}? This cannot be undone. Pilots assigned to this wing will need to be reassigned.`)) return;
+  try {
+    await db.collection('wings').doc(wingId).delete();
+    delete allWings[wingId];
+    toast('Wing deleted');
+    renderWings();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ── SQUADRON MODAL ───────────────────────────────────────────
+function openSqModal(wingId, sqId) {
+  const sq = allWings[wingId]?.squadrons?.[sqId]||{};
+  document.getElementById('sq-modal-wing').textContent = allWings[wingId]?.name;
+  document.getElementById('sq-modal-wing-id').value = wingId;
+  document.getElementById('sq-modal-sq-id').value   = sqId;
+  document.getElementById('sq-m-name').value     = sq.name||'';
+  document.getElementById('sq-m-callsign').value = sq.callsign||'';
+  document.getElementById('sq-m-nickname').value = sq.nickname||'';
+  document.getElementById('sq-modal').classList.add('open');
+}
+function openAddSqModal(wingId) {
+  document.getElementById('sq-modal-wing').textContent = allWings[wingId]?.name;
+  document.getElementById('sq-modal-wing-id').value = wingId;
+  document.getElementById('sq-modal-sq-id').value   = '';
+  document.getElementById('sq-m-name').value = '';
+  document.getElementById('sq-m-callsign').value = '';
+  document.getElementById('sq-m-nickname').value = '';
+  document.getElementById('sq-modal').classList.add('open');
+}
+async function saveSqModal() {
+  const wingId = document.getElementById('sq-modal-wing-id').value;
+  const sqId   = document.getElementById('sq-modal-sq-id').value || (wingId+'_sq_'+Date.now());
+  const data   = {
+    name:     document.getElementById('sq-m-name').value.trim(),
+    callsign: document.getElementById('sq-m-callsign').value.trim().toUpperCase(),
+    nickname: document.getElementById('sq-m-nickname').value.trim(),
+  };
+  if (!data.name) { toast('Squadron name required','error'); return; }
+  try {
+    await db.collection('wings').doc(wingId).set({ squadrons:{ [sqId]:data } }, {merge:true});
+    if (!allWings[wingId].squadrons) allWings[wingId].squadrons = {};
+    allWings[wingId].squadrons[sqId] = data;
+    toast('Squadron saved!');
+    closeModal('sq-modal');
+    renderWings();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+async function deleteSquadron() {
+  const wingId = document.getElementById('sq-modal-wing-id').value;
+  const sqId   = document.getElementById('sq-modal-sq-id').value;
+  if (!sqId||!confirm('Delete this squadron?')) return;
+  try {
+    await db.collection('wings').doc(wingId).update({
+      [`squadrons.${sqId}`]: firebase.firestore.FieldValue.delete()
+    });
+    delete allWings[wingId].squadrons[sqId];
+    toast('Squadron deleted');
+    closeModal('sq-modal');
+    renderWings();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ── PARTNERS ─────────────────────────────────────────────────
+function renderPartners() {
+  const el = document.getElementById('partners-list');
+  if (!allPartners.length) { el.innerHTML='<div class="empty-state"><div class="icon">🤝</div><p>No partner wings yet</p></div>'; return; }
+  el.innerHTML = allPartners.map(p=>`
+    <div class="partner-card">
+      <div class="partner-logo">
+        ${p.logo?`<img src="${p.logo}" style="width:52px;height:52px;border-radius:50%;object-fit:cover" onerror="this.style.display='none'">`:'🛩'}
+      </div>
+      <div class="partner-info">
+        <div class="partner-name">${p.name}</div>
+        <div class="partner-meta">${p.aircraft||''} ${p.notes?'· '+p.notes:''}</div>
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+          ${p.discord?`<a href="${p.discord}" target="_blank" class="btn btn-outline btn-xs">Discord</a>`:''}
+          ${p.website?`<a href="${p.website}" target="_blank" class="btn btn-outline btn-xs">Website</a>`:''}
+        </div>
+      </div>
+      <button class="btn btn-danger btn-xs" onclick="deletePartner('${p.id}')">Remove</button>
+    </div>`).join('');
+}
+function previewPartnerLogo() {
+  const url = document.getElementById('p-logo').value.trim();
+  const img = document.getElementById('p-logo-preview');
+  if (url) { img.src=url; img.style.display='block'; } else img.style.display='none';
+}
+async function savePartner() {
+  const name = document.getElementById('p-name').value.trim();
+  if (!name) { toast('Partner name required','error'); return; }
+  try {
+    const ref = await db.collection('partners').add({
+      name,
+      logo:     document.getElementById('p-logo').value.trim()||null,
+      discord:  document.getElementById('p-link').value.trim()||null,
+      website:  document.getElementById('p-website').value.trim()||null,
+      aircraft: document.getElementById('p-aircraft').value.trim()||null,
+      notes:    document.getElementById('p-notes').value.trim()||null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    allPartners.unshift({id:ref.id, name});
+    toast('Partner wing added!');
+    closeModal('add-partner-modal');
+    renderPartners();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+async function deletePartner(id) {
+  if (!confirm('Remove this partner wing?')) return;
+  await db.collection('partners').doc(id).delete();
+  allPartners = allPartners.filter(p=>p.id!==id);
+  toast('Partner removed');
+  renderPartners();
+}
+
+function showTab(id,btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+</script>
+</body>
+</html>
