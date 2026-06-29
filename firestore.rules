@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ──────────────────────────────────────
+    function isSignedIn() { return request.auth != null; }
+    function pilotDoc()   { return get(/databases/$(database)/documents/pilots/$(request.auth.uid)).data; }
+    function isActive()   { return isSignedIn() && pilotDoc().status == 'active'; }
+    function isMasterAdmin() { return isActive() && pilotDoc().role == 'master_admin'; }
+    function isWingCommander(wingId) { return isActive() && pilotDoc().role == 'wing_commander' && pilotDoc().wing == wingId; }
+    function isSqCommander(sqId) { return isActive() && pilotDoc().role == 'sq_commander' && pilotDoc().squadron == sqId; }
+    function isInstructor() { return isActive() && (pilotDoc().role == 'instructor' || pilotDoc().role == 'sq_commander' || pilotDoc().role == 'wing_commander' || pilotDoc().role == 'master_admin'); }
+
+    // ── Pilots collection ─────────────────────────────────────
+    match /pilots/{pilotId} {
+      // Anyone can read public pilot info (for rosters)
+      allow read: if isActive();
+      // Pilot can update their own profile (limited fields)
+      allow update: if isSignedIn() && request.auth.uid == pilotId
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['status','role','rank','wing','squadron','approvedAt']);
+      // Only master admin can create/delete/update sensitive fields
+      allow write: if isMasterAdmin();
+      // Allow create for new registrations (pending status only)
+      allow create: if isSignedIn() && request.auth.uid == pilotId
+        && request.resource.data.status == 'pending'
+        && request.resource.data.role == 'pending';
+    }
+
+    // ── Flights collection ────────────────────────────────────
+    match /flights/{flightId} {
+      // Active pilots can read all flights
+      allow read: if isActive();
+      // Pilots can log their own flights
+      allow create: if isActive()
+        && request.resource.data.pilotUid == request.auth.uid;
+      // Pilots can edit their own flights within 24h
+      allow update: if isActive()
+        && resource.data.pilotUid == request.auth.uid;
+      // Admins and commanders can delete
+      allow delete: if isMasterAdmin() || isInstructor();
+    }
+
+    // ── Settings (site customization) ─────────────────────────
+    match /settings/{settingId} {
+      // Public can read site settings (colors, names, slideshow)
+      allow read: if true;
+      // Only master admin can write settings
+      allow write: if isMasterAdmin();
+    }
+
+    // ── News / Announcements ──────────────────────────────────
+    match /news/{newsId} {
+      allow read: if true;
+      allow write: if isMasterAdmin();
+    }
+
+    // ── Notifications ─────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read:  if isMasterAdmin();
+      allow create: if isSignedIn();
+      allow update,delete: if isMasterAdmin();
+    }
+
+    // ── Training records ──────────────────────────────────────
+    match /training/{recordId} {
+      allow read: if isActive();
+      allow write: if isInstructor() || isMasterAdmin();
+    }
+
+    // ── Wing settings (commanders can update their own wing) ──
+    match /wings/{wingId} {
+      allow read: if true;
+      allow write: if isMasterAdmin() || isWingCommander(wingId);
+    }
+  }
+}

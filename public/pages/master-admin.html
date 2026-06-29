@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Master Admin — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.admin-layout { display:flex; min-height:calc(100vh - 60px); }
+.admin-sidebar { width:230px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--border); padding:16px 0; position:sticky; top:60px; height:calc(100vh - 60px); overflow-y:auto; }
+.admin-main { flex:1; padding:28px 32px; overflow-x:hidden; }
+.sidebar-label { font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:10px 16px 5px; }
+.sidebar-item  { display:flex;align-items:center;gap:9px;padding:9px 16px;font-size:13px;cursor:pointer;color:var(--text2);border-left:2px solid transparent;transition:all .12s; }
+.sidebar-item:hover { background:var(--card);color:var(--text);border-left-color:var(--border2); }
+.sidebar-item.active { background:rgba(200,169,81,.08);color:var(--gold);border-left-color:var(--gold);font-weight:600; }
+.sidebar-item .si-icon { width:20px;text-align:center;font-size:15px; }
+.notif-badge { background:var(--red);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:auto; }
+
+.sec { display:none; } .sec.active { display:block; }
+.sec-title { font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px; }
+.sec-sub   { font-size:13px;color:var(--text2);margin-bottom:24px; }
+
+.pilot-row { display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:6px; }
+.pilot-row-avatar { width:38px;height:38px;border-radius:50%;object-fit:cover;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0; }
+.pilot-row-info { flex:1;min-width:0; }
+.pilot-row-name { font-size:14px;font-weight:700;color:var(--text); }
+.pilot-row-meta { font-size:11px;color:var(--text3); }
+.pilot-row-actions { display:flex;gap:6px;flex-wrap:wrap; }
+
+.pending-card { background:var(--card);border:1px solid var(--amber);border-radius:12px;padding:18px;margin-bottom:12px; }
+.pending-card .pc-header { display:flex;align-items:center;gap:12px;margin-bottom:12px; }
+.pending-card .pc-callsign { font-size:18px;font-weight:800;color:var(--text); }
+.pending-card .pc-meta { font-size:12px;color:var(--text2);line-height:1.7; }
+.pending-card .pc-actions { display:flex;gap:8px;margin-top:14px;flex-wrap:wrap; }
+.pending-detail { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0; }
+@media(max-width:600px){ .pending-detail { grid-template-columns:1fr; } }
+.detail-item { background:var(--card2);border-radius:6px;padding:8px 10px; }
+.detail-lbl { font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px; }
+.detail-val { font-size:13px;color:var(--text); }
+
+/* customize panel */
+.color-row { display:flex;gap:8px;flex-wrap:wrap;margin:8px 0; }
+.color-swatch { width:34px;height:34px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all .12s; }
+.color-swatch:hover { transform:scale(1.12); }
+.color-swatch.active { border-color:#fff;box-shadow:0 0 0 2px var(--gold); }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html">
+      <div class="nav-emblem">GSC</div>
+      <div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div>
+    </a>
+    <div class="nav-links">
+      <a href="/index.html">← Back to Site</a>
+    </div>
+    <div class="nav-right" style="margin-left:auto">
+      <div class="nav-pilot-info">
+        <img class="nav-avatar" id="nav-avatar" src="" alt="" onerror="this.style.display='none'">
+        <div class="nav-pilot-name" id="nav-name"></div>
+        <div class="nav-rank-badge" style="background:rgba(208,64,64,.15);color:var(--red2);border-color:rgba(208,64,64,.3)">MASTER ADMIN</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="auth.signOut().then(()=>window.location.href='/pages/login.html')">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="admin-layout">
+  <div class="admin-sidebar">
+    <div class="sidebar-label">Command</div>
+    <div class="sidebar-item active" onclick="showSec('dashboard')"><span class="si-icon">📊</span> Dashboard</div>
+    <div class="sidebar-item" onclick="showSec('applications')"><span class="si-icon">📋</span> Applications <span class="notif-badge" id="app-count">0</span></div>
+    <div class="sidebar-label">Personnel</div>
+    <div class="sidebar-item" onclick="showSec('pilots')"><span class="si-icon">👨‍✈️</span> All Pilots</div>
+    <div class="sidebar-item" onclick="showSec('rosters')"><span class="si-icon">📜</span> Rosters</div>
+    <div class="sidebar-item" onclick="showSec('ranks')"><span class="si-icon">⭐</span> Ranks & Roles</div>
+    <div class="sidebar-label">Operations</div>
+    <div class="sidebar-item" onclick="showSec('flights')"><span class="si-icon">✈️</span> Flight Logs</div>
+    <div class="sidebar-item" onclick="showSec('training')"><span class="si-icon">🎓</span> Training Records</div>
+    <div class="sidebar-label">Site</div>
+    <div class="sidebar-item" onclick="showSec('customize')"><span class="si-icon">🎨</span> Customize Site</div>
+    <div class="sidebar-item" onclick="showSec('slideshow')"><span class="si-icon">🖼</span> Slideshow</div>
+    <div class="sidebar-item" onclick="showSec('news')"><span class="si-icon">📢</span> News / Announcements</div>
+    <div class="sidebar-item" onclick="showSec('wings')"><span class="si-icon">✈</span> Wing Settings</div>
+  </div>
+
+  <div class="admin-main">
+
+    <!-- ── DASHBOARD ── -->
+    <div id="sec-dashboard" class="sec active">
+      <div class="sec-title">Master Admin Dashboard</div>
+      <div class="sec-sub">Full command overview — VTAC Global Strike Command</div>
+      <div class="grid-4" style="margin-bottom:28px">
+        <div class="stat-card"><div class="stat-val" id="d-total">—</div><div class="stat-lbl">Total Pilots</div></div>
+        <div class="stat-card"><div class="stat-val" id="d-active">—</div><div class="stat-lbl">Active</div></div>
+        <div class="stat-card"><div class="stat-val" id="d-pending" style="color:var(--amber)">—</div><div class="stat-lbl">Pending</div></div>
+        <div class="stat-card"><div class="stat-val" id="d-flights">—</div><div class="stat-lbl">Total Flights</div></div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px">Pending Applications</div>
+          <div id="dash-pending-list"><div class="empty-state"><div class="icon">✅</div><p>No pending applications</p></div></div>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px">Recent Activity</div>
+          <div id="dash-activity"><div class="empty-state"><div class="icon">📋</div><p>No recent activity</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── APPLICATIONS ── -->
+    <div id="sec-applications" class="sec">
+      <div class="sec-title">Pilot Applications</div>
+      <div class="sec-sub">Review and approve or deny incoming pilot applications. Approved pilots are assigned a wing and squadron.</div>
+      <div id="applications-list"><div class="empty-state"><div class="icon">📋</div><p>No pending applications</p></div></div>
+    </div>
+
+    <!-- ── ALL PILOTS ── -->
+    <div id="sec-pilots" class="sec">
+      <div class="sec-title">All Pilots</div>
+      <div class="sec-sub">Manage all personnel across all wings.</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <input type="text" id="pilot-search" placeholder="Search callsign, name..." style="flex:1;min-width:180px" oninput="filterPilots()">
+        <select id="pilot-filter-wing" onchange="filterPilots()" style="width:auto">
+          <option value="">All Wings</option>
+          <option value="7bw">7th Bomb Wing</option>
+          <option value="509bw">509th Bomb Wing</option>
+          <option value="2bw">2nd Bomb Wing</option>
+        </select>
+        <select id="pilot-filter-status" onchange="filterPilots()" style="width:auto">
+          <option value="">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+          <option value="denied">Denied</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </div>
+      <div id="pilots-list"><div class="empty-state"><div class="icon">👨‍✈️</div><p>Loading pilots...</p></div></div>
+    </div>
+
+    <!-- ── ROSTERS ── -->
+    <div id="sec-rosters" class="sec">
+      <div class="sec-title">Squadron Rosters</div>
+      <div class="sec-sub">View and manage rosters for all wings and squadrons.</div>
+      <div class="tab-nav">
+        <button class="tab-btn active" onclick="showRosterTab('7bw',this)">7th BW</button>
+        <button class="tab-btn" onclick="showRosterTab('509bw',this)">509th BW</button>
+        <button class="tab-btn" onclick="showRosterTab('2bw',this)">2nd BW</button>
+      </div>
+      <div id="roster-content"></div>
+    </div>
+
+    <!-- ── RANKS ── -->
+    <div id="sec-ranks" class="sec">
+      <div class="sec-title">Ranks & Roles</div>
+      <div class="sec-sub">Promote, demote, or change roles for any pilot. Search for a pilot to manage their rank.</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <input type="text" id="rank-search" placeholder="Search pilot callsign..." style="flex:1" oninput="searchForRank()">
+      </div>
+      <div id="rank-results"></div>
+    </div>
+
+    <!-- ── FLIGHTS ── -->
+    <div id="sec-flights" class="sec">
+      <div class="sec-title">Flight Logs</div>
+      <div class="sec-sub">All flight logs across every pilot and wing.</div>
+      <div id="all-flights-list"><div class="empty-state"><div class="icon">✈️</div><p>No flights logged yet</p></div></div>
+    </div>
+
+    <!-- ── TRAINING ── -->
+    <div id="sec-training" class="sec">
+      <div class="sec-title">Training Records</div>
+      <div class="sec-sub">View training progress and certifications for all pilots.</div>
+      <div id="training-list"><div class="empty-state"><div class="icon">🎓</div><p>No training records yet</p></div></div>
+    </div>
+
+    <!-- ── CUSTOMIZE ── -->
+    <div id="sec-customize" class="sec">
+      <div class="sec-title">Customize Site</div>
+      <div class="sec-sub">Change colors, squadron names, callsigns, and site text. All changes save to Firebase and appear site-wide instantly.</div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-icon">🎨</div><div class="card-title">Color theme</div></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label>Accent color</label>
+            <div class="color-row">
+              <div class="color-swatch active" style="background:#c8a951" onclick="pickColor('#c8a951',this)"></div>
+              <div class="color-swatch" style="background:#4a90d9" onclick="pickColor('#4a90d9',this)"></div>
+              <div class="color-swatch" style="background:#3dba6e" onclick="pickColor('#3dba6e',this)"></div>
+              <div class="color-swatch" style="background:#d04040" onclick="pickColor('#d04040',this)"></div>
+              <div class="color-swatch" style="background:#9b59b6" onclick="pickColor('#9b59b6',this)"></div>
+              <div class="color-swatch" style="background:#e09030" onclick="pickColor('#e09030',this)"></div>
+            </div>
+            <input type="color" id="custom-color" value="#c8a951" style="margin-top:8px;width:60px" oninput="pickColor(this.value)">
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-icon">✍️</div><div class="card-title">Site text</div></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Organization name</label>
+              <input type="text" id="cust-org-name" placeholder="Global Strike Command">
+            </div>
+            <div class="form-group">
+              <label>Nav badge text (2-3 letters)</label>
+              <input type="text" id="cust-badge" placeholder="GSC" maxlength="3">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Hero subtitle</label>
+            <textarea id="cust-hero-sub" placeholder="Elite virtual bomber operations..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Footer text</label>
+            <input type="text" id="cust-footer" placeholder="Virtual Global Strike Command · vtacgsc.com">
+          </div>
+          <button class="btn btn-primary" onclick="saveSiteSettings()">Save site settings</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-icon">✈</div><div class="card-title">Wing & squadron names</div></div>
+        <div class="card-body">
+          <div id="wing-name-editor"></div>
+          <button class="btn btn-primary" style="margin-top:12px" onclick="saveWingSettings()">Save wing settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SLIDESHOW ── -->
+    <div id="sec-slideshow" class="sec">
+      <div class="sec-title">Homepage Slideshow</div>
+      <div class="sec-sub">Add and remove images shown in the homepage slideshow. Paste any image URL.</div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-icon">➕</div><div class="card-title">Add image</div></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Image URL</label>
+              <input type="url" id="slide-url" placeholder="https://...">
+            </div>
+            <div class="form-group">
+              <label>Caption (optional)</label>
+              <input type="text" id="slide-caption" placeholder="7th BW on final approach KDYS">
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addSlide()">Add slide</button>
+        </div>
+      </div>
+      <div id="slide-list"><div class="empty-state"><div class="icon">🖼</div><p>No slides yet</p></div></div>
+    </div>
+
+    <!-- ── NEWS ── -->
+    <div id="sec-news" class="sec">
+      <div class="sec-title">News & Announcements</div>
+      <div class="sec-sub">Post news items that appear on the homepage.</div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-icon">➕</div><div class="card-title">New post</div></div>
+        <div class="card-body">
+          <div class="form-group"><label>Title</label><input type="text" id="news-title" placeholder="Announcement title"></div>
+          <div class="form-group"><label>Body</label><textarea id="news-body" placeholder="Announcement content..."></textarea></div>
+          <button class="btn btn-primary btn-sm" onclick="postNews()">Post announcement</button>
+        </div>
+      </div>
+      <div id="news-list-admin"><div class="empty-state"><div class="icon">📢</div><p>No announcements yet</p></div></div>
+    </div>
+
+    <!-- ── WINGS ── -->
+    <div id="sec-wings" class="sec">
+      <div class="sec-title">Wing Settings</div>
+      <div class="sec-sub">Configure wing commanders, colors, base info, and aircraft for each wing.</div>
+      <div id="wing-settings-content"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- APPROVE MODAL -->
+<div class="modal-overlay" id="approve-modal">
+  <div class="modal">
+    <div class="modal-title">Approve Pilot</div>
+    <div class="modal-sub">Assign wing and squadron, then approve this application.</div>
+    <div id="approve-pilot-name" style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:16px"></div>
+    <div class="form-group">
+      <label>Assign Wing</label>
+      <select id="approve-wing" onchange="updateSqOptions()">
+        <option value="7bw">7th Bomb Wing</option>
+        <option value="509bw">509th Bomb Wing</option>
+        <option value="2bw">2nd Bomb Wing</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Assign Squadron</label>
+      <select id="approve-squadron"></select>
+    </div>
+    <div class="form-group">
+      <label>Starting Rank</label>
+      <select id="approve-rank">
+        <option value="rec">Recruit</option>
+        <option value="ab">Airman Basic</option>
+        <option value="amn">Airman</option>
+        <option value="trainee">Trainee (role)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Role</label>
+      <select id="approve-role">
+        <option value="trainee">Trainee</option>
+        <option value="pilot">Pilot</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('approve-modal')">Cancel</button>
+      <button class="btn btn-green" onclick="confirmApprove()">✓ Approve & Activate</button>
+    </div>
+  </div>
+</div>
+
+<!-- DENY MODAL -->
+<div class="modal-overlay" id="deny-modal">
+  <div class="modal">
+    <div class="modal-title">Deny Application</div>
+    <div id="deny-pilot-name" style="font-size:16px;font-weight:700;color:var(--red2);margin-bottom:12px"></div>
+    <div class="form-group">
+      <label>Reason for denial (optional — pilot will not see this)</label>
+      <textarea id="deny-reason" placeholder="e.g. Requirements not met, duplicate application..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('deny-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDeny()">✗ Deny Application</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT RANK MODAL -->
+<div class="modal-overlay" id="rank-modal">
+  <div class="modal">
+    <div class="modal-title">Edit Pilot Rank & Role</div>
+    <div id="rank-modal-name" style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:16px"></div>
+    <div class="form-group">
+      <label>Rank</label>
+      <select id="rank-modal-rank">
+        <!-- populated dynamically -->
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Role</label>
+      <select id="rank-modal-role">
+        <option value="trainee">Trainee</option>
+        <option value="pilot">Pilot</option>
+        <option value="instructor">Instructor</option>
+        <option value="sq_commander">Squadron Commander</option>
+        <option value="wing_commander">Wing Commander</option>
+        <option value="master_admin">Master Admin</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Wing</label>
+      <select id="rank-modal-wing" onchange="updateRankSqOptions()">
+        <option value="">Unassigned</option>
+        <option value="7bw">7th Bomb Wing</option>
+        <option value="509bw">509th Bomb Wing</option>
+        <option value="2bw">2nd Bomb Wing</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Squadron</label>
+      <select id="rank-modal-sq"></select>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="rank-modal-status">
+        <option value="active">Active</option>
+        <option value="suspended">Suspended</option>
+        <option value="denied">Denied</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('rank-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRankChange()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+// ── AUTH GUARD ────────────────────────────────────────────────
+function onAuthReady(user, pilot) {
+  if (!user) { window.location.href = '/pages/login.html'; return; }
+  if (pilot?.role !== 'master_admin') { window.location.href = '/index.html'; return; }
+  document.getElementById('nav-name').textContent = pilot.displayName || pilot.callsign;
+  if (pilot.avatarUrl) document.getElementById('nav-avatar').src = pilot.avatarUrl;
+  loadAll();
+}
+
+// ── SECTION SWITCHING ─────────────────────────────────────────
+function showSec(id) {
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (id==='applications') loadApplications();
+  if (id==='pilots')       loadAllPilots();
+  if (id==='rosters')      loadRosters('7bw');
+  if (id==='flights')      loadAllFlights();
+  if (id==='slideshow')    loadSlideshow();
+  if (id==='news')         loadNews();
+  if (id==='wings')        loadWingSettings();
+  if (id==='customize')    loadCustomizeSettings();
+}
+
+let allPilots = [], pendingApps = [];
+let editingPilotUid = null;
+
+async function loadAll() {
+  const snap = await db.collection('pilots').get();
+  allPilots = snap.docs.map(d => ({uid:d.id,...d.data()}));
+  pendingApps = allPilots.filter(p => p.status === 'pending');
+  const activeCount  = allPilots.filter(p=>p.status==='active').length;
+  document.getElementById('d-total').textContent   = allPilots.length;
+  document.getElementById('d-active').textContent  = activeCount;
+  document.getElementById('d-pending').textContent = pendingApps.length;
+  document.getElementById('app-count').textContent = pendingApps.length;
+  if (!pendingApps.length) document.getElementById('app-count').style.display='none';
+  const fSnap = await db.collection('flights').get();
+  document.getElementById('d-flights').textContent = fSnap.size;
+  renderDashPending();
+}
+
+function renderDashPending() {
+  const el = document.getElementById('dash-pending-list');
+  if (!pendingApps.length) { el.innerHTML='<div class="empty-state"><div class="icon">✅</div><p>No pending applications</p></div>'; return; }
+  el.innerHTML = pendingApps.slice(0,5).map(p => `
+    <div class="pilot-row">
+      <div class="pilot-row-avatar">✈</div>
+      <div class="pilot-row-info">
+        <div class="pilot-row-name">${p.displayName || p.callsign}</div>
+        <div class="pilot-row-meta">${p.email} · Applied ${formatDate(p.appliedAt)}</div>
+      </div>
+      <div class="pilot-row-actions">
+        <button class="btn btn-green btn-xs" onclick="openApproveModal('${p.uid}')">Approve</button>
+        <button class="btn btn-danger btn-xs" onclick="openDenyModal('${p.uid}')">Deny</button>
+      </div>
+    </div>`).join('');
+}
+
+// ── APPLICATIONS ──────────────────────────────────────────────
+async function loadApplications() {
+  const snap = await db.collection('pilots').where('status','==','pending').orderBy('appliedAt','desc').get();
+  const list = document.getElementById('applications-list');
+  if (snap.empty) { list.innerHTML='<div class="empty-state"><div class="icon">✅</div><p>No pending applications</p></div>'; return; }
+  list.innerHTML = '';
+  snap.forEach(d => {
+    const p = {uid:d.id,...d.data()};
+    list.innerHTML += `
+      <div class="pending-card">
+        <div class="pc-header">
+          <div style="font-size:32px">✈</div>
+          <div>
+            <div class="pc-callsign">${p.displayName || p.callsign}</div>
+            <div style="font-size:12px;color:var(--text3)">${p.email} · Applied ${formatDate(p.appliedAt)}</div>
+          </div>
+          <span class="badge badge-amber" style="margin-left:auto">PENDING</span>
+        </div>
+        <div class="pending-detail">
+          <div class="detail-item"><div class="detail-lbl">Full Name</div><div class="detail-val">${p.firstName} ${p.lastName}</div></div>
+          <div class="detail-item"><div class="detail-lbl">Discord</div><div class="detail-val">${p.discord||'—'}</div></div>
+          <div class="detail-item"><div class="detail-lbl">Preferred Wing</div><div class="detail-val">${getWingName(p.preferredWing)||'—'}</div></div>
+          <div class="detail-item"><div class="detail-lbl">Simulator</div><div class="detail-val">${p.simulator||'—'}</div></div>
+          <div class="detail-item"><div class="detail-lbl">Experience</div><div class="detail-val">${p.experience||'—'}</div></div>
+          <div class="detail-item"><div class="detail-lbl">Applied</div><div class="detail-val">${formatDate(p.appliedAt)}</div></div>
+        </div>
+        ${p.motivation?`<div style="font-size:13px;color:var(--text2);background:var(--card2);border-radius:7px;padding:10px 12px;margin-top:8px"><strong style="color:var(--text)">Motivation:</strong> ${p.motivation}</div>`:''}
+        <div class="pc-actions">
+          <button class="btn btn-green btn-sm" onclick="openApproveModal('${p.uid}')">✓ Approve</button>
+          <button class="btn btn-danger btn-sm" onclick="openDenyModal('${p.uid}')">✗ Deny</button>
+        </div>
+      </div>`;
+  });
+}
+
+// ── APPROVE / DENY ────────────────────────────────────────────
+function openApproveModal(uid) {
+  editingPilotUid = uid;
+  const pilot = allPilots.find(p=>p.uid===uid) || pendingApps.find(p=>p.uid===uid);
+  document.getElementById('approve-pilot-name').textContent = pilot?.displayName || uid;
+  if (pilot?.preferredWing) document.getElementById('approve-wing').value = pilot.preferredWing;
+  updateSqOptions();
+  document.getElementById('approve-modal').classList.add('open');
+}
+function openDenyModal(uid) {
+  editingPilotUid = uid;
+  const pilot = allPilots.find(p=>p.uid===uid) || pendingApps.find(p=>p.uid===uid);
+  document.getElementById('deny-pilot-name').textContent = pilot?.displayName || uid;
+  document.getElementById('deny-modal').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); editingPilotUid=null; }
+
+function updateSqOptions() {
+  const wing = document.getElementById('approve-wing').value;
+  const sel  = document.getElementById('approve-squadron');
+  const sqs  = WINGS[wing]?.squadrons || {};
+  sel.innerHTML = Object.entries(sqs).map(([id,sq])=>`<option value="${id}">${sq.name}</option>`).join('');
+}
+
+async function confirmApprove() {
+  if (!editingPilotUid) return;
+  const wing = document.getElementById('approve-wing').value;
+  const sq   = document.getElementById('approve-squadron').value;
+  const rank = document.getElementById('approve-rank').value;
+  const role = document.getElementById('approve-role').value;
+  try {
+    await db.collection('pilots').doc(editingPilotUid).update({
+      status:    'active',
+      role:      role,
+      rank:      rank,
+      wing:      wing,
+      squadron:  sq,
+      approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast('Pilot approved and activated!');
+    closeModal('approve-modal');
+    loadAll();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+async function confirmDeny() {
+  if (!editingPilotUid) return;
+  const reason = document.getElementById('deny-reason').value.trim();
+  try {
+    await db.collection('pilots').doc(editingPilotUid).update({
+      status: 'denied', deniedAt: firebase.firestore.FieldValue.serverTimestamp(), denyReason: reason
+    });
+    toast('Application denied.','warn');
+    closeModal('deny-modal');
+    loadAll();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ── ALL PILOTS ────────────────────────────────────────────────
+async function loadAllPilots() {
+  const snap = await db.collection('pilots').orderBy('displayName').get();
+  allPilots = snap.docs.map(d=>({uid:d.id,...d.data()}));
+  renderPilots(allPilots);
+}
+function renderPilots(pilots) {
+  const list = document.getElementById('pilots-list');
+  if (!pilots.length) { list.innerHTML='<div class="empty-state"><div class="icon">👨‍✈️</div><p>No pilots found</p></div>'; return; }
+  const statusColors = {active:'badge-green',pending:'badge-amber',denied:'badge-red',suspended:'badge-red'};
+  list.innerHTML = pilots.map(p=>`
+    <div class="pilot-row">
+      <div class="pilot-row-avatar">${p.avatarUrl?`<img src="${p.avatarUrl}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:'✈'}</div>
+      <div class="pilot-row-info">
+        <div class="pilot-row-name">${p.displayName||p.callsign} <span style="font-size:12px;color:var(--text3);font-weight:400">(${getRankAbbr(p.rank||'rec')})</span></div>
+        <div class="pilot-row-meta">${getWingName(p.wing)||'Unassigned'} · ${p.email} · ${p.totalFlights||0} flights</div>
+      </div>
+      <div class="pilot-row-actions">
+        <span class="badge ${statusColors[p.status]||'badge-gray'}">${p.status||'unknown'}</span>
+        <button class="btn btn-outline btn-xs" onclick="openRankModal('${p.uid}')">Edit</button>
+      </div>
+    </div>`).join('');
+}
+function filterPilots() {
+  const q    = document.getElementById('pilot-search').value.toLowerCase();
+  const wing = document.getElementById('pilot-filter-wing').value;
+  const stat = document.getElementById('pilot-filter-status').value;
+  renderPilots(allPilots.filter(p =>
+    (!q    || (p.displayName||p.callsign||'').toLowerCase().includes(q) || (p.email||'').toLowerCase().includes(q)) &&
+    (!wing || p.wing===wing) &&
+    (!stat || p.status===stat)
+  ));
+}
+
+// ── RANK MODAL ────────────────────────────────────────────────
+function openRankModal(uid) {
+  editingPilotUid = uid;
+  const p = allPilots.find(x=>x.uid===uid);
+  if (!p) return;
+  document.getElementById('rank-modal-name').textContent = p.displayName||p.callsign;
+  const rankSel = document.getElementById('rank-modal-rank');
+  rankSel.innerHTML = RANKS.map(r=>`<option value="${r.id}" ${r.id===p.rank?'selected':''}>${r.name}</option>`).join('');
+  document.getElementById('rank-modal-role').value   = p.role||'pilot';
+  document.getElementById('rank-modal-wing').value   = p.wing||'';
+  document.getElementById('rank-modal-status').value = p.status||'active';
+  updateRankSqOptions(p.squadron);
+  document.getElementById('rank-modal').classList.add('open');
+}
+function updateRankSqOptions(selectedSq) {
+  const wing = document.getElementById('rank-modal-wing').value;
+  const sel  = document.getElementById('rank-modal-sq');
+  const sqs  = WINGS[wing]?.squadrons||{};
+  sel.innerHTML = '<option value="">Unassigned</option>'+Object.entries(sqs).map(([id,sq])=>`<option value="${id}" ${id===selectedSq?'selected':''}>${sq.name}</option>`).join('');
+}
+async function saveRankChange() {
+  if (!editingPilotUid) return;
+  try {
+    await db.collection('pilots').doc(editingPilotUid).update({
+      rank:     document.getElementById('rank-modal-rank').value,
+      role:     document.getElementById('rank-modal-role').value,
+      wing:     document.getElementById('rank-modal-wing').value||null,
+      squadron: document.getElementById('rank-modal-sq').value||null,
+      status:   document.getElementById('rank-modal-status').value,
+    });
+    toast('Pilot updated!');
+    closeModal('rank-modal');
+    loadAllPilots();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ── RANK SEARCH ───────────────────────────────────────────────
+function searchForRank() {
+  const q = document.getElementById('rank-search').value.toLowerCase();
+  const res = document.getElementById('rank-results');
+  if (!q) { res.innerHTML=''; return; }
+  const found = allPilots.filter(p=>(p.displayName||p.callsign||'').toLowerCase().includes(q));
+  res.innerHTML = found.slice(0,8).map(p=>`
+    <div class="pilot-row">
+      <div class="pilot-row-avatar">✈</div>
+      <div class="pilot-row-info">
+        <div class="pilot-row-name">${p.displayName||p.callsign}</div>
+        <div class="pilot-row-meta">${getRankName(p.rank||'rec')} · ${getWingName(p.wing)||'Unassigned'}</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="openRankModal('${p.uid}')">Edit Rank</button>
+    </div>`).join('');
+}
+
+// ── ROSTERS ───────────────────────────────────────────────────
+async function loadRosters(wingId) {
+  const sqs  = WINGS[wingId]?.squadrons||{};
+  const snap = await db.collection('pilots').where('wing','==',wingId).where('status','==','active').get();
+  const pilots = snap.docs.map(d=>({uid:d.id,...d.data()}));
+  const el   = document.getElementById('roster-content');
+  el.innerHTML = Object.entries(sqs).map(([sqId,sq]) => {
+    const sqPilots = pilots.filter(p=>p.squadron===sqId);
+    return `
+      <div class="wing-banner w-${wingId}" style="margin-bottom:14px">
+        <div class="wing-label" style="color:var(--${wingId})">${sq.name}</div>
+        <div style="font-size:13px;color:var(--text2)">${sqPilots.length} pilots</div>
+      </div>
+      <div class="card" style="margin-bottom:20px;overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Callsign</th><th>Rank</th><th>Role</th><th>Flights</th><th>Hours</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${sqPilots.length ? sqPilots.map(p=>`
+              <tr>
+                <td><strong>${p.displayName||p.callsign}</strong></td>
+                <td>${getRankName(p.rank||'rec')}</td>
+                <td><span class="badge badge-gray">${p.role||'pilot'}</span></td>
+                <td>${p.totalFlights||0}</td>
+                <td>${Math.round((p.flightHours||0))}h</td>
+                <td><button class="btn btn-outline btn-xs" onclick="openRankModal('${p.uid}')">Edit</button></td>
+              </tr>`).join('')
+            : '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">No pilots assigned to this squadron</td></tr>'}
+          </tbody>
+        </table>
+      </div>`;
+  }).join('');
+}
+function showRosterTab(wingId, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  loadRosters(wingId);
+}
+
+// ── FLIGHTS ───────────────────────────────────────────────────
+async function loadAllFlights() {
+  const snap = await db.collection('flights').orderBy('loggedAt','desc').limit(50).get();
+  const el = document.getElementById('all-flights-list');
+  if (snap.empty) { el.innerHTML='<div class="empty-state"><div class="icon">✈️</div><p>No flights logged yet</p></div>'; return; }
+  el.innerHTML = '<div class="card" style="overflow-x:auto"><table class="data-table"><thead><tr><th>Pilot</th><th>Route</th><th>Aircraft</th><th>Duration</th><th>Date</th><th>Wing</th></tr></thead><tbody>' +
+    snap.docs.map(d=>{const f=d.data();return `<tr><td><strong>${f.pilotCallsign||'—'}</strong></td><td style="font-family:var(--mono)">${f.departure}→${f.arrival}</td><td>${f.aircraft||'—'}</td><td>${Math.floor((f.durationMins||0)/60)}h${(f.durationMins||0)%60}m</td><td>${formatDate(f.loggedAt)}</td><td>${getWingName(f.wing)||'—'}</td></tr>`;}).join('') +
+    '</tbody></table></div>';
+}
+
+// ── SLIDESHOW ─────────────────────────────────────────────────
+async function loadSlideshow() {
+  const doc = await db.collection('settings').doc('slideshow').get();
+  const slides = doc.exists ? (doc.data().slides||[]) : [];
+  renderSlides(slides);
+}
+function renderSlides(slides) {
+  const el = document.getElementById('slide-list');
+  if (!slides.length) { el.innerHTML='<div class="empty-state"><div class="icon">🖼</div><p>No slides yet</p></div>'; return; }
+  el.innerHTML = slides.map((s,i)=>`
+    <div class="pilot-row">
+      <img src="${s.url}" style="width:80px;height:50px;object-fit:cover;border-radius:5px;flex-shrink:0" onerror="this.style.background='#333'">
+      <div class="pilot-row-info"><div class="pilot-row-name">${s.caption||'No caption'}</div><div class="pilot-row-meta" style="font-family:var(--mono)">${s.url}</div></div>
+      <button class="btn btn-danger btn-xs" onclick="removeSlide(${i})">Remove</button>
+    </div>`).join('');
+}
+async function addSlide() {
+  const url = document.getElementById('slide-url').value.trim();
+  const cap = document.getElementById('slide-caption').value.trim();
+  if (!url) { toast('Enter an image URL','error'); return; }
+  const ref = db.collection('settings').doc('slideshow');
+  await ref.set({ slides: firebase.firestore.FieldValue.arrayUnion({url,caption:cap}) }, {merge:true});
+  document.getElementById('slide-url').value=''; document.getElementById('slide-caption').value='';
+  toast('Slide added!'); loadSlideshow();
+}
+async function removeSlide(idx) {
+  const doc = await db.collection('settings').doc('slideshow').get();
+  const slides = doc.data()?.slides||[];
+  slides.splice(idx,1);
+  await db.collection('settings').doc('slideshow').set({slides});
+  toast('Slide removed'); loadSlideshow();
+}
+
+// ── NEWS ──────────────────────────────────────────────────────
+async function loadNews() {
+  const snap = await db.collection('news').orderBy('createdAt','desc').get();
+  const el = document.getElementById('news-list-admin');
+  if (snap.empty) { el.innerHTML='<div class="empty-state"><div class="icon">📢</div><p>No announcements</p></div>'; return; }
+  el.innerHTML = snap.docs.map(d=>{const n=d.data();return `
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-body">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <strong style="font-size:15px">${n.title}</strong>
+          <span style="font-size:11px;color:var(--text3);margin-left:auto">${formatDate(n.createdAt)}</span>
+          <button class="btn btn-danger btn-xs" onclick="deleteNews('${d.id}')">Delete</button>
+        </div>
+        <div style="font-size:13px;color:var(--text2)">${n.body}</div>
+      </div>
+    </div>`;}).join('');
+}
+async function postNews() {
+  const title = document.getElementById('news-title').value.trim();
+  const body  = document.getElementById('news-body').value.trim();
+  if (!title||!body) { toast('Fill in title and body','error'); return; }
+  await db.collection('news').add({ title, body, createdAt: firebase.firestore.FieldValue.serverTimestamp(), authorUid: currentUser.uid });
+  document.getElementById('news-title').value=''; document.getElementById('news-body').value='';
+  toast('Posted!'); loadNews();
+}
+async function deleteNews(id) {
+  if (!confirm('Delete this announcement?')) return;
+  await db.collection('news').doc(id).delete();
+  toast('Deleted'); loadNews();
+}
+
+// ── CUSTOMIZE ────────────────────────────────────────────────
+async function loadCustomizeSettings() {
+  try {
+    const doc = await db.collection('settings').doc('site').get();
+    if (doc.exists) {
+      const d = doc.data();
+      if (d.orgName)  document.getElementById('cust-org-name').value = d.orgName;
+      if (d.badge)    document.getElementById('cust-badge').value    = d.badge;
+      if (d.heroSub)  document.getElementById('cust-hero-sub').value = d.heroSub;
+      if (d.footer)   document.getElementById('cust-footer').value   = d.footer;
+    }
+  } catch(e) {}
+  // Build wing name editor
+  const el = document.getElementById('wing-name-editor');
+  el.innerHTML = Object.entries(WINGS).map(([wingId,wing])=>`
+    <div style="margin-bottom:16px;padding:14px;background:var(--card2);border-radius:8px;border-left:3px solid var(--${wingId})">
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">${wing.name}</div>
+      ${Object.entries(wing.squadrons).map(([sqId,sq])=>`
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="form-group" style="margin:0">
+            <label style="font-size:10px">Squadron name</label>
+            <input type="text" id="sq-name-${sqId}" value="${sq.name}" placeholder="${sq.name}">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:10px">Callsign</label>
+            <input type="text" id="sq-call-${sqId}" value="${sq.callsign||''}" placeholder="e.g. BONE">
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+async function saveSiteSettings() {
+  await db.collection('settings').doc('site').set({
+    orgName:  document.getElementById('cust-org-name').value,
+    badge:    document.getElementById('cust-badge').value,
+    heroSub:  document.getElementById('cust-hero-sub').value,
+    footer:   document.getElementById('cust-footer').value,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  }, {merge:true});
+  toast('Site settings saved!');
+}
+async function saveWingSettings() {
+  const updates = {};
+  Object.entries(WINGS).forEach(([wingId,wing])=>{
+    Object.entries(wing.squadrons).forEach(([sqId])=>{
+      const nameEl = document.getElementById(`sq-name-${sqId}`);
+      const callEl = document.getElementById(`sq-call-${sqId}`);
+      if (nameEl) updates[`${wingId}.${sqId}.name`]     = nameEl.value;
+      if (callEl) updates[`${wingId}.${sqId}.callsign`] = callEl.value;
+    });
+  });
+  await db.collection('settings').doc('wings').set(updates, {merge:true});
+  toast('Wing settings saved!');
+}
+function pickColor(hex, el) {
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('custom-color').value = hex;
+  db.collection('settings').doc('site').set({accentColor:hex},{merge:true});
+  toast('Color saved! Reload pages to see it.');
+}
+
+// ── WING SETTINGS ─────────────────────────────────────────────
+async function loadWingSettings() {
+  const el = document.getElementById('wing-settings-content');
+  el.innerHTML = Object.entries(WINGS).map(([wingId,wing])=>`
+    <div class="wing-banner w-${wingId}" style="margin-bottom:16px">
+      <div class="wing-label" style="color:var(--${wingId})">${wing.name}</div>
+      <div class="wing-name" style="color:var(--${wingId})">${wing.name}</div>
+      <div class="wing-base">📍 ${wing.base}</div>
+      <div style="margin-top:12px;display:flex;gap:10px">
+        <button class="btn btn-outline btn-sm" onclick="showSec('rosters')">View Roster</button>
+        <button class="btn btn-outline btn-sm" onclick="showSec('customize')">Edit Names</button>
+      </div>
+    </div>`).join('');
+}
+
+// close modals on backdrop
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+</script>
+</body>
+</html>
