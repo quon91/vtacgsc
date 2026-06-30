@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wing — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.wing-hero{position:relative;overflow:hidden;padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border)}
+.wing-hero::before{content:'';position:absolute;inset:0;pointer-events:none}
+.wing-emblem-big{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#000;margin:0 auto 16px;box-shadow:0 0 30px rgba(200,169,81,.25)}
+.wing-hero-name{font-size:clamp(28px,5vw,44px);font-weight:900;color:var(--text);margin-bottom:6px}
+.wing-hero-base{font-size:15px;color:var(--text2)}
+.wing-hero-aircraft{display:inline-block;margin-top:12px;padding:5px 14px;border-radius:20px;font-size:13px;font-weight:600}
+.edit-fab{position:fixed;bottom:24px;right:24px;z-index:500;display:none}
+.edit-fab.show{display:flex}
+.history-content{font-size:15px;color:var(--text2);line-height:1.85;white-space:pre-wrap}
+.sq-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.sq-card-head{padding:14px 18px;background:var(--card2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.sq-card-name{font-size:16px;font-weight:700;color:var(--text)}
+.sq-card-nick{font-size:12px;color:var(--text3);font-style:italic}
+.sq-callsign-pool{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.cs-pill{background:rgba(74,144,217,.12);border:1px solid rgba(74,144,217,.3);color:var(--blue2);border-radius:14px;padding:3px 10px;font-size:11px;font-weight:700;font-family:var(--mono)}
+.roster-mini{padding:14px 18px}
+.empty-roster{font-size:13px;color:var(--text3);padding:8px 0}
+.edit-pencil{background:rgba(200,169,81,.12);border:1px solid rgba(200,169,81,.3);color:var(--gold);border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-family:var(--sans);display:none}
+.editable-mode .edit-pencil{display:inline-flex;align-items:center;gap:4px}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html">
+      <div class="nav-emblem">GSC</div>
+      <div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div>
+    </a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a>
+      <div class="nav-dropdown">
+        <input type="checkbox" id="wings-toggle">
+        <label for="wings-toggle" class="nav-drop-btn">Wings ▾</label>
+        <div class="nav-dropdown-menu">
+          <a href="/pages/wing.html?id=7bw">7th Bomb Wing</a>
+          <a href="/pages/wing.html?id=509bw">509th Bomb Wing</a>
+          <a href="/pages/wing.html?id=2bw">2nd Bomb Wing</a>
+        </div>
+      </div>
+      <a href="/pages/history.html">History</a>
+      <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html">Training</a>
+      <a href="/pages/flights.html">Flight Log</a>
+    </div>
+    <div class="nav-right" id="nav-right-area">
+      <a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a>
+    </div>
+    <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+  </div>
+</nav>
+
+<div class="wing-hero" id="wing-hero">
+  <div class="wing-emblem-big" id="wing-emblem">--</div>
+  <div class="wing-hero-name" id="wing-name">Loading...</div>
+  <div class="wing-hero-base" id="wing-base"></div>
+  <div class="wing-hero-aircraft" id="wing-aircraft"></div>
+</div>
+
+<div class="container page-body">
+
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="showTab('overview',this)">Overview</button>
+    <button class="tab-btn" onclick="showTab('roster',this)">Roster</button>
+    <button class="tab-btn" onclick="showTab('history',this)">History</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div id="tab-overview" class="tab-panel active">
+    <div class="grid-3" style="margin-bottom:28px">
+      <div class="stat-card"><div class="stat-val" id="ov-pilots">—</div><div class="stat-lbl">Pilots</div></div>
+      <div class="stat-card"><div class="stat-val" id="ov-flights">—</div><div class="stat-lbl">Flights</div></div>
+      <div class="stat-card"><div class="stat-val" id="ov-sqs">—</div><div class="stat-lbl">Squadrons</div></div>
+    </div>
+    <div class="section-label">Squadrons</div>
+    <div id="sq-list"></div>
+  </div>
+
+  <!-- ROSTER -->
+  <div id="tab-roster" class="tab-panel">
+    <div class="section-label">Full Wing Roster</div>
+    <div id="full-roster"><div class="empty-state"><div class="icon">👨‍✈️</div><p>Loading roster...</p></div></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="tab-history" class="tab-panel">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div class="section-label" style="margin-bottom:0;border-bottom:none;padding-bottom:0">Wing History</div>
+      <button class="edit-pencil" id="history-edit-btn" onclick="openHistoryEditor()">✏ Edit</button>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="history-content" id="history-content">Loading history...</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- HISTORY EDIT MODAL -->
+<div class="modal-overlay" id="history-modal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-title">Edit Wing History</div>
+    <div class="modal-sub">This text appears on the wing's History tab. Visible to all members.</div>
+    <div class="form-group">
+      <textarea id="history-textarea" style="min-height:280px" placeholder="Write the wing's history here..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('history-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveHistory()">Save History</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
+
+const wingId = new URLSearchParams(location.search).get('id') || '7bw';
+let wingData = null, canEdit = false;
+
+function onAuthReady(user, pilot) {
+  const navArea = document.getElementById('nav-right-area');
+  if (user && pilot?.status === 'active') {
+    navArea.innerHTML = `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
+    canEdit = pilot.role === 'master_admin' || (pilot.role === 'wing_commander' && pilot.wing === wingId);
+    if (canEdit) {
+      document.body.classList.add('editable-mode');
+      document.getElementById('history-edit-btn').style.display = 'inline-flex';
+    }
+  }
+  loadWing();
+}
+
+async function loadWing() {
+  try {
+    let doc = await db.collection('wings').doc(wingId).get();
+    wingData = doc.exists ? doc.data() : WINGS[wingId];
+  } catch(e) { wingData = WINGS[wingId]; }
+
+  if (!wingData) { document.getElementById('wing-name').textContent = 'Wing not found'; return; }
+
+  const color = wingData.color || '#c8a951';
+  document.getElementById('wing-hero').style.background = `radial-gradient(ellipse at top, ${color}15, transparent 60%)`;
+  document.getElementById('wing-emblem').style.background = color;
+  document.getElementById('wing-emblem').textContent = (wingData.name||'').split(' ').map(w=>w[0]).slice(0,2).join('');
+  document.getElementById('wing-name').textContent = wingData.name;
+  document.getElementById('wing-base').textContent = (wingData.base||'') + (wingData.location?' · '+wingData.location:'');
+  document.getElementById('wing-aircraft').textContent = (wingData.aircraft||[]).join(', ');
+  document.getElementById('wing-aircraft').style.background = color+'22';
+  document.getElementById('wing-aircraft').style.color = color;
+
+  document.getElementById('history-content').textContent = wingData.history || 'No history written yet for this wing.';
+
+  await loadStatsAndRoster();
+  renderSquadrons();
+}
+
+async function loadStatsAndRoster() {
+  try {
+    const snap = await db.collection('pilots').where('wing','==',wingId).where('status','==','active').get();
+    const pilots = snap.docs.map(d=>({uid:d.id,...d.data()}));
+    document.getElementById('ov-pilots').textContent = pilots.length;
+    document.getElementById('ov-sqs').textContent = Object.keys(wingData.squadrons||{}).length;
+
+    const fSnap = await db.collection('flights').where('wing','==',wingId).get();
+    document.getElementById('ov-flights').textContent = fSnap.size;
+
+    renderRoster(pilots);
+    window._wingPilots = pilots;
+    renderSquadrons();
+  } catch(e) {}
+}
+
+function renderRoster(pilots) {
+  const el = document.getElementById('full-roster');
+  if (!pilots.length) { el.innerHTML='<div class="empty-state"><div class="icon">👨‍✈️</div><p>No active pilots in this wing yet</p></div>'; return; }
+  el.innerHTML = `<div class="card" style="overflow-x:auto"><table class="data-table"><thead><tr><th>Callsign</th><th>Rank</th><th>Squadron</th><th>Flights</th><th>Hours</th></tr></thead><tbody>
+    ${pilots.map(p=>`<tr><td><strong>${p.displayName||p.callsign}</strong></td><td>${getRankAbbr(p.rank||'rec')}</td><td>${getSqName(wingId,p.squadron)||'—'}</td><td>${p.totalFlights||0}</td><td>${Math.round(p.flightHours||0)}h</td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+
+function renderSquadrons() {
+  const sqs = wingData?.squadrons || {};
+  const el  = document.getElementById('sq-list');
+  const pilots = window._wingPilots || [];
+  el.innerHTML = Object.entries(sqs).map(([sqId,sq]) => {
+    const sqPilots = pilots.filter(p=>p.squadron===sqId);
+    const pool = sq.callsignPool || [];
+    return `
+    <div class="sq-card">
+      <div class="sq-card-head">
+        <div>
+          <div class="sq-card-name">${sq.name}</div>
+          ${sq.nickname?`<div class="sq-card-nick">"${sq.nickname}"</div>`:''}
+        </div>
+        <div class="sq-callsign-pool">
+          ${pool.length ? pool.map(c=>`<span class="cs-pill">${c}</span>`).join('') : '<span style="font-size:11px;color:var(--text3)">No callsigns set</span>'}
+        </div>
+      </div>
+      <div class="roster-mini">
+        ${sqPilots.length ? sqPilots.map(p=>`<div style="font-size:13px;color:var(--text2);padding:3px 0">${p.displayName||p.callsign} — ${getRankName(p.rank||'rec')}</div>`).join('') : '<div class="empty-roster">No pilots assigned</div>'}
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty-state"><p>No squadrons configured for this wing</p></div>';
+}
+
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function openHistoryEditor() {
+  document.getElementById('history-textarea').value = wingData.history || '';
+  document.getElementById('history-modal').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+async function saveHistory() {
+  const text = document.getElementById('history-textarea').value.trim();
+  try {
+    await db.collection('wings').doc(wingId).set({ history: text }, {merge:true});
+    wingData.history = text;
+    document.getElementById('history-content').textContent = text || 'No history written yet.';
+    closeModal('history-modal');
+    toast('History saved!');
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+// Position the fixed-position Wings dropdown under its button
+(function() {
+  const toggle = document.getElementById('wings-toggle');
+  const label  = document.querySelector('label[for="wings-toggle"]');
+  const menu   = document.querySelector('.nav-dropdown-menu');
+  if (!toggle || !label || !menu) return;
+  function positionMenu() {
+    const r = label.getBoundingClientRect();
+    menu.style.top  = r.bottom + 'px';
+    menu.style.left = r.left + 'px';
+  }
+  toggle.addEventListener('change', () => { if (toggle.checked) positionMenu(); });
+  window.addEventListener('resize', () => { if (toggle.checked) positionMenu(); });
+  document.addEventListener('click', (e) => {
+    if (toggle.checked && !e.target.closest('.nav-dropdown')) toggle.checked = false;
+  });
+})();
+
+</script>
+</body>
+</html>
