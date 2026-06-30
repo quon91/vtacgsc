@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bases — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.bases-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.base-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:18px}
+.base-card-top{padding:20px;display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.base-icao{font-size:28px;font-weight:900;color:var(--gold);font-family:var(--mono);flex-shrink:0}
+.base-info{flex:1;min-width:200px}
+.base-name{font-size:18px;font-weight:700;color:var(--text)}
+.base-loc{font-size:13px;color:var(--text2);margin-top:2px}
+.base-wing-tag{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px}
+.base-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;padding:0 20px 20px}
+.bd-item{background:var(--card2);border-radius:8px;padding:10px 12px}
+.bd-lbl{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px}
+.bd-val{font-size:13px;color:var(--text);font-family:var(--mono)}
+.edit-pencil{background:rgba(200,169,81,.12);border:1px solid rgba(200,169,81,.3);color:var(--gold);border-radius:6px;padding:4px 11px;font-size:11px;cursor:pointer;font-family:var(--sans);display:none;align-items:center;gap:4px;margin-left:auto}
+.editable-mode .edit-pencil{display:inline-flex}
+.editable-mode .base-card-top{flex-wrap:nowrap}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a>
+      <div class="nav-dropdown">
+        <button class="nav-drop-btn" onclick="toggleDropdown(this)">Wings ▾</button>
+        <div class="nav-dropdown-menu">
+          <a href="/pages/wing.html?id=7bw">7th Bomb Wing</a>
+          <a href="/pages/wing.html?id=509bw">509th Bomb Wing</a>
+          <a href="/pages/wing.html?id=2bw">2nd Bomb Wing</a>
+        </div>
+      </div>
+      <a href="/pages/history.html">History</a>
+      <a href="/pages/bases.html" class="active">Bases</a>
+      <a href="/pages/training/index.html">Training</a>
+      <a href="/pages/flights.html">Flight Log</a>
+    </div>
+    <div class="nav-right" id="nav-right-area"><a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a></div>
+    <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+  </div>
+</nav>
+
+<div class="bases-hero">
+  <div class="hero-eyebrow">Operating Locations</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Wing <span>Bases</span></h1>
+  <p class="hero-sub" style="font-size:14px">Home airfields for every wing in Virtual Global Strike Command.</p>
+</div>
+
+<div class="container page-body">
+  <div id="bases-list"><div class="empty-state"><p>Loading bases...</p></div></div>
+</div>
+
+<!-- EDIT BASE MODAL -->
+<div class="modal-overlay" id="base-modal">
+  <div class="modal">
+    <div class="modal-title">Edit Base Details</div>
+    <input type="hidden" id="base-wing-id">
+    <div class="form-row">
+      <div class="form-group"><label>ICAO Code</label><input type="text" id="base-icao" maxlength="4" style="text-transform:uppercase"></div>
+      <div class="form-group"><label>Base name</label><input type="text" id="base-name"></div>
+    </div>
+    <div class="form-group"><label>Location (city, state/country)</label><input type="text" id="base-location"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Elevation (ft MSL)</label><input type="text" id="base-elev" placeholder="e.g. 1,789 ft"></div>
+      <div class="form-group"><label>Runway info</label><input type="text" id="base-runway" placeholder="e.g. 34L/16R 10,000 ft"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>ATIS frequency</label><input type="text" id="base-atis" placeholder="e.g. 134.05"></div>
+      <div class="form-group"><label>Tower frequency</label><input type="text" id="base-tower" placeholder="e.g. 126.2"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('base-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveBase()">Save</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
+function toggleDropdown(btn){const m=btn.nextElementSibling;const open=m.classList.contains('open');document.querySelectorAll('.nav-dropdown-menu.open').forEach(x=>x.classList.remove('open'));document.querySelectorAll('.nav-drop-btn.open').forEach(x=>x.classList.remove('open'));if(!open){m.classList.add('open');btn.classList.add('open');}event.stopPropagation();}
+document.addEventListener('click',()=>{document.querySelectorAll('.nav-dropdown-menu.open').forEach(x=>x.classList.remove('open'));document.querySelectorAll('.nav-drop-btn.open').forEach(x=>x.classList.remove('open'));});
+
+let allWingsData = {}, currentPilotRole=null, currentPilotWing=null;
+
+function onAuthReady(user, pilot) {
+  const navArea = document.getElementById('nav-right-area');
+  if (user && pilot?.status === 'active') {
+    navArea.innerHTML = `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
+    currentPilotRole = pilot.role;
+    currentPilotWing = pilot.wing;
+    if (pilot.role === 'master_admin' || pilot.role === 'wing_commander') {
+      document.body.classList.add('editable-mode');
+    }
+  }
+  loadBases();
+}
+
+function canEditWing(wingId) {
+  return currentPilotRole === 'master_admin' || (currentPilotRole === 'wing_commander' && currentPilotWing === wingId);
+}
+
+async function loadBases() {
+  allWingsData = {...WINGS};
+  try {
+    const snap = await db.collection('wings').get();
+    snap.forEach(d => { allWingsData[d.id] = {...(allWingsData[d.id]||{}), ...d.data(), id:d.id}; });
+  } catch(e) {}
+  renderBases();
+}
+
+function renderBases() {
+  const el = document.getElementById('bases-list');
+  const entries = Object.entries(allWingsData);
+  if (!entries.length) { el.innerHTML='<div class="empty-state"><p>No bases configured</p></div>'; return; }
+  el.innerHTML = entries.map(([wingId,wing]) => {
+    const b = wing.baseDetails || {};
+    const color = wing.color||'#c8a951';
+    const icao = (wing.base||'').match(/\(([^)]+)\)/)?.[1] || b.icao || '----';
+    return `
+    <div class="base-card">
+      <div class="base-card-top">
+        <div class="base-icao">${b.icao||icao}</div>
+        <div class="base-info">
+          <div class="base-name">${b.name||wing.base||'Unnamed Base'}</div>
+          <div class="base-loc">📍 ${b.location||wing.location||'—'}</div>
+          <div class="base-wing-tag" style="background:${color}22;color:${color}">${wing.name}</div>
+        </div>
+        ${canEditWing(wingId)?`<button class="edit-pencil" onclick="openBaseEditor('${wingId}')">✏ Edit</button>`:''}
+      </div>
+      <div class="base-details">
+        <div class="bd-item"><div class="bd-lbl">Elevation</div><div class="bd-val">${b.elevation||'—'}</div></div>
+        <div class="bd-item"><div class="bd-lbl">Runway</div><div class="bd-val">${b.runway||'—'}</div></div>
+        <div class="bd-item"><div class="bd-lbl">ATIS</div><div class="bd-val">${b.atis||'—'}</div></div>
+        <div class="bd-item"><div class="bd-lbl">Tower</div><div class="bd-val">${b.tower||'—'}</div></div>
+        <div class="bd-item"><div class="bd-lbl">Aircraft</div><div class="bd-val">${(wing.aircraft||[]).join(', ')||'—'}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openBaseEditor(wingId) {
+  const wing = allWingsData[wingId];
+  const b = wing.baseDetails || {};
+  document.getElementById('base-wing-id').value = wingId;
+  document.getElementById('base-icao').value     = b.icao || (wing.base||'').match(/\(([^)]+)\)/)?.[1] || '';
+  document.getElementById('base-name').value     = b.name || wing.base || '';
+  document.getElementById('base-location').value = b.location || wing.location || '';
+  document.getElementById('base-elev').value     = b.elevation || '';
+  document.getElementById('base-runway').value   = b.runway || '';
+  document.getElementById('base-atis').value     = b.atis || '';
+  document.getElementById('base-tower').value    = b.tower || '';
+  document.getElementById('base-modal').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+async function saveBase() {
+  const wingId = document.getElementById('base-wing-id').value;
+  const baseDetails = {
+    icao:     document.getElementById('base-icao').value.trim().toUpperCase(),
+    name:     document.getElementById('base-name').value.trim(),
+    location: document.getElementById('base-location').value.trim(),
+    elevation:document.getElementById('base-elev').value.trim(),
+    runway:   document.getElementById('base-runway').value.trim(),
+    atis:     document.getElementById('base-atis').value.trim(),
+    tower:    document.getElementById('base-tower').value.trim(),
+  };
+  try {
+    await db.collection('wings').doc(wingId).set({ baseDetails }, {merge:true});
+    allWingsData[wingId].baseDetails = baseDetails;
+    renderBases();
+    closeModal('base-modal');
+    toast('Base details saved!');
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+</script>
+</body>
+</html>

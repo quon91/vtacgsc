@@ -76,6 +76,15 @@
         </div>
       </div>
 
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-icon blue">📻</div><div class="card-title">Flight callsign pools</div></div>
+        <div class="card-body">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:14px">These are the specific callsigns pilots choose from when logging a flight (e.g. BONE 01, BONE 02, BONE 03). Add as many as your squadron needs.</div>
+          <div id="pool-sq-tabs" class="tab-nav" style="margin-bottom:16px"></div>
+          <div id="pool-editor"></div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header"><div class="card-icon">👤</div><div class="card-title">Individual pilot callsigns</div></div>
         <div class="card-body">
@@ -197,7 +206,69 @@ async function loadWing() {
   renderRoster(null);
   renderSqCallsigns();
   renderPilotCallsigns();
+  buildPoolTabs();
   loadFlights();
+}
+
+// ── CALLSIGN POOLS ───────────────────────────────────────────
+let activePoolSq = null;
+function buildPoolTabs() {
+  const sqs = myWingData?.squadrons || {};
+  const tabs = document.getElementById('pool-sq-tabs');
+  const entries = Object.entries(sqs);
+  if (!entries.length) { tabs.innerHTML=''; document.getElementById('pool-editor').innerHTML='<div class="empty-state"><p>No squadrons in this wing</p></div>'; return; }
+  activePoolSq = entries[0][0];
+  tabs.innerHTML = entries.map(([id,sq],i)=>`<button class="tab-btn ${i===0?'active':''}" onclick="switchPoolTab('${id}',this)">${sq.name}</button>`).join('');
+  renderPoolEditor();
+}
+function switchPoolTab(sqId, btn) {
+  activePoolSq = sqId;
+  document.querySelectorAll('#pool-sq-tabs .tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPoolEditor();
+}
+function renderPoolEditor() {
+  const sq = myWingData?.squadrons?.[activePoolSq];
+  const pool = sq?.callsignPool || [];
+  const el = document.getElementById('pool-editor');
+  el.innerHTML = `
+    <div style="margin-bottom:10px" id="pool-items-${activePoolSq}">
+      ${pool.length ? pool.map((c,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;margin-bottom:5px">
+          <span style="font-family:var(--mono);font-size:13px;color:var(--text);flex:1">${c}</span>
+          <button onclick="removePoolCallsign(${i})" style="background:none;border:none;color:var(--red2);cursor:pointer;font-size:15px">×</button>
+        </div>`).join('') : '<div style="font-size:12px;color:var(--text3)">No callsigns yet for this squadron</div>'}
+    </div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="new-pool-cs" placeholder="e.g. ${sq?.callsign||'BONE'} 0${pool.length+1}" style="flex:1" maxlength="20">
+      <button class="btn btn-primary btn-sm" onclick="addPoolCallsignWC()">+ Add</button>
+    </div>`;
+}
+async function addPoolCallsignWC() {
+  const val = document.getElementById('new-pool-cs').value.trim().toUpperCase();
+  if (!val) return;
+  const pool = myWingData.squadrons[activePoolSq].callsignPool || [];
+  pool.push(val);
+  try {
+    await db.collection('wings').doc(myWingId).set({
+      [`squadrons.${activePoolSq}.callsignPool`]: pool
+    }, {merge:true});
+    myWingData.squadrons[activePoolSq].callsignPool = pool;
+    renderPoolEditor();
+    toast('Callsign added to pool!');
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+async function removePoolCallsign(idx) {
+  const pool = myWingData.squadrons[activePoolSq].callsignPool || [];
+  pool.splice(idx,1);
+  try {
+    await db.collection('wings').doc(myWingId).set({
+      [`squadrons.${activePoolSq}.callsignPool`]: pool
+    }, {merge:true});
+    myWingData.squadrons[activePoolSq].callsignPool = pool;
+    renderPoolEditor();
+    toast('Removed');
+  } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
 // ── SQUADRON TABS ────────────────────────────────────────────
