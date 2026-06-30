@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase Training — B-52H — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}.back-link:hover{color:var(--green)}
+.phase-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:24px}
+.phase-head{display:flex;gap:16px;align-items:flex-start;padding:22px 24px;background:var(--card2);border-bottom:1px solid var(--border)}
+.phase-badge{min-width:80px;text-align:center;border:1px solid var(--green);color:var(--green);border-radius:8px;padding:8px 10px;font-weight:900;text-transform:uppercase;font-size:13px;flex-shrink:0}
+.phase-body{padding:24px;display:grid;grid-template-columns:1.1fr .9fr;gap:22px}
+@media(max-width:700px){.phase-body{grid-template-columns:1fr}}
+.pill{border:1px solid var(--border);background:var(--card2);color:var(--text2);border-radius:999px;padding:4px 10px;font-size:12px;display:inline-block;margin:3px 3px 3px 0}
+.sequence{list-style:none;padding:0;counter-reset:step}
+.sequence li{counter-increment:step;display:flex;gap:12px;margin:0 0 12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.02)}
+.sequence li::before{content:counter(step);display:inline-grid;place-items:center;min-width:26px;height:26px;border-radius:50%;background:var(--green);color:#000;font-weight:900;font-size:13px;flex-shrink:0}
+.sequence li p{font-size:13px;color:var(--text2);margin:0}
+.side{background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:12px;padding:18px}
+.side h3{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--green);margin-bottom:12px}
+.dl{margin:0;padding-left:16px;color:var(--text2);font-size:13px}.dl li{margin-bottom:9px}
+.limit-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.limit-row:last-child{border-bottom:none}
+</style>
+</head>
+<body>
+<nav class="site-nav"><div class="nav-inner"><a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a><div class="nav-links" id="nav-links"><a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a><a href="/pages/training/index.html" class="active">Training</a><a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a></div><div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div></div></nav>
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow" style="color:var(--green)">2nd Bomb Wing · B-52H Stratofortress · KBAD</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">Phase <span style="color:var(--green)">Training</span></h1>
+  <p class="hero-sub" style="font-size:15px">Three-phase syllabus — Transition &amp; Fundamentals, Navigation/AR, and Low-Level/Surface Attack/Night. Standard = Grade 3 across all phases.</p>
+</section>
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+
+  <div class="phase-card">
+    <div class="phase-head">
+      <div class="phase-badge">Phase 1</div>
+      <div>
+        <h2 style="font-size:20px;margin-bottom:4px">Transition &amp; Instrument Fundamentals</h2>
+        <div style="color:var(--text2);font-size:13px">Safely operate the B-52H from ground operations through takeoff, basic airwork, instrument pattern, and landing while building aircraft handling and checklist discipline.</div>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div>
+        <p style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Tasks Covered</p>
+        <div><span class="pill">Student Orientation / LAO Brief</span><span class="pill">Taxi Procedures</span><span class="pill">Ground Operations</span><span class="pill">Basic Flight Plan</span><span class="pill">Communications</span><span class="pill">Takeoff</span><span class="pill">VFR Departure</span><span class="pill">Climb</span><span class="pill">Descent</span><span class="pill">VFR Approach</span><span class="pill">VFR Landing</span><span class="pill">Instrument Departure</span><span class="pill">Automation Management</span><span class="pill">Aircraft Handling</span><span class="pill">Cruise</span><span class="pill">Configuration Management</span></div>
+        <p style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.07em;margin:16px 0 8px">In-Flight Sequence</p>
+        <ol class="sequence">
+          <li><p>Normal start, taxi, and line-up checks.</p></li>
+          <li><p>Normal takeoff using TOLD — heavy unstick typically ~140–160 KIAS.</p></li>
+          <li><p>VFR departure, climb, basic airwork and handling.</p></li>
+          <li><p>Instrument/VFR pattern, 2–3 closed patterns, one go-around.</p></li>
+          <li><p>Full-stop landing using crosswind controls, brakes, and drag chute as required.</p></li>
+        </ol>
+      </div>
+      <div class="side">
+        <h3>Step-Card Data</h3>
+        <ul class="dl">
+          <li><strong>Taxi:</strong> max 25 kts straightaway, 10 kts turns — nose-gear steering only.</li>
+          <li><strong>Takeoff:</strong> line up, run to ~80%, release brakes, rotate ~10° at VR.</li>
+          <li><strong>V-speeds:</strong> vary by gross weight — reference TOLD/PRFM; heavy unstick ~140–160 KIAS.</li>
+          <li><strong>Climb:</strong> 280–300 KIAS / 0.74M; clean up flaps on schedule.</li>
+          <li><strong>Pattern:</strong> 280 KIAS initial; final ~130–145 KIAS per weight.</li>
+        </ul>
+        <div class="alert alert-ok" style="margin-top:12px"><strong>Grading Focus:</strong> Smooth control, checklist discipline, communications, on-speed approaches. Standard = Grade 3.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase-card">
+    <div class="phase-head">
+      <div class="phase-badge">Phase 2</div>
+      <div>
+        <h2 style="font-size:20px;margin-bottom:4px">Navigation, Instruments &amp; Air Refueling</h2>
+        <div style="color:var(--text2);font-size:13px">Execute instrument routing, automation management, holding, tanker rejoin, simulated onload, and IFR recovery.</div>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div>
+        <p style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Tasks Covered</p>
+        <div><span class="pill">Instrument Departure</span><span class="pill">Automation Management</span><span class="pill">Aircraft Handling</span><span class="pill">Cruise</span><span class="pill">Configuration Management</span><span class="pill">Instrument Holds</span><span class="pill">IFR Landing</span><span class="pill">Go-Around / Closed Patterns</span><span class="pill">Missed Approach</span><span class="pill">ILS Landing</span><span class="pill">Low Approach</span><span class="pill">IFR Routing</span><span class="pill">Waypoint Navigation</span><span class="pill">VOR/TACAN/GPS</span><span class="pill">Formation Basics</span></div>
+        <p style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.07em;margin:16px 0 8px">In-Flight Sequence</p>
+        <ol class="sequence">
+          <li><p>Instrument departure.</p></li>
+          <li><p>Enroute navigation to AR track; holding as briefed.</p></li>
+          <li><p>Tanker rejoin — point-parallel or enroute.</p></li>
+          <li><p>Precontact → contact → onload.</p></li>
+          <li><p>Disconnect / breakaway.</p></li>
+          <li><p>Post-AR navigation to recovery; ILS or instrument approach to full stop.</p></li>
+        </ol>
+      </div>
+      <div class="side">
+        <h3>Step-Card Data</h3>
+        <ul class="dl">
+          <li><strong>AR rejoin:</strong> ~270–290 KIAS; contact altitude per ATO.</li>
+          <li><strong>Holding:</strong> standard 1-min legs (1.5 min above 14,000 ft) or per chart.</li>
+          <li><strong>ILS:</strong> track LOC/G/S to DA; missed approach = runway-heading climb.</li>
+          <li><strong>Fuel/CG:</strong> monitor transfer and balance continuously during onload.</li>
+        </ul>
+        <div class="alert alert-warn" style="margin-top:12px"><strong>Caution:</strong> Mass and slow roll response make AR demanding. Trim first, small inputs, early breakaway call.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase-card">
+    <div class="phase-head">
+      <div class="phase-badge">Phase 3<br>Night</div>
+      <div>
+        <h2 style="font-size:20px;margin-bottom:4px">Low-Level, Surface Attack &amp; Night</h2>
+        <div style="color:var(--text2);font-size:13px">Fly a low-level navigation route, conduct a simulated surface attack with Time-on-Target control, then transition to night operations including landing.</div>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div>
+        <p style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Tasks Covered</p>
+        <div><span class="pill">IFR Routing</span><span class="pill">Waypoint Navigation</span><span class="pill">VOR/TACAN/GPS</span><span class="pill">Mission Planning</span><span class="pill">T.O.T Windows</span><span class="pill">Low Visibility Operations</span><span class="pill">Night Lighting</span><span class="pill">Night VFR Departure</span><span class="pill">Instrument Approach</span><span class="pill">Night Landing</span><span class="pill">After Landing Checks</span></div>
+        <p style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.07em;margin:16px 0 8px">In-Flight Sequence</p>
+        <ol class="sequence">
+          <li><p>Departure to low-level entry point.</p></li>
+          <li><p>Fly route at 500–1,000 ft AGL, 300–360 KCAS.</p></li>
+          <li><p>IP inbound — simulated weapons release on TOT (±30 sec).</p></li>
+          <li><p>Safe escape maneuver; egress.</p></li>
+          <li><p>Transition to night — lighting set, night currency profile.</p></li>
+          <li><p>Instrument approach; night full-stop landing; after-landing checks.</p></li>
+        </ol>
+      </div>
+      <div class="side">
+        <h3>Limits</h3>
+        <div class="limit-row"><span style="color:var(--text2)">Altitude</span><span style="color:var(--green2);font-weight:700;font-family:var(--mono)">500–1,000 ft AGL</span></div>
+        <div class="limit-row"><span style="color:var(--text2)">Speed</span><span style="color:var(--green2);font-weight:700;font-family:var(--mono)">300–360 KCAS</span></div>
+        <div class="limit-row"><span style="color:var(--text2)">TOT Window</span><span style="color:var(--green2);font-weight:700;font-family:var(--mono)">±30 seconds</span></div>
+        <div class="alert alert-ok" style="margin-top:12px"><strong>Grading Focus:</strong> Route/altitude discipline, TOT accuracy, safe escape, night currency and landing. Standard = Grade 3.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<footer class="site-footer"><p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p><p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p></footer>
+<script>function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}</script>
+</body>
+</html>

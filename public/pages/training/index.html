@@ -3,28 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Aircraft-specific training guides, checklists, and syllabi for every wing — VTAC Global Strike Command">
 <title>Training — VTAC GSC</title>
 <link rel="stylesheet" href="/css/main.css">
 <style>
-.training-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
-.wing-train-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:18px}
-.wtc-head{padding:18px 20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border)}
-.wtc-name{font-size:17px;font-weight:700;color:var(--text)}
-.wtc-aircraft{font-size:12px;color:var(--text2)}
-.module-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;padding:18px 20px}
-.module-card{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:14px;text-decoration:none;transition:border-color .15s}
-.module-card:hover{border-color:var(--gold)}
-.module-icon{font-size:20px;margin-bottom:6px}
-.module-title{font-size:13px;font-weight:600;color:var(--text)}
-.module-desc{font-size:11px;color:var(--text3);margin-top:3px}
-.edit-pencil{background:rgba(200,169,81,.12);border:1px solid rgba(200,169,81,.3);color:var(--gold);border-radius:6px;padding:4px 11px;font-size:11px;cursor:pointer;font-family:var(--sans);display:none;align-items:center;gap:4px;margin-left:auto}
-.editable-mode .edit-pencil{display:inline-flex}
+.tc-wing-section { margin-bottom: 48px; }
+.tc-module-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap: 14px; }
+.tc-module-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 18px; text-decoration: none; color: inherit; display: flex; gap: 12px;
+  align-items: flex-start; transition: border-color .15s, transform .15s;
+}
+.tc-module-card:hover { transform: translateY(-2px); }
+.tc-module-icon { font-size: 22px; flex-shrink: 0; line-height: 1; }
+.tc-module-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.tc-module-arrow { font-size: 12px; font-weight: 600; }
 </style>
 </head>
 <body>
+
+<!-- ── NAV ── -->
 <nav class="site-nav">
   <div class="nav-inner">
-    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <a class="nav-brand" href="/index.html">
+      <div class="nav-emblem" id="nav-emblem">GSC</div>
+      <div class="nav-brand-text">
+        <div class="org">Virtual</div>
+        <div class="name" id="nav-org-name">Global Strike Command</div>
+      </div>
+    </a>
     <div class="nav-links" id="nav-links">
       <a href="/index.html">Home</a>
       <a href="/pages/roster.html">Roster</a>
@@ -34,136 +41,158 @@
       <a href="/pages/flights.html">Flight Log</a>
       <a href="/pages/flight-plan.html">Flight Planner</a>
     </div>
-    <div class="nav-right" id="nav-right-area"><a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a></div>
-    <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+    <div class="nav-right">
+      <div id="nav-auth-area">
+        <a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a>
+        <a href="/pages/register.html" class="btn btn-primary btn-sm">Apply to Join</a>
+      </div>
+      <div id="nav-user-area" style="display:none">
+        <a href="/pages/profile.html" class="btn btn-outline btn-sm" style="font-size:11px">My Profile</a>
+        <div class="nav-pilot-info">
+          <img class="nav-avatar" id="nav-avatar" src="" alt="">
+          <div>
+            <div class="nav-pilot-name" id="nav-pilot-name"></div>
+            <div class="nav-rank-badge" id="nav-rank-badge"></div>
+          </div>
+        </div>
+      </div>
+      <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+    </div>
   </div>
 </nav>
 
-<div class="training-hero">
+<section class="hero" style="padding:56px 24px 40px">
   <div class="hero-eyebrow">Instructor Resources</div>
-  <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Training <span>Center</span></h1>
-  <p class="hero-sub" style="font-size:14px">Aircraft-specific training guides, checklists, and syllabi for every wing.</p>
-</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,5vw,46px)">Training <span>Center</span></h1>
+  <p class="hero-sub">Aircraft-specific training guides, checklists, and syllabi for every wing.</p>
+</section>
 
 <div class="container page-body">
-  <div id="training-list"><div class="empty-state"><p>Loading training modules...</p></div></div>
-</div>
 
-<!-- EDIT MODULES MODAL -->
-<div class="modal-overlay" id="modules-modal">
-  <div class="modal" style="max-width:560px">
-    <div class="modal-title">Edit Training Modules</div>
-    <div class="modal-sub" id="modules-wing-name"></div>
-    <input type="hidden" id="modules-wing-id">
-    <div id="module-rows" style="margin-bottom:12px"></div>
-    <button type="button" class="btn btn-outline btn-sm" onclick="addModuleRow()">+ Add Module</button>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('modules-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveModules()">Save</button>
+  <!-- 7th Bomb Wing — B-1B -->
+  <div class="tc-wing-section">
+    <div class="wing-banner w-7bw">
+      <div class="wing-label" style="color:var(--gold)">7th Bomb Wing</div>
+      <div class="wing-name" style="color:var(--gold)">B-1B Lancer Training</div>
+      <div class="wing-base">📍 Dyess AFB (KDYS) — Abilene, TX</div>
+    </div>
+    <div class="tc-module-grid">
+      <a href="/pages/training/b1b/ils.html" class="tc-module-card" style="border-top:2px solid var(--gold)">
+        <div class="tc-module-icon">🎯</div>
+        <div><div class="tc-module-title">ILS Approach</div><div class="tc-module-arrow" style="color:var(--gold)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b1b/rnav.html" class="tc-module-card" style="border-top:2px solid var(--gold)">
+        <div class="tc-module-icon">🛰</div>
+        <div><div class="tc-module-title">RNAV / GPS Approach</div><div class="tc-module-arrow" style="color:var(--gold)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b1b/vor.html" class="tc-module-card" style="border-top:2px solid var(--gold)">
+        <div class="tc-module-icon">📡</div>
+        <div><div class="tc-module-title">VOR Approach</div><div class="tc-module-arrow" style="color:var(--gold)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b1b/autopilot.html" class="tc-module-card" style="border-top:2px solid var(--gold)">
+        <div class="tc-module-icon">🕹</div>
+        <div><div class="tc-module-title">Autopilot Reference</div><div class="tc-module-arrow" style="color:var(--gold)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b1b/fms.html" class="tc-module-card" style="border-top:2px solid var(--gold)">
+        <div class="tc-module-icon">⌨️</div>
+        <div><div class="tc-module-title">FMS Setup Guide</div><div class="tc-module-arrow" style="color:var(--gold)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b1b/glossary.html" class="tc-module-card" style="border-top:2px solid var(--gold)">
+        <div class="tc-module-icon">📖</div>
+        <div><div class="tc-module-title">Glossary</div><div class="tc-module-arrow" style="color:var(--gold)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b1b/qrc.html" class="tc-module-card" style="border-top:2px solid var(--gold)">
+        <div class="tc-module-icon">✅</div>
+        <div><div class="tc-module-title">QRC Checklist</div><div class="tc-module-arrow" style="color:var(--gold)">Open checklist →</div></div>
+      </a>
+      <a href="/pages/training/b1b/syllabus.html" class="tc-module-card" style="border-top:2px solid var(--gold)">
+        <div class="tc-module-icon">🎓</div>
+        <div><div class="tc-module-title">Phase 2 &amp; 3 Syllabus</div><div class="tc-module-arrow" style="color:var(--gold)">Open syllabus →</div></div>
+      </a>
     </div>
   </div>
+
+  <!-- 509th Bomb Wing — B-2 -->
+  <div class="tc-wing-section">
+    <div class="wing-banner w-509bw">
+      <div class="wing-label" style="color:var(--blue)">509th Bomb Wing</div>
+      <div class="wing-name" style="color:var(--blue)">B-2 Spirit Training</div>
+      <div class="wing-base">📍 Whiteman AFB (KSZL) — Knob Noster, MO</div>
+    </div>
+    <div class="tc-module-grid">
+      <a href="/pages/training/b2/cockpit.html" class="tc-module-card" style="border-top:2px solid var(--blue)">
+        <div class="tc-module-icon">🚪</div>
+        <div><div class="tc-module-title">Cockpit &amp; Ground Ops</div><div class="tc-module-arrow" style="color:var(--blue)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b2/mfd.html" class="tc-module-card" style="border-top:2px solid var(--blue)">
+        <div class="tc-module-icon">🖥</div>
+        <div><div class="tc-module-title">Multi Function Display</div><div class="tc-module-arrow" style="color:var(--blue)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b2/fms.html" class="tc-module-card" style="border-top:2px solid var(--blue)">
+        <div class="tc-module-icon">⌨️</div>
+        <div><div class="tc-module-title">FMS / CDU</div><div class="tc-module-arrow" style="color:var(--blue)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b2/autopilot.html" class="tc-module-card" style="border-top:2px solid var(--blue)">
+        <div class="tc-module-icon">🕹</div>
+        <div><div class="tc-module-title">Autopilot</div><div class="tc-module-arrow" style="color:var(--blue)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b2/weapons.html" class="tc-module-card" style="border-top:2px solid var(--blue)">
+        <div class="tc-module-icon">💣</div>
+        <div><div class="tc-module-title">Weapon Delivery System</div><div class="tc-module-arrow" style="color:var(--blue)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b2/qrc.html" class="tc-module-card" style="border-top:2px solid var(--blue)">
+        <div class="tc-module-icon">✅</div>
+        <div><div class="tc-module-title">QRC Checklist</div><div class="tc-module-arrow" style="color:var(--blue)">Open checklist →</div></div>
+      </a>
+    </div>
+  </div>
+
+  <!-- 2nd Bomb Wing — B-52H -->
+  <div class="tc-wing-section">
+    <div class="wing-banner w-2bw">
+      <div class="wing-label" style="color:var(--green)">2nd Bomb Wing</div>
+      <div class="wing-name" style="color:var(--green)">B-52H Stratofortress Training</div>
+      <div class="wing-base">📍 Barksdale AFB (KBAD) — Bossier City, LA</div>
+    </div>
+    <div class="tc-module-grid">
+      <a href="/pages/training/b52h/systems.html" class="tc-module-card" style="border-top:2px solid var(--green)">
+        <div class="tc-module-icon">📡</div>
+        <div><div class="tc-module-title">Systems Reference</div><div class="tc-module-arrow" style="color:var(--green)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b52h/syllabus.html" class="tc-module-card" style="border-top:2px solid var(--green)">
+        <div class="tc-module-icon">🎓</div>
+        <div><div class="tc-module-title">Phase Training</div><div class="tc-module-arrow" style="color:var(--green)">Open syllabus →</div></div>
+      </a>
+      <a href="/pages/training/b52h/qrc.html" class="tc-module-card" style="border-top:2px solid var(--green)">
+        <div class="tc-module-icon">✅</div>
+        <div><div class="tc-module-title">QRC Checklist</div><div class="tc-module-arrow" style="color:var(--green)">Open checklist →</div></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section">
+    <div class="section-label">Instructor's Corner</div>
+    <a href="/pages/training/instructors-corner.html" class="card" style="display:flex;align-items:center;gap:16px;padding:20px;text-decoration:none;color:inherit">
+      <div style="font-size:30px">🎓</div>
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--text)">Instructor's Corner</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:3px">Grading standards, common student errors, and preflight brief checklists for every airframe.</div>
+      </div>
+      <div style="margin-left:auto;color:var(--gold);font-weight:600;font-size:13px;white-space:nowrap">Open →</div>
+    </a>
+  </div>
+
 </div>
 
-<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+<footer class="site-footer">
+  <p>Virtual Global Strike Command · VTAC GSC · MSFS 2020 / 2024 · vtacgsc.com</p>
+  <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
+</footer>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-<script src="/js/firebase-config.js"></script>
 <script>
-function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
-
-let allWingsData = {}, currentPilotRole=null, currentPilotWing=null, moduleRows=[];
-
-const defaultModules = {
-  '7bw':   [{icon:'🎯',title:'ILS Approach',desc:'B-1B precision approach',url:'/pages/training/b1b-ils.html'},{icon:'📖',title:'Glossary',desc:'B-1B terminology',url:'/pages/training/b1b-glossary.html'},{icon:'✅',title:'QRC Checklist',desc:'Quick reference checklist',url:'/pages/training/b1b-qrc.html'}],
-  '509bw': [{icon:'🎯',title:'ILS Approach',desc:'B-2 precision approach',url:'#'},{icon:'📖',title:'Glossary',desc:'B-2 terminology',url:'#'}],
-  '2bw':   [{icon:'🎯',title:'ILS Approach',desc:'B-52 precision approach',url:'#'},{icon:'📖',title:'Glossary',desc:'B-52 terminology',url:'#'}],
-};
-
-function onAuthReady(user, pilot) {
-  const navArea = document.getElementById('nav-right-area');
-  if (user && pilot?.status === 'active') {
-    navArea.innerHTML = `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
-    currentPilotRole = pilot.role;
-    currentPilotWing = pilot.wing;
-    if (pilot.role === 'master_admin' || pilot.role === 'wing_commander') {
-      document.body.classList.add('editable-mode');
-    }
-  }
-  loadTraining();
-}
-function canEditWing(wingId) {
-  return currentPilotRole === 'master_admin' || (currentPilotRole === 'wing_commander' && currentPilotWing === wingId);
-}
-
-async function loadTraining() {
-  allWingsData = {...WINGS};
-  try {
-    const snap = await db.collection('wings').get();
-    snap.forEach(d => { allWingsData[d.id] = {...(allWingsData[d.id]||{}), ...d.data(), id:d.id}; });
-  } catch(e) {}
-  renderTraining();
-}
-
-function renderTraining() {
-  const el = document.getElementById('training-list');
-  const entries = Object.entries(allWingsData);
-  el.innerHTML = entries.map(([wingId,wing]) => {
-    const modules = wing.trainingModules || defaultModules[wingId] || [];
-    const color = wing.color||'#c8a951';
-    return `
-    <div class="wing-train-card">
-      <div class="wtc-head">
-        <div>
-          <div class="wtc-name" style="color:${color}">${wing.name}</div>
-          <div class="wtc-aircraft">${(wing.aircraft||[]).join(', ')}</div>
-        </div>
-        ${canEditWing(wingId)?`<button class="edit-pencil" onclick="openModulesEditor('${wingId}')">✏ Edit Modules</button>`:''}
-      </div>
-      <div class="module-grid">
-        ${modules.length ? modules.map(m=>`
-          <a href="${m.url}" class="module-card">
-            <div class="module-icon">${m.icon||'📘'}</div>
-            <div class="module-title">${m.title}</div>
-            <div class="module-desc">${m.desc||''}</div>
-          </a>`).join('') : '<div style="font-size:13px;color:var(--text3);padding:10px">No training modules added yet</div>'}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function openModulesEditor(wingId) {
-  document.getElementById('modules-wing-id').value = wingId;
-  document.getElementById('modules-wing-name').textContent = allWingsData[wingId]?.name;
-  moduleRows = JSON.parse(JSON.stringify(allWingsData[wingId]?.trainingModules || defaultModules[wingId] || []));
-  renderModuleRows();
-  document.getElementById('modules-modal').classList.add('open');
-}
-function renderModuleRows() {
-  document.getElementById('module-rows').innerHTML = moduleRows.map((m,i)=>`
-    <div style="display:grid;grid-template-columns:50px 1fr 1fr;gap:6px;margin-bottom:6px">
-      <input type="text" value="${m.icon||''}" placeholder="🎯" oninput="moduleRows[${i}].icon=this.value" style="text-align:center">
-      <input type="text" value="${m.title||''}" placeholder="Module title" oninput="moduleRows[${i}].title=this.value">
-      <input type="text" value="${m.url||''}" placeholder="/pages/..." oninput="moduleRows[${i}].url=this.value">
-    </div>`).join('') || '<div style="font-size:12px;color:var(--text3)">No modules — add one below</div>';
-}
-function addModuleRow() { moduleRows.push({icon:'📘',title:'',url:'#'}); renderModuleRows(); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-async function saveModules() {
-  const wingId = document.getElementById('modules-wing-id').value;
-  try {
-    await db.collection('wings').doc(wingId).set({ trainingModules: moduleRows }, {merge:true});
-    allWingsData[wingId].trainingModules = moduleRows;
-    renderTraining();
-    closeModal('modules-modal');
-    toast('Modules saved!');
-  } catch(e) { toast('Error: '+e.message,'error'); }
-}
-document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
-
-
+function toggleMobileNav() { document.getElementById('nav-links').classList.toggle('open'); }
 </script>
 </body>
 </html>

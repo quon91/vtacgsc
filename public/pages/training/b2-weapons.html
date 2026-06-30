@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weapon Delivery — B-2 Spirit — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.cl{list-style:none;padding:0}.cl li{font-size:13px;color:var(--text2);padding:3px 0;display:flex;gap:8px;line-height:1.6}.cl li::before{content:"▸";color:var(--blue);flex-shrink:0}.cl li strong{color:var(--text)}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}.back-link:hover{color:var(--blue)}
+.criteria-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.crit-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
+.crit-card .val{font-size:18px;font-weight:900;color:var(--blue2);margin:6px 0}
+.crit-card .lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
+@media(max-width:600px){.criteria-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="site-nav"><div class="nav-inner"><a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a><div class="nav-links" id="nav-links"><a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a><a href="/pages/training/index.html" class="active">Training</a><a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a></div><div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div></div></nav>
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow" style="color:var(--blue)">509th Bomb Wing · B-2 Spirit</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">Weapon Delivery <span style="color:var(--blue)">System</span></h1>
+  <p class="hero-sub" style="font-size:15px">Simulated weapon delivery animation — iniBuilds store version only. Follow this sequence; an aide-memoir card is mounted on both the left and right consoles in-cockpit.</p>
+</section>
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+
+  <div class="section">
+    <div class="section-label">Release Criteria — ALL three must be met</div>
+    <div class="criteria-grid">
+      <div class="crit-card"><div class="lbl">Altitude</div><div class="val">20,000 ft+</div><div style="font-size:12px;color:var(--text2)">Above Ground Level</div></div>
+      <div class="crit-card"><div class="lbl">Airspeed</div><div class="val">230+ KIAS</div><div style="font-size:12px;color:var(--text2)">Indicated Air Speed</div></div>
+      <div class="crit-card"><div class="lbl">Bank Angle</div><div class="val">Wings Level</div><div style="font-size:12px;color:var(--text2)">No bank</div></div>
+    </div>
+    <div class="alert alert-info">Once all three criteria are met, <strong>"READY FOR RELEASE"</strong> appears on the MFD STATS page.</div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Release Sequence</div>
+    <div class="card"><div class="card-body" style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Step</th><th>Action</th><th>Confirm</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Climb above 20,000 ft AGL at 230+ KIAS</td><td>Both conditions sustained</td></tr>
+          <tr><td>2</td><td>Roll wings level</td><td>No bank</td></tr>
+          <tr><td>3</td><td>Check MFD STATS page for <strong>"READY FOR RELEASE"</strong></td><td>Message displayed</td></tr>
+          <tr><td>4</td><td>Set Bomb Bay Doors switch → <strong>OPEN</strong> (left control panel)</td><td>Door status reads OPEN</td></tr>
+          <tr><td>5</td><td>Press <strong>WEAPON FIRE</strong> / Cargo Release button</td><td>Bombs observed releasing</td></tr>
+          <tr><td>6</td><td>Set Bomb Bay Doors switch → <strong>CLOSED</strong></td><td>Door status reads CLOSED</td></tr>
+        </tbody>
+      </table>
+      <div class="alert alert-info" style="margin-top:14px">After all bombs released: press and hold <strong>MAIN WPN REL</strong> to reload. Can be done at any point.</div>
+    </div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Instructor Notes</div>
+    <div class="card"><div class="card-body"><ul class="cl">
+      <li><strong>Version check first</strong> — confirm student has the iniBuilds store version before any troubleshooting. Microsoft Store/Xbox version does not include weapon delivery.</li>
+      <li><strong>Most common error</strong> — release attempted below 20,000 ft AGL or below 230 KIAS. Have student call out altitude and airspeed before each attempt.</li>
+      <li><strong>Door drag</strong> — close bomb bay doors promptly after release to avoid unnecessary drag on egress.</li>
+    </ul></div></div>
+  </div>
+</div>
+<footer class="site-footer"><p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p><p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p></footer>
+<script>function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}</script>
+</body>
+</html>

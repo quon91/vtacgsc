@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QRC Checklist — B-2 Spirit — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.qrc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.qrc-list{list-style:none;padding:0;margin:0}
+.qrc-list li{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px dotted var(--border);font-size:13px;gap:10px;cursor:pointer;transition:opacity .1s}
+.qrc-list li:last-child{border-bottom:none}
+.qrc-item{color:var(--text2);flex:1}
+.qrc-val{color:var(--blue2);font-weight:600;white-space:nowrap;font-size:12px;font-family:var(--mono)}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}
+.back-link:hover{color:var(--blue)}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html" class="active">Training</a><a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a>
+    </div>
+    <div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div>
+  </div>
+</nav>
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow" style="color:var(--blue)">509th Bomb Wing · B-2 Spirit · KSZL</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">Spirit Quick Reference <span style="color:var(--blue)">Checklist</span></h1>
+  <p class="hero-sub" style="font-size:15px">Tap any item to check it off. Transcribed from the official KwikFlight Spirit QRC.</p>
+</section>
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;align-items:center">
+    <button onclick="resetAll()" class="btn btn-outline btn-sm">Reset all</button>
+    <button onclick="window.print()" class="btn btn-outline btn-sm">Print / PDF</button>
+    <span style="margin-left:auto;font-size:13px;color:var(--text2);align-self:center" id="overall-prog"></span>
+  </div>
+  <div class="qrc-grid" id="qrc-grid"></div>
+</div>
+<footer class="site-footer"><p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p><p style="margin-top:6px">For simulation use only.</p></footer>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
+const qrcData=[
+  {title:'Preliminary Cockpit Preparation',color:'var(--blue)',items:[['Fuel Panel Switches','ALL HORIZONTAL'],['Main Battery Switch','OFF'],['Throttle Lever','IDLE'],['Landing Gear Lever','DOWN'],['Parking Brake','ON'],['Engine Generator Switches','OFF / DOWN'],['Bleed Air Panel','ALL OFF'],['Cabin Packs','BOTH OFF']]},
+  {title:'Cockpit Preparation',color:'var(--blue)',items:[['Main Battery Switch','ON'],['External Power','ON (if available)'],['Internal Lights','AS REQUIRED'],['CDU – Flight Plan','CHECK'],['Fuel Quantity','CHECK'],['CDU – Performance Speeds','CHECK'],['Take-off Briefing','PERFORM']]},
+  {title:'Before Start',color:'var(--amber)',items:[['APU 1 and APU 2','BOTH ON'],['Crew Hatch','CLOSED'],['Beacon Lights','ON'],['External Power','OFF and disconnected'],['Fuel Panel Switches','ALL VERTICAL']]},
+  {title:'Engine Start',color:'var(--amber)',items:[['Engine 1 Switch','START'],['Engine 1 Parameters','CHECK N1 above 18%'],['Engine 2 Switch','START'],['Engine 2 Parameters','CHECK N1 above 18%'],['Engine 3 Switch','START'],['Engine 3 Parameters','CHECK N1 above 18%'],['Engine 4 Switch','START'],['Engine 4 Parameters','CHECK N1 above 18%']]},
+  {title:'After Start',color:'var(--amber)',items:[['Engine Generator Switches','ALL ON'],['APU 1 and APU 2','BOTH OFF'],['Pitch Trim','AS REQUIRED'],['Engines Bleed Air','ALL ON'],['Cabin Packs','BOTH ON'],['Warning System','CHECK NO WARNINGS'],['Pitot Static Heat','AS REQUIRED']]},
+  {title:'Taxi',color:'var(--gold)',items:[['Taxi Lights','ON'],['Parking Brake','OFF'],['MFD – FCH page','NO X\'s'],['Barometer Setting','SET'],['Take-off Briefing','PERFORM'],['Exterior Lights','SET']]},
+  {title:'Take-off',color:'var(--gold)',items:[['Cabin Packs','AS REQUIRED'],['Landing Lights','ON']]},
+  {title:'After Take-off',color:'var(--green)',items:[['Landing Gear','UP'],['Cabin Packs','AS REQUIRED'],['Landing Lights','OFF']]},
+  {title:'Cruise',color:'var(--green)',items:[['MFD – STATS Page','CHECK NO WARNINGS'],['Fuel Quantity','CHECK'],['STEALTH Mode','AS REQUIRED']]},
+  {title:'Landing',color:'var(--blue)',items:[['Stealth Mode','OFF'],['Landing Lights','ON'],['Landing Gear','DOWN'],['Spoilers','ARM']]},
+  {title:'After Landing',color:'var(--blue)',items:[['Landing Lights','OFF'],['Taxi Lights','ON'],['Spoilers','DISARM'],['APU 1 or APU 2','ON']]},
+  {title:'Parking',color:'var(--red)',items:[['Engines','ALL OFF'],['Pitot Static Heat','OFF'],['Exterior Lights','ALL OFF'],['Parking Brake','ON'],['APU 1 and APU 2','BOTH OFF'],['Fuel Panel Switches','ALL HORIZONTAL'],['Engine Generator Switches','ALL OFF'],['Internal Lights','ALL OFF'],['Main Battery Switch','OFF']]},
+];
+const state={};
+function build(){
+  const g=document.getElementById('qrc-grid');g.innerHTML='';
+  qrcData.forEach((sec,si)=>{
+    if(!state[si])state[si]={};
+    const card=document.createElement('div');card.className='card';
+    card.innerHTML=`<div class="card-header" style="border-left:3px solid ${sec.color}"><span class="card-title">${sec.title}</span><span style="margin-left:auto;font-size:11px;color:var(--text2)" id="qp-${si}"></span></div><div class="card-body"><ul class="qrc-list" id="qs-${si}"></ul><button onclick="resetSection(${si})" class="btn btn-outline btn-xs" style="margin-top:8px">Reset</button></div>`;
+    g.appendChild(card);renderSection(si);
+  });updateOverall();
+}
+function renderSection(si){
+  const ul=document.getElementById('qs-'+si),pr=document.getElementById('qp-'+si);
+  ul.innerHTML='';let done=0;
+  qrcData[si].items.forEach((item,ii)=>{
+    const checked=state[si][ii];if(checked)done++;
+    const li=document.createElement('li');li.style.opacity=checked?'.4':'1';
+    li.innerHTML=`<span class="qrc-item" style="text-decoration:${checked?'line-through':'none'}">${item[0]}</span><span class="qrc-val">${item[1]}</span>`;
+    li.onclick=()=>{state[si][ii]=!state[si][ii];renderSection(si);updateOverall();};
+    ul.appendChild(li);
+  });
+  pr.textContent=`${done}/${qrcData[si].items.length}`;
+  pr.style.color=done===qrcData[si].items.length?'var(--green)':'var(--text2)';
+}
+function resetSection(si){state[si]={};renderSection(si);updateOverall();}
+function resetAll(){qrcData.forEach((_,si)=>{state[si]={};});build();}
+function updateOverall(){
+  let t=0,d=0;qrcData.forEach((_,si)=>{t+=qrcData[si].items.length;Object.values(state[si]||{}).forEach(v=>{if(v)d++;});});
+  document.getElementById('overall-prog').textContent=`${d} / ${t} items complete`;
+}
+build();
+</script>
+</body>
+</html>

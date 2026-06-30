@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instructor's Corner — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.ic-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:28px;overflow-x:auto}
+.ic-tab{padding:10px 20px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--sans);white-space:nowrap;transition:all .14s}
+.ic-tab:hover{color:var(--text)}
+.ic-tab.active.t-b1b{color:var(--gold);border-bottom-color:var(--gold)}
+.ic-tab.active.t-b2{color:var(--blue);border-bottom-color:var(--blue)}
+.ic-tab.active.t-b52h{color:var(--green);border-bottom-color:var(--green)}
+.ic-panel{display:none}.ic-panel.active{display:block}
+.cl{list-style:none;padding:0}.cl li{font-size:13px;color:var(--text2);padding:4px 0;display:flex;gap:8px;line-height:1.6}.cl li::before{content:"▸";flex-shrink:0}.cl li strong{color:var(--text)}
+.cl.gold li::before{color:var(--gold)}.cl.blue li::before{color:var(--blue)}.cl.grn li::before{color:var(--green)}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}.back-link:hover{color:var(--gold)}
+</style>
+</head>
+<body>
+<nav class="site-nav"><div class="nav-inner"><a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a><div class="nav-links" id="nav-links"><a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a><a href="/pages/training/index.html" class="active">Training</a><a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a></div><div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div></div></nav>
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow">For Instructor Pilots</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">Instructor's <span>Corner</span></h1>
+  <p class="hero-sub" style="font-size:15px">Grading standards, common student errors, and preflight brief checklists — one section per airframe, for IPs only.</p>
+</section>
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+  <div class="ic-tabs">
+    <button class="ic-tab active t-b1b" onclick="icSwitch('b1b',this)">✈ B-1B Lancer (7 BW)</button>
+    <button class="ic-tab t-b2" onclick="icSwitch('b2',this)">✈ B-2 Spirit (509 BW)</button>
+    <button class="ic-tab t-b52h" onclick="icSwitch('b52h',this)">✈ B-52H Stratofortress (2 BW)</button>
+  </div>
+
+  <!-- B-1B -->
+  <div id="ic-b1b" class="ic-panel active">
+    <div class="grid-2">
+      <div class="card span-2"><div class="card-header"><div class="card-icon">📋</div><div class="card-title">Grading Standards — Quick Reference</div></div><div class="card-body" style="overflow-x:auto">
+        <table class="data-table"><thead><tr><th>Parameter</th><th>Q Standard</th><th>U Condition</th></tr></thead><tbody>
+          <tr><td><strong>Takeoff rotation (VR)</strong></td><td>±5 KIAS</td><td>±10 KIAS or wrong speed</td></tr>
+          <tr><td><strong>Approach speed (VREF)</strong></td><td>Stable ±5 KIAS by 500 ft AGL</td><td>Unstable or ±10 KIAS</td></tr>
+          <tr><td><strong>ILS localizer tracking</strong></td><td>±½ dot FAF to DH</td><td>Full-scale deflection at any point</td></tr>
+          <tr><td><strong>ILS glideslope tracking</strong></td><td>±½ dot FAF to DH</td><td>Full-scale deflection below 500 ft AGL</td></tr>
+          <tr><td><strong>Pattern altitude</strong></td><td>±100 ft</td><td>Greater than ±200 ft</td></tr>
+          <tr><td><strong>Touchdown zone</strong></td><td>First 2,000 ft</td><td>Beyond or short of threshold</td></tr>
+        </tbody></table>
+      </div></div>
+      <div class="card"><div class="card-header"><div class="card-icon">!</div><div class="card-title">Common Student Errors</div></div><div class="card-body"><ul class="cl gold">
+        <li><strong>ILS:</strong> Wrong PFD softkey (GPS instead of ILS). APR not armed before LOC alive.</li>
+        <li><strong>NAV MODE:</strong> Left on GPS instead of switching to NAV for ILS approach.</li>
+        <li><strong>RNAV:</strong> Pressing APR instead of NAV HOLD. Forgetting ALT HOLD at MDA.</li>
+        <li><strong>ATH:</strong> Relying on autothrottle below 2,500 ft AGL — it disengages at that altitude.</li>
+        <li><strong>Go-around:</strong> Delayed call. Coach immediate execution at DH with no runway contact.</li>
+      </ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon">📋</div><div class="card-title">Preflight Brief Checklist — IP</div></div><div class="card-body"><ul class="cl gold">
+        <li>Quiz VR and VREF from FMS PERF page before taxi</li>
+        <li>Confirm student knows pattern altitude (2,500 ft MSL) and circuit direction</li>
+        <li>For ILS/RNAV: student must state the correct PFD softkey and A/P lateral mode before the brief ends</li>
+        <li>Brief go-around criteria explicitly: engine issues, unstable approach, ATC instruction</li>
+        <li>Phase 3 = observed only — intervention limited to safety of flight</li>
+      </ul></div></div>
+    </div>
+  </div>
+
+  <!-- B-2 -->
+  <div id="ic-b2" class="ic-panel">
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon blue">!</div><div class="card-title">Common Student Errors</div></div><div class="card-body"><ul class="cl blue">
+        <li><strong>Weapon release out of envelope:</strong> below 20,000 ft AGL or 230 KIAS. Have student call out altitude and airspeed before every attempt.</li>
+        <li><strong>Stealth Mode:</strong> button has no effect below 3,000 ft AGL — student assumes broken control rather than checking altitude.</li>
+        <li><strong>APP mode won't capture:</strong> FMS NAV MODE set to GPS instead of NAV. First check, every time.</li>
+        <li><strong>Cargo doors left open after release:</strong> unnecessary drag on egress. Make closure a verbal callout item.</li>
+        <li><strong>Wrong sim version:</strong> confirm iniBuilds store version before briefing any weapon delivery event.</li>
+      </ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">📋</div><div class="card-title">Preflight Brief Checklist — IP</div></div><div class="card-body"><ul class="cl blue">
+        <li>Confirm iniBuilds store version before any weapon delivery event</li>
+        <li>Quiz the 3 release criteria (20,000 ft / 230 KIAS / wings level)</li>
+        <li>Brief CFD flight model differences — handling won't match real Spirit</li>
+        <li>Brief Stealth Mode altitude restriction (3,000 ft AGL minimum)</li>
+        <li>Confirm student can state FMS NAV MODE requirement for APP before stepping to jet</li>
+      </ul></div></div>
+      <div class="card span-2"><div class="card-header"><div class="card-icon blue">▶</div><div class="card-title">What to Watch For In-Flight</div></div><div class="card-body" style="overflow-x:auto">
+        <table class="data-table"><thead><tr><th>Phase</th><th>Watch For</th><th>Coaching Cue</th></tr></thead><tbody>
+          <tr><td>Ground ops</td><td>Hatch left open; doors not verified closed</td><td>"Crew Hatch — closed?"</td></tr>
+          <tr><td>Climb</td><td>Stealth Mode attempted too early</td><td>"What's your altitude AGL?"</td></tr>
+          <tr><td>ILS approach</td><td>APP not capturing</td><td>"Check your FMS NAV MODE field"</td></tr>
+          <tr><td>Weapons run</td><td>Release attempted before all 3 criteria met</td><td>"State altitude, airspeed, bank before you press fire"</td></tr>
+          <tr><td>Post-release</td><td>Cargo doors left open</td><td>"Close your bay doors"</td></tr>
+        </tbody></table>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- B-52H -->
+  <div id="ic-b52h" class="ic-panel">
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon green">!</div><div class="card-title">Common Student Errors by Phase</div></div><div class="card-body"><ul class="cl grn">
+        <li><strong>Phase 1:</strong> Over-rotating on takeoff — the B-52's pitch response is slower than fighter instincts expect. Coach steady, deliberate rotation, not a snap to attitude.</li>
+        <li><strong>Phase 2 (AR):</strong> Over-controlling in the contact position. Coach small inputs and an early, decisive breakaway call rather than trying to salvage an unstable picture.</li>
+        <li><strong>Phase 3 (TOT):</strong> TOT drift not corrected early enough — by the IP it's usually too late to fix within ±30 sec. Coach continuous time checks against waypoints throughout the low-level, not just near the target.</li>
+        <li><strong>Phase 3 (Night):</strong> Exterior/interior lighting not reconfigured before the night portion — make this a deliberate checklist item, not an afterthought.</li>
+      </ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon green">📋</div><div class="card-title">Preflight Brief Checklist — IP</div></div><div class="card-body"><ul class="cl grn">
+        <li>Confirm student has briefed TOLD V-speeds for current gross weight before stepping — heavy unstick varies meaningfully</li>
+        <li>For Phase 2: confirm tanker rejoin type and contact altitude block are briefed explicitly</li>
+        <li>For Phase 3: brief low-level abort criteria (weather, terrain clearance, TOT recovery limits) before the flight</li>
+        <li>Brief safe-escape maneuver and timing before the IP — not the first time on the run-in</li>
+      </ul></div></div>
+      <div class="card span-2"><div class="card-header"><div class="card-icon green">▶</div><div class="card-title">Grading Focus by Phase</div></div><div class="card-body" style="overflow-x:auto">
+        <table class="data-table"><thead><tr><th>Phase</th><th>Grading Focus</th><th>Standard</th></tr></thead><tbody>
+          <tr><td><strong>Phase 1</strong></td><td>Smooth control, checklist discipline, communications, on-speed approaches</td><td>Grade 3</td></tr>
+          <tr><td><strong>Phase 2</strong></td><td>Holding accuracy, AR contact / CG management, ILS tracking, missed approach</td><td>Grade 3</td></tr>
+          <tr><td><strong>Phase 3</strong></td><td>Route / altitude discipline, TOT accuracy (±30 sec), safe escape, night currency and landing</td><td>Grade 3</td></tr>
+        </tbody></table>
+      </div></div>
+    </div>
+  </div>
+</div>
+<footer class="site-footer"><p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p><p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p></footer>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
+function icSwitch(id,btn){
+  document.querySelectorAll('.ic-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('ic-'+id).classList.add('active');
+  document.querySelectorAll('.ic-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>

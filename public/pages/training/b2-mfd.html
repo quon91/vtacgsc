@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MFD — B-2 Spirit — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.phase-nav{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:0}
+.phase-btn{padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;background:var(--card);border:1px solid var(--border);border-bottom:none;color:var(--text2);font-family:var(--sans);border-radius:8px 8px 0 0;transition:all .12s;white-space:nowrap}
+.phase-btn.active{background:var(--card2);color:var(--blue);border-color:var(--border2)}
+.phase-panel{display:none;padding:28px 0}.phase-panel.active{display:block}
+.mfd{background:#020809;border:1px solid #0f3038;border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:11px;color:#5fe8ff;line-height:1.8;margin-bottom:8px;white-space:pre;overflow-x:auto}
+.mfd .hi{color:#ffe87a}.mfd .red{color:#ff6b6b}
+.cl{list-style:none;padding:0}.cl li{font-size:13px;color:var(--text2);padding:3px 0;display:flex;gap:8px;line-height:1.6}.cl li::before{content:"▸";color:var(--blue);flex-shrink:0}.cl li strong{color:var(--text)}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}.back-link:hover{color:var(--blue)}
+</style>
+</head>
+<body>
+<nav class="site-nav"><div class="nav-inner"><a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a><div class="nav-links" id="nav-links"><a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a><a href="/pages/training/index.html" class="active">Training</a><a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a></div><div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div></div></nav>
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow" style="color:var(--blue)">509th Bomb Wing · B-2 Spirit</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">Multi Function <span style="color:var(--blue)">Display</span></h1>
+  <p class="hero-sub" style="font-size:15px">The Spirit has 8 MFDs and 1 Engine Display. Each can show HUD, NAV, or any system sub-page — GPS, ECS, FUEL, FCH, ENG, and STATS with special sensors.</p>
+</section>
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+  <div class="phase-nav">
+    <button class="phase-btn active" onclick="switchPhase('mfd','basics')">1 — Display Controls</button>
+    <button class="phase-btn" onclick="switchPhase('mfd','hudnav')">2 — HUD / NAV Modes</button>
+    <button class="phase-btn" onclick="switchPhase('mfd','sub')">3 — System Subpages</button>
+    <button class="phase-btn" onclick="switchPhase('mfd','stats')">4 — STATS &amp; Sensors</button>
+  </div>
+
+  <div id="mfd-basics" class="phase-panel active">
+    <div class="section"><div class="section-label">Display Controls</div><div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon blue">1</div><div class="card-title">ON/OFF and DAY/NITE</div></div><div class="card-body"><ul class="cl"><li>Rotary switch on the <strong>top-left of each MFD bezel</strong></li><li>Turns the individual screen ON/OFF</li><li>Switches between <strong>DAY</strong> and <strong>NITE</strong> modes</li></ul><div class="alert alert-info" style="margin-top:10px">On first power-up: "SELF TEST IN PROGRESS — PLEASE WAIT" before the display is usable.</div></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">2</div><div class="card-title">Contrast and Brightness</div></div><div class="card-body"><ul class="cl"><li><strong>CON</strong> rocker (bottom-right bezel) → contrast, shown as percentage</li><li><strong>BRT</strong> rocker (bottom-right bezel) → brightness, shown as percentage</li></ul><div class="mfd">MFD CONTRAST    65%
+MFD BRIGHTNESS  45%</div></div></div>
+    </div></div>
+  </div>
+
+  <div id="mfd-hudnav" class="phase-panel">
+    <div class="section"><div class="section-label">HUD and NAV Primary Modes</div><div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon blue">!</div><div class="card-title">How to enter HUD or NAV mode</div></div><div class="card-body"><ul class="cl"><li>Press the <strong>MENU</strong> select key on any MFD bezel</li><li>Menu page shows <strong>HUD</strong> (left) and <strong>NAV</strong> (right)</li><li>Press the corresponding line-select key</li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">1</div><div class="card-title">HUD Mode — primary flight reference</div></div><div class="card-body"><div class="mfd">GPS  ECS  FUEL  FCH  ENG
+[AP][HDG][ALT][APR]
+ 260    270    280
+        ▼
+   ░░░░░░░░░  ← sky/attitude
+   ──────────  ← horizon
+.00         0.00
+0GS        -500
+        STATS   MENU</div><ul class="cl"><li>Flight Path Vector, Attitude, Heading</li><li>AOA indicator — <strong>gear must be extended</strong> to be visible</li><li>Mach, Ground Speed, Indicated Airspeed, G-Meter</li><li>Altimeter, Trim Indicator, AP mode annunciations</li><li>ILS bars — selected from NAV page via ILS MFD key</li></ul></div></div>
+      <div class="card span-2"><div class="card-header"><div class="card-icon blue">2</div><div class="card-title">NAV Mode — primary navigation reference</div></div><div class="card-body"><div class="mfd">GPS  ECS  FUEL  FCH  ENG
+0GS       19:10      HDG 356°
+TAC1   [271]   VOR1
+---  CRS000°  ---NM   ---NM
+       (compass rose)
+TAC2                  VOR2
+---  RAD---°  ---NM   ---NM
+        STATS   MENU</div><ul class="cl"><li>Ground Speed and Heading · Rose Navigation Indicator</li><li>VOR1 and VOR2 indicators · TACAN 1 and 2 (via MFD TAC key)</li></ul></div></div>
+    </div></div>
+  </div>
+
+  <div id="mfd-sub" class="phase-panel">
+    <div class="section"><div class="section-label">System Sub-pages</div><div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon blue">GPS</div><div class="card-title">GPS Sub-page</div></div><div class="card-body"><div class="mfd">AVNCS   LF2/181  SATS   23
+NAV FQ  10HZ     HDOP   +-2FT
+GND SPEED   0KTS  GPS ALT  864FT
+GPS HDG  273°
+LAT   38.731361°  LON -93.556941°
+SIGNAL   -70DBM</div><p style="font-size:12px;color:var(--text2)">Live GPS health, satellite count, HDOP error, position, and signal strength.</p></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">ECS</div><div class="card-title">ECS — Engine Bleed System</div></div><div class="card-body"><ul class="cl"><li>Engine bleed status for all 4 engines</li><li>Cabin pressurization differential (PSI)</li><li>CAS 1 / CAS 2 status and CAS BIT link</li></ul><div class="alert alert-warn" style="margin-top:10px">"NO CABIN PRESSURIZATION" = check bleed/pack status.</div></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">FCH</div><div class="card-title">FCH — Flight Controls Health</div></div><div class="card-body"><ul class="cl"><li>FLT CNTRL and AIR DATA matrices across 4 channels</li><li>L RUD / R RUD, NWS, OBRD positions at bottom</li><li><strong>"No X's on FCH"</strong> is a required Taxi checklist item</li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">ENG</div><div class="card-title">ENG — Engine Data</div></div><div class="card-body"><ul class="cl"><li>Per-engine columns 1–4: T1, N1, N2, TBT, FF, PLA, OT, OP, OL, V/B, IGV, CDP</li><li>EMSP1–4 health status at the bottom</li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">FUEL</div><div class="card-title">FUEL Sub-page</div></div><div class="card-body"><ul class="cl"><li>Per-tank qty: Wing L/R, Inner L/R, Outboard Fwd/Aft L/R tanks</li><li>TOTAL FUEL readout in both % and lbs</li><li>TOT shown in thousands (e.g. TOT 51.1K)</li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">MAP</div><div class="card-title">MAP — GPS Map Mode</div></div><div class="card-body"><ul class="cl"><li>Reserved on the <strong>left-most MFD</strong></li><li>Shows active flight plan route and waypoints</li><li>TRFFC soft key for traffic display</li></ul></div></div>
+    </div></div>
+  </div>
+
+  <div id="mfd-stats" class="phase-panel">
+    <div class="section"><div class="section-label">STATS Page and Special Sensors</div><div class="grid-2">
+      <div class="card span-2"><div class="card-header"><div class="card-icon blue">STATS</div><div class="card-title">STATS — Crew Alert and Advisory System</div></div><div class="card-body"><ul class="cl"><li><span style="color:var(--red2)">Red text</span> = Warning (e.g. LOW PNEUMATIC PRESS)</li><li><span style="color:var(--amber2)">Amber text</span> = Caution (e.g. HYD YELLOW PRESS LOW)</li><li><span style="color:var(--green2)">Green/white text</span> = Advisory (e.g. APU 1 RUNNING, PARKING BRAKE SET)</li><li><strong>"CHECK NO WARNINGS"</strong> on STATS is a required Cruise checklist item</li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">VSD</div><div class="card-title">VSD — Look Down Camera</div></div><div class="card-body"><ul class="cl"><li>Downward camera feed with distance-to-ground and lat/lon</li><li><strong>Not available on the ground</strong></li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">RDR</div><div class="card-title">RDR — Simulated Radar</div></div><div class="card-body"><ul class="cl"><li>Range rings centered on own-ship</li><li>Range selectable via bottom-right soft key (e.g. RNG60)</li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">TFR</div><div class="card-title">TFR — Forward Synthetic Vision</div></div><div class="card-body"><ul class="cl"><li>Synthetic forward terrain/runway view</li><li>Useful for low-visibility and stealth-profile operations</li></ul></div></div>
+    </div></div>
+  </div>
+</div>
+<footer class="site-footer"><p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p><p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p></footer>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
+function switchPhase(ns,id){document.querySelectorAll('[id^="'+ns+'-"].phase-panel').forEach(p=>p.classList.remove('active'));const t=document.getElementById(ns+'-'+id);if(t)t.classList.add('active');if(event&&event.target){event.target.closest('.phase-nav')?.querySelectorAll('.phase-btn').forEach(b=>b.classList.toggle('active',b===event.target));}}
+</script>
+</body>
+</html>

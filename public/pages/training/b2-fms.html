@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FMS / CDU — B-2 Spirit — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.phase-nav{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:0}
+.phase-btn{padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;background:var(--card);border:1px solid var(--border);border-bottom:none;color:var(--text2);font-family:var(--sans);border-radius:8px 8px 0 0;transition:all .12s;white-space:nowrap}
+.phase-btn.active{background:var(--card2);color:var(--blue);border-color:var(--border2)}
+.phase-panel{display:none;padding:28px 0}.phase-panel.active{display:block}
+.fms{background:#050a08;border:1px solid #1a2e20;border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:12px;color:#5fe87a;line-height:1.8;margin-bottom:8px;white-space:pre;overflow-x:auto}
+.fms .hi{color:#ffe87a}.fms .dim{color:#1a3a22}
+.cl{list-style:none;padding:0}.cl li{font-size:13px;color:var(--text2);padding:3px 0;display:flex;gap:8px;line-height:1.6}.cl li::before{content:"▸";color:var(--blue);flex-shrink:0}.cl li strong{color:var(--text)}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}.back-link:hover{color:var(--blue)}
+</style>
+</head>
+<body>
+<nav class="site-nav"><div class="nav-inner"><a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a><div class="nav-links" id="nav-links"><a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a><a href="/pages/training/index.html" class="active">Training</a><a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a></div><div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div></div></nav>
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow" style="color:var(--blue)">509th Bomb Wing · B-2 Spirit</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">FMS <span style="color:var(--blue)">/ CDU Keypad</span></h1>
+  <p class="hero-sub" style="font-size:15px">COMM, NAV, PRFM, and FPL pages — every page on the Spirit's FMS keypad, plus the scratch-pad entry method used on all of them.</p>
+</section>
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+  <div class="phase-nav">
+    <button class="phase-btn active" onclick="switchPhase('fms','comm')">1 — COMM</button>
+    <button class="phase-btn" onclick="switchPhase('fms','nav')">2 — NAV</button>
+    <button class="phase-btn" onclick="switchPhase('fms','prfm')">3 — PRFM</button>
+    <button class="phase-btn" onclick="switchPhase('fms','fpl')">4 — FPL / DIR</button>
+  </div>
+
+  <div id="fms-comm" class="phase-panel active">
+    <div class="section"><div class="section-label">COMM Page</div><div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon blue">1</div><div class="card-title">COMM page</div></div><div class="card-body"><div class="fms">          COM
+COMM1           [124.850] →
+  AMASK T/R+G       PLAIN
+COMM2           [124.850] →
+  AMASK T/R+G       PLAIN
+ADF             [890.00] →
+  USB               PLAIN
+XPNDR             [7000] →
+
+LINK           RADIO SET</div></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">2</div><div class="card-title">Scratch-pad entry — used on every FMS page</div></div><div class="card-body"><ul class="cl"><li>Type the new value on the keypad → appears in the <strong>scratch pad</strong> at the bottom of the screen</li><li>Press the <strong>line-select key</strong> beside the field to load the value</li><li>COMM1, COMM2, ADF, and XPNDR all use this method</li></ul><div class="alert alert-warn" style="margin-top:10px">Invalid entry shows <strong>INVALID INPUT</strong>. Press <strong>CLR</strong> to clear, then retype.</div></div></div>
+    </div></div>
+  </div>
+
+  <div id="fms-nav" class="phase-panel">
+    <div class="section"><div class="section-label">NAV Page</div><div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon blue">1</div><div class="card-title">NAV page</div></div><div class="card-body"><div class="fms">          NAV
+NAV1            [109.100] →
+ --->U/A              [U/A]
+NAV2              [0.000] →
+ --->U/A              [U/A]
+TACAN1                [1X] →
+TACAN2                [1X] →
+NAV MODE            [GPS] →</div><ul class="cl"><li>VOR1/VOR2 and TACAN1/TACAN2 set using the same scratch-pad + line-select method</li><li>For ILS approach: NAV MODE must be set to <strong>NAV</strong> — not GPS</li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">2</div><div class="card-title">Valid frequency capture</div></div><div class="card-body"><div class="fms">NAV1            [110.300] →
+ --->LOC/ILS        [ISZL]</div><ul class="cl"><li>Once a valid frequency is captured, the <strong>ident and type</strong> display automatically</li><li>Confirm ident matches your approach plate</li></ul><div class="alert alert-error" style="margin-top:10px">APP autopilot mode requires NAV MODE = <strong>NAV</strong>. If it's set to GPS, APP will not capture the ILS.</div></div></div>
+    </div></div>
+  </div>
+
+  <div id="fms-prfm" class="phase-panel">
+    <div class="section"><div class="section-label">PRFM Page — Performance</div>
+    <div class="card"><div class="card-header"><div class="card-icon blue">1</div><div class="card-title">PRFM page</div></div><div class="card-body"><div class="fms">         PRFM
+V1                        ZFW
+ ← [136]            [158.9] →
+VR                     ZFW CG
+ ← [146]             [30.7%] →
+V2                        FOB
+ ← [155]             [70.1] →
+TEMP                       GW
+ ← [13°C/56°F]      [229.0] →
+                        GW CG
+                       [30.7%] →</div><ul class="cl"><li><strong>V1, VR, V2</strong> are automatically computed from weight and conditions — treat as a performance guide</li><li><strong>ZFW / ZFW CG</strong> — Zero Fuel Weight and CG</li><li><strong>FOB</strong> — Fuel On Board</li><li><strong>GW / GW CG</strong> — Gross Weight and CG</li></ul></div></div>
+    </div>
+  </div>
+
+  <div id="fms-fpl" class="phase-panel">
+    <div class="section"><div class="section-label">FPL Page and DIR-TO</div><div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon blue">1</div><div class="card-title">FPLN page</div></div><div class="card-body"><div class="fms">         FPLN
+NO FPL ACTIVATED
+[----------]</div><ul class="cl"><li>Displays the active route from the <strong>World Map flight plan</strong></li><li>Cannot be typed manually — must come from the sim</li><li>No valid flight plan shows <strong>NO FPL ACTIVATED</strong></li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">2</div><div class="card-title">DIR — Direct To</div></div><div class="card-body"><div class="fms">          DIR
+DIR TO:  [CLPPR]
+DIST:    [441NM]
+
+[ACTIVATE?]
+←[YES]      [CANCEL]→</div><ul class="cl"><li>Press line-select key next to any FPLN waypoint</li><li>Confirm with <strong>ACTIVATE? → YES</strong></li><li>Press <strong>CANCEL</strong> to abort</li></ul></div></div>
+    </div></div>
+  </div>
+</div>
+<footer class="site-footer"><p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p><p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p></footer>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
+function switchPhase(ns,id){document.querySelectorAll('[id^="'+ns+'-"].phase-panel').forEach(p=>p.classList.remove('active'));const t=document.getElementById(ns+'-'+id);if(t)t.classList.add('active');if(event&&event.target){event.target.closest('.phase-nav')?.querySelectorAll('.phase-btn').forEach(b=>b.classList.toggle('active',b===event.target));}}
+</script>
+</body>
+</html>

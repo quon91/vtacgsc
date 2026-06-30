@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autopilot — B-2 Spirit — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.cl{list-style:none;padding:0}.cl li{font-size:13px;color:var(--text2);padding:3px 0;display:flex;gap:8px;line-height:1.6}.cl li::before{content:"▸";color:var(--blue);flex-shrink:0}.cl li strong{color:var(--text)}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}.back-link:hover{color:var(--blue)}
+.ap-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:12px 0}
+.ap-btn{min-width:52px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700;text-align:center;border:1px solid;font-family:var(--mono)}
+.ap-btn.on{background:#06241f;border-color:#1c8a76;color:#4dffea}
+.ap-btn.off{background:var(--card2);border-color:var(--border);color:var(--text3)}
+</style>
+</head>
+<body>
+<nav class="site-nav"><div class="nav-inner"><a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a><div class="nav-links" id="nav-links"><a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a><a href="/pages/training/index.html" class="active">Training</a><a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a></div><div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div></div></nav>
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow" style="color:var(--blue)">509th Bomb Wing · B-2 Spirit</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">Autopilot <span style="color:var(--blue)">Quick Reference</span></h1>
+  <p class="hero-sub" style="font-size:15px">HDG, NAV, AP, ALT, and APP modes. Armed modes show amber on the HUD; active modes show green. All controlled from the cockpit glareshield.</p>
+</section>
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+
+  <div class="section">
+    <div class="section-label">Glareshield Panel</div>
+    <div class="card" style="max-width:500px;margin:0 auto 24px">
+      <div class="card-body">
+        <div class="ap-row">
+          <div class="ap-btn on">HDG<br>ON</div>
+          <div class="ap-btn on">NAV<br>ON</div>
+          <div class="ap-btn on">AP<br>ON</div>
+          <div class="ap-btn on">ALT<br>ON</div>
+          <div class="ap-btn on">APP<br>ON</div>
+        </div>
+        <p style="font-size:12px;color:var(--text2);text-align:center;margin-top:8px">Press the <strong>AP ON</strong> push button on the glareshield to engage. Armed = amber annunciation, Active = green.</p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon blue">HDG</div><div class="card-title">HDG — Heading Hold</div></div><div class="card-body"><ul class="cl"><li>Locks the current heading — value updates each time mode is re-activated</li><li>Change target using the <strong>HDG SEL</strong> selector knob</li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">NAV</div><div class="card-title">NAV — GPS Navigation</div></div><div class="card-body"><ul class="cl"><li>Follows the flight plan from the World Map or a DIR route from the FMS</li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">AP</div><div class="card-title">AP — Master Autopilot</div></div><div class="card-body"><ul class="cl"><li>Engages / disengages the master autopilot</li><li><strong>Must be on before any sub-mode will function</strong></li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">ALT</div><div class="card-title">ALT — Altitude Hold</div></div><div class="card-body"><ul class="cl"><li>Holds current altitude — updates each time re-activated</li><li>Target altitude: <strong>ALT SEL</strong> knob · Rate of climb/descent: <strong>V/S SEL</strong> knob</li></ul></div></div>
+      <div class="card span-2"><div class="card-header"><div class="card-icon blue">APP</div><div class="card-title">APP — Approach Hold (ILS only)</div></div><div class="card-body"><ul class="cl"><li>Follows an ILS tuned in the FMS NAV page with the correct inbound course set via <strong>CRS SEL</strong> knob</li><li><strong>FMS NAV MODE must be set to NAV</strong> — not GPS — for APP to function</li></ul><div class="alert alert-error" style="margin-top:10px">If APP does not capture: first thing to check is FMS NAV MODE. GPS mode → APP will not capture the ILS.</div>
+      <table class="data-table" style="margin-top:14px"><thead><tr><th>Selector</th><th>Sets</th><th>Used by</th></tr></thead><tbody><tr><td><strong>CRS SEL</strong></td><td>Inbound course</td><td>APP mode</td></tr><tr><td><strong>HDG SEL</strong></td><td>Target heading</td><td>HDG mode</td></tr><tr><td><strong>ALT SEL</strong></td><td>Target altitude</td><td>ALT mode</td></tr><tr><td><strong>V/S SEL</strong></td><td>Rate of climb/descent</td><td>ALT transitions</td></tr></tbody></table>
+      </div></div>
+    </div>
+  </div>
+</div>
+<footer class="site-footer"><p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p><p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p></footer>
+<script>function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}</script>
+</body>
+</html>

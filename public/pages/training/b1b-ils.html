@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ILS Approach — B-1B Lancer — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.phase-nav{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:0}
+.phase-btn{padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;background:var(--card);border:1px solid var(--border);border-bottom:none;color:var(--text2);font-family:var(--sans);border-radius:8px 8px 0 0;transition:all .12s;white-space:nowrap}
+.phase-btn:hover{color:var(--text);background:var(--card2)}
+.phase-btn.active{background:var(--card2);color:var(--gold);border-color:var(--border2)}
+.phase-panel{display:none;padding:28px 0}
+.phase-panel.active{display:block}
+.fms{background:#050a08;border:1px solid #1a2e20;border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:12px;color:#5fe87a;line-height:1.8;margin-bottom:8px;white-space:pre;overflow-x:auto}
+.fms .hi{color:#ffe87a}
+.fms .dim{color:#1a3a22}
+.pfd{background:#060810;border:1px solid #1a2040;border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:12px;color:#8ab8ff;line-height:1.8;margin-bottom:8px;white-space:pre;overflow-x:auto}
+.pfd .grn{color:#5fe87a}
+.pfd .ann{background:#1a3a22;color:#5fe87a;padding:0 4px;border-radius:3px}
+.ap-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
+.ap-btn{min-width:44px;padding:6px 8px;border-radius:6px;font-size:11px;font-weight:700;text-align:center;border:1px solid;font-family:var(--mono);position:relative}
+.ap-btn.on{background:#06241f;border-color:#1c8a76;color:#4dffea}
+.ap-btn.off{background:var(--card2);border-color:var(--border);color:var(--text3)}
+.ap-btn.arm{background:#2a1a00;border-color:#aa8800;color:#ffdd00}
+.ap-btn.cap{background:#0a1a3a;border-color:#4488cc;color:#88ccff}
+.b-on{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#06241f;color:#4dffea;border:1px solid #1c8a76}
+.b-off{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:var(--card2);color:var(--text3);border:1px solid var(--border)}
+.b-arm{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#2a1a00;color:#ffdd00;border:1px solid #aa8800}
+.b-cap{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#0a1a3a;color:#88ccff;border:1px solid #4488cc}
+.b-danger{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:rgba(208,64,64,.15);color:var(--red2);border:1px solid var(--red)}
+.cl{list-style:none;padding:0}
+.cl li{font-size:13px;color:var(--text2);padding:3px 0;display:flex;gap:8px;align-items:flex-start;line-height:1.6}
+.cl li::before{content:"▸";color:var(--gold);flex-shrink:0}
+.cl li strong{color:var(--text)}
+.freq-row{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:var(--card2);border-radius:6px;margin-bottom:4px}
+.freq-name{font-size:12px;color:var(--text2)}
+.freq-val{font-family:var(--mono);font-size:13px;color:var(--gold2);font-weight:600}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}
+.back-link:hover{color:var(--gold)}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html">
+      <div class="nav-emblem">GSC</div>
+      <div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div>
+    </a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a>
+      <a href="/pages/roster.html">Roster</a>
+      <a href="/pages/history.html">History</a>
+      <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html" class="active">Training</a>
+      <a href="/pages/flights.html">Flight Log</a>
+      <a href="/pages/flight-plan.html">Flight Planner</a>
+    </div>
+    <div class="nav-right">
+      <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+    </div>
+  </div>
+</nav>
+
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow">7th Bomb Wing · B-1B Lancer · KDYS</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">ILS <span>Approach</span></h1>
+  <p class="hero-sub" style="font-size:15px">Step-by-step FMS, NAV page, and autopilot setup for a full ILS from vectors to touchdown or go-around. Example: KDYS ILS RWY 34L — 109.9 / I-DYS / CRS 359°.</p>
+</section>
+
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+
+  <div class="phase-nav">
+    <button class="phase-btn active" onclick="switchPhase('ils','setup')">1 — FMS Setup</button>
+    <button class="phase-btn" onclick="switchPhase('ils','pfd')">2 — PFD / APR Mode</button>
+    <button class="phase-btn" onclick="switchPhase('ils','seq')">3 — A/P Sequence</button>
+    <button class="phase-btn" onclick="switchPhase('ils','dh')">4 — DH &amp; Go-Around</button>
+    <button class="phase-btn" onclick="switchPhase('ils','ref')">5 — Quick Reference</button>
+  </div>
+
+  <!-- PHASE 1 -->
+  <div id="ils-setup" class="phase-panel active">
+    <div class="section">
+      <div class="section-label">Phase 1 — FMS setup before the approach</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-icon">1</div><div class="card-title">FMS NAV page — tune the ILS</div></div>
+          <div class="card-body">
+            <div class="fms">FMS → NAV
+NAV1          [<span class="hi">109.9</span>] →
+ ---><span class="hi">LOC/ILS    [I-DYS]</span>
+CRS           [<span class="hi">359</span>] →
+NAV2          [0.000] →
+NAV MODE      [<span class="hi">NAV</span>] →</div>
+            <ul class="cl">
+              <li>Press <strong>NAV</strong> on the FMS keypad</li>
+              <li>Type <strong>109.9</strong> in the scratch pad → line-select into NAV1</li>
+              <li>Confirm ident shows <strong>LOC/ILS — I-DYS</strong></li>
+              <li>Set CRS to <strong>359°</strong> (inbound course for RWY 34L)</li>
+              <li>Confirm NAV MODE is <strong>NAV</strong> — not GPS</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-icon">2</div><div class="card-title">FMS PERF → APPR page — set DH</div></div>
+          <div class="card-body">
+            <div class="fms">FMS → PERF → CRZ PG → APPR PG
+APPR PAGE
+FLAPS --> <span class="hi">17°</span>
+VREF  --> <span class="hi">□□□ Kt</span>   ← auto-compute
+DH <span class="hi">□□□□</span> RADIO         ← enter DH from plate
+LAND QNH --> <span class="hi">29.92</span> inHg
+&lt;--CRZ PG</div>
+            <ul class="cl">
+              <li>Enter <strong>DH from approach plate</strong> (typically 200 ft HAT for CAT I)</li>
+              <li>Click VREF to auto-compute landing speed</li>
+              <li>Update QNH from current ATIS</li>
+            </ul>
+            <div class="alert alert-warn" style="margin-top:10px">Enter the <strong>Decision Height (DH)</strong> here, not MDA. ILS is a precision approach — you're looking for the runway at DH, not MDA.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 -->
+  <div id="ils-pfd" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 2 — PFD softkey and APR mode</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-icon">1</div><div class="card-title">Set PFD softkey to ILS</div></div>
+          <div class="card-body">
+            <div class="pfd">VSD | ADF | <span class="ann">ILS</span> | NAV1 | GPS
+                  ↑ press this</div>
+            <ul class="cl">
+              <li>The PFD nav mode softkey controls what the compass rose deviation needle tracks</li>
+              <li>For ILS: set to <strong>ILS</strong> — this shows the LOC needle and activates ILS bars in HUD mode</li>
+              <li>Wrong softkey → APR captures nothing</li>
+            </ul>
+            <div class="alert alert-error" style="margin-top:10px">This is the most common student error. APR mode needs the PFD set to <strong>ILS</strong> — if it's on GPS or NAV1 the localizer will never capture.</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-icon">2</div><div class="card-title">Arm APR mode</div></div>
+          <div class="card-body">
+            <div class="ap-row">
+              <div class="ap-btn on">AP</div>
+              <div class="ap-btn on">ALT</div>
+              <div class="ap-btn on">HDG</div>
+              <div class="ap-btn off">NAV</div>
+              <div class="ap-btn on">ATH</div>
+              <div class="ap-btn arm">APR</div>
+            </div>
+            <ul class="cl">
+              <li>Press <strong>APR</strong> — button shows amber/orange = LOC armed</li>
+              <li>Keep HDG hold active — aircraft stays on ATC vector heading</li>
+              <li>When LOC needle comes alive (within ~30° of final): APR auto-captures LOC → <strong>HDG drops out</strong></li>
+              <li>APR button turns green = LOC captured</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 3 -->
+  <div id="ils-seq" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 3 — Full autopilot sequence from vectors to DH</div>
+      <div class="card">
+        <div class="card-header"><div class="card-icon blue">▶</div><div class="card-title">Complete A/P mode sequence</div></div>
+        <div class="card-body" style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Phase</th><th>AP</th><th>ALT</th><th>HDG</th><th>NAV</th><th>ATH</th><th>APR</th><th>What happens</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Vectors</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td>HDG holds ATC heading</td></tr>
+              <tr><td><strong>Arm APR</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-arm">ARM</span></td><td>APR armed — waiting for LOC</td></tr>
+              <tr><td><strong>LOC capture</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">drops</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-cap">CAP</span></td><td>HDG drops, APR tracks LOC</td></tr>
+              <tr><td><strong>G/S capture</strong></td><td><span class="b-on">ON</span></td><td><span class="b-cap">G/S</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-cap">CAP</span></td><td>ALT changes to G/S — descending</td></tr>
+              <tr><td><strong>At DH</strong></td><td><span class="b-off">OFF</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td>Disengage AP — land or go-around</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4 -->
+  <div id="ils-dh" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 4 — Decision Height and Go-Around</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-icon">1</div><div class="card-title">At Decision Height</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li>At DH: look for runway environment</li>
+              <li>Runway in sight and landing assured → disengage AP, land normally</li>
+              <li>No runway contact at DH → immediate go-around</li>
+            </ul>
+            <div class="alert alert-error" style="margin-top:10px">DH is a hard decision point. You must have the runway or approach lights in sight to continue below it. Never "peek" below DH hoping to find it.</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-icon red">!</div><div class="card-title">Go-Around procedure</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li>Disengage AP</li>
+              <li>Full power — positive rate — gear up</li>
+              <li>Climb runway heading to missed approach altitude</li>
+              <li>Published missed approach: climb to <strong>3,000 ft</strong>, turn as published</li>
+              <li>Notify ATC: <em>"KDYS Tower, [callsign], going around"</em></li>
+            </ul>
+          </div>
+        </div>
+        <div class="card span-2">
+          <div class="card-header"><div class="card-icon red">!</div><div class="card-title">Common student errors</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li><strong>Wrong PFD softkey</strong> → LOC won't capture. Check softkey is ILS, not GPS.</li>
+              <li><strong>NAV MODE set to GPS</strong> in FMS → APR won't work. NAV MODE must be NAV.</li>
+              <li><strong>APR armed too early</strong> (more than 30° off final) → LOC may not sequence correctly. Arm APR when established within 30° of the inbound course.</li>
+              <li><strong>Re-engaging HDG after LOC capture</strong> → instantly kills the LOC track. Once APR is green, leave HDG alone.</li>
+              <li><strong>Forgetting to set DH in APPR page</strong> → no DH callout from the FMS PERF system.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 5 -->
+  <div id="ils-ref" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 5 — Quick reference card</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-icon">📋</div><div class="card-title">KDYS ILS RWY 34L</div></div>
+          <div class="card-body">
+            <div class="freq-row"><span class="freq-name">Frequency</span><span class="freq-val">109.9</span></div>
+            <div class="freq-row"><span class="freq-name">Identifier</span><span class="freq-val">I-DYS</span></div>
+            <div class="freq-row"><span class="freq-name">Inbound Course</span><span class="freq-val">359°</span></div>
+            <div class="freq-row"><span class="freq-name">Glideslope</span><span class="freq-val">3.0°</span></div>
+            <div class="freq-row"><span class="freq-name">Decision Height</span><span class="freq-val">200 ft HAT</span></div>
+            <div class="freq-row"><span class="freq-name">FAF</span><span class="freq-val">MUCHO</span></div>
+            <div class="freq-row"><span class="freq-name">Field Elevation</span><span class="freq-val">1,789 ft MSL</span></div>
+            <div class="freq-row"><span class="freq-name">Runway Length</span><span class="freq-val">13,498 ft</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-icon">📋</div><div class="card-title">ILS Setup Checklist</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li>FMS NAV → NAV1 = <strong>109.9</strong>, ident = I-DYS</li>
+              <li>FMS NAV → CRS = <strong>359°</strong></li>
+              <li>FMS NAV → NAV MODE = <strong>NAV</strong></li>
+              <li>FMS PERF → APPR → DH from plate</li>
+              <li>PFD softkey = <strong>ILS</strong></li>
+              <li>Press <strong>APR</strong> — arm before LOC alive</li>
+              <li>Keep HDG until LOC captures (AP drops it)</li>
+              <li>G/S captures automatically once established</li>
+              <li>Disengage AP at DH — land or go-around</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="site-footer">
+  <p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p>
+  <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
+</footer>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
+function switchPhase(ns,id){
+  document.querySelectorAll('[id^="'+ns+'-"].phase-panel').forEach(p=>p.classList.remove('active'));
+  const t=document.getElementById(ns+'-'+id);if(t)t.classList.add('active');
+  if(event&&event.target){event.target.closest('.phase-nav')?.querySelectorAll('.phase-btn').forEach(b=>b.classList.toggle('active',b===event.target));}
+}
+</script>
+</body>
+</html>

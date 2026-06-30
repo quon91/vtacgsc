@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cockpit & Ground Ops — B-2 Spirit — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.phase-nav{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:0}
+.phase-btn{padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;background:var(--card);border:1px solid var(--border);border-bottom:none;color:var(--text2);font-family:var(--sans);border-radius:8px 8px 0 0;transition:all .12s;white-space:nowrap}
+.phase-btn.active{background:var(--card2);color:var(--blue);border-color:var(--border2)}
+.phase-panel{display:none;padding:28px 0}.phase-panel.active{display:block}
+.cl{list-style:none;padding:0}.cl li{font-size:13px;color:var(--text2);padding:3px 0;display:flex;gap:8px;line-height:1.6}.cl li::before{content:"▸";color:var(--blue);flex-shrink:0}.cl li strong{color:var(--text)}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}.back-link:hover{color:var(--blue)}
+</style>
+</head>
+<body>
+<nav class="site-nav"><div class="nav-inner"><a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a><div class="nav-links" id="nav-links"><a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a><a href="/pages/training/index.html" class="active">Training</a><a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a></div><div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div></div></nav>
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow" style="color:var(--blue)">509th Bomb Wing · B-2 Spirit · KSZL</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">Cockpit Interaction <span style="color:var(--blue)">&amp; Ground Ops</span></h1>
+  <p class="hero-sub" style="font-size:15px">Cockpit interaction modes, crew hatch, cargo doors, stealth mode, and aircraft specifications. For simulation use only — single-pilot operations.</p>
+</section>
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+  <div class="phase-nav">
+    <button class="phase-btn active" onclick="switchPhase('cp','interact')">1 — Interaction System</button>
+    <button class="phase-btn" onclick="switchPhase('cp','hatch')">2 — Crew Hatch</button>
+    <button class="phase-btn" onclick="switchPhase('cp','cargo')">3 — Cargo Doors</button>
+    <button class="phase-btn" onclick="switchPhase('cp','stealth')">4 — Stealth Mode</button>
+    <button class="phase-btn" onclick="switchPhase('cp','specs')">5 — Specifications</button>
+  </div>
+
+  <div id="cp-interact" class="phase-panel active">
+    <div class="section"><div class="section-label">Cockpit Interaction System</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon blue">1</div><div class="card-title">"Lock" mode (default PC)</div></div><div class="card-body"><ul class="cl"><li>Left-click and hold the knob/switch</li><li>Push mouse forward → <strong>"push"</strong> interaction</li><li>Pull mouse back → <strong>"pull"</strong> interaction</li><li>Middle-mouse scroll or right-click "set" also available on some controls</li></ul><div class="alert alert-info" style="margin-top:10px">Set under General Options → Accessibility → Cockpit Interaction System.</div></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">2</div><div class="card-title">"Legacy" mode</div></div><div class="card-body"><ul class="cl"><li>An icon appears to the left/right/above/below the control</li><li>Circular arrow icon → middle-mouse wheel to scroll</li><li>Up/down arrow icon → left-click to set</li></ul></div></div>
+      <div class="card span-2"><div class="card-header"><div class="card-icon blue">X</div><div class="card-title">Xbox controller</div></div><div class="card-body"><table class="data-table"><thead><tr><th>Button</th><th>Function</th></tr></thead><tbody><tr><td><strong>A</strong></td><td>Interact / Push</td></tr><tr><td><strong>X</strong></td><td>Pull</td></tr><tr><td><strong>Right Stick</strong></td><td>Scroll</td></tr><tr><td><strong>B</strong></td><td>Finish interaction</td></tr></tbody></table></div></div>
+    </div></div>
+  </div>
+
+  <div id="cp-hatch" class="phase-panel">
+    <div class="section"><div class="section-label">Crew Hatch</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon blue">1</div><div class="card-title">Opening</div></div><div class="card-body"><ul class="cl"><li>Can only be opened <strong>while on the ground</strong></li><li>Click the <strong>Open</strong> button on the cockpit overhead panel</li><li>Hatch and integrated ladder extend down to ground</li></ul></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">2</div><div class="card-title">Closing — required before taxi</div></div><div class="card-body"><ul class="cl"><li>Click the <strong>Close</strong> button on the same overhead panel</li><li><strong>"Crew Hatch — CLOSED"</strong> is a required Before Start QRC item</li></ul><div class="alert alert-error" style="margin-top:10px">Do not taxi with the hatch open.</div></div></div>
+    </div></div>
+  </div>
+
+  <div id="cp-cargo" class="phase-panel">
+    <div class="section"><div class="section-label">Cargo Doors</div>
+    <div class="card"><div class="card-header"><div class="card-icon blue">1</div><div class="card-title">Opening / Closing both cargo doors</div></div><div class="card-body"><ul class="cl"><li>Click the <strong>Cargo Door</strong> switch on the left instrument panel</li><li>Toggles both doors together — status shows OPEN or CLOSED</li><li>MFD STATS page shows <strong>READY FOR RELEASE</strong> once release criteria are met with doors open</li></ul><div class="alert alert-info" style="margin-top:10px">Left console items: 4 = Cargo Release Button · 5 = Cargo Reload · 6 = Cargo Bay Doors Open/Close</div></div></div>
+    </div>
+  </div>
+
+  <div id="cp-stealth" class="phase-panel">
+    <div class="section"><div class="section-label">Stealth Mode</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon blue">1</div><div class="card-title">What it does</div></div><div class="card-body"><ul class="cl"><li>Limits control-surface deflection animations</li><li>Hides navigation and beacon lights at wingtips</li></ul><div class="alert alert-info" style="margin-top:10px">Visual/animation effect only — not a radar-signature simulation.</div></div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">!</div><div class="card-title">Activation requirements</div></div><div class="card-body"><ul class="cl"><li>Click Stealth Mode button on the left instrument panel</li><li><strong>Must be above 3,000 ft AGL</strong> to activate</li><li>Set <strong>OFF</strong> before landing — required Landing QRC item</li></ul><div class="alert alert-warn" style="margin-top:10px">If the button has no effect, check altitude first — it cannot engage below 3,000 ft AGL.</div></div></div>
+    </div></div>
+  </div>
+
+  <div id="cp-specs" class="phase-panel">
+    <div class="section"><div class="section-label">KwikFlight Spirit Specifications</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-body">
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Cruise Speed</span><span style="color:var(--blue2);font-weight:700;font-family:var(--mono)">483 KTAS</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Max Altitude</span><span style="color:var(--blue2);font-weight:700;font-family:var(--mono)">50,000 ft</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Max Weight</span><span style="color:var(--blue2);font-weight:700;font-family:var(--mono)">336,500 lbs</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Range</span><span style="color:var(--blue2);font-weight:700;font-family:var(--mono)">6,900 NM</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Fuel Capacity</span><span style="color:var(--blue2);font-weight:700;font-family:var(--mono)">167,000 lbs</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Length</span><span style="color:var(--blue2);font-weight:700;font-family:var(--mono)">69 ft</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Wingspan</span><span style="color:var(--blue2);font-weight:700;font-family:var(--mono)">172 ft</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--text2)">Height</span><span style="color:var(--blue2);font-weight:700;font-family:var(--mono)">17 ft</span></div>
+      </div></div>
+      <div class="card"><div class="card-header"><div class="card-icon blue">!</div><div class="card-title">Important sim notes</div></div><div class="card-body"><ul class="cl"><li>Uses <strong>CFD flight model</strong> — avoid over-stressing the airframe</li><li>Real Spirit uses Fly-By-Wire; sim uses conventional controls — handling will differ</li><li>Weapon delivery animation is <strong>iniBuilds store version only</strong></li><li>Designed for <strong>single-pilot operation</strong></li></ul></div></div>
+    </div></div>
+  </div>
+</div>
+<footer class="site-footer"><p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p><p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p></footer>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
+function switchPhase(ns,id){document.querySelectorAll('[id^="'+ns+'-"].phase-panel').forEach(p=>p.classList.remove('active'));const t=document.getElementById(ns+'-'+id);if(t)t.classList.add('active');if(event&&event.target){event.target.closest('.phase-nav')?.querySelectorAll('.phase-btn').forEach(b=>b.classList.toggle('active',b===event.target));}}
+</script>
+</body>
+</html>

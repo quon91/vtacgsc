@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glossary — B-1B Lancer — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.search-wrap{position:relative;margin-bottom:20px}
+.search-box{width:100%;padding:11px 16px 11px 42px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:14px;font-family:var(--sans);outline:none;transition:border-color .15s}
+.search-box:focus{border-color:var(--gold)}
+.search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:16px;pointer-events:none}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.filter-btn{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--card);color:var(--text3);font-family:var(--sans);transition:all .12s}
+.filter-btn:hover{color:var(--text2)}
+.filter-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(200,169,81,.1)}
+.term-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.term-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;transition:border-color .14s}
+.term-card:hover{border-color:var(--gold)}
+.term-abbr{font-size:18px;font-weight:900;color:var(--gold);margin-bottom:2px}
+.term-full{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.term-def{font-size:13px;color:var(--text2);line-height:1.65}
+.term-tag{display:inline-block;margin-top:8px;margin-right:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
+.tag-nav{background:rgba(74,144,217,.15);color:var(--blue2)}
+.tag-ap{background:rgba(200,169,81,.15);color:var(--gold2)}
+.tag-comm{background:rgba(61,186,110,.15);color:var(--green2)}
+.tag-sys{background:rgba(224,144,48,.15);color:var(--amber2)}
+.tag-proc{background:rgba(208,64,64,.15);color:var(--red2)}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}
+.back-link:hover{color:var(--gold)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html">
+      <div class="nav-emblem">GSC</div>
+      <div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div>
+    </a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a>
+      <a href="/pages/roster.html">Roster</a>
+      <a href="/pages/history.html">History</a>
+      <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html" class="active">Training</a>
+      <a href="/pages/flights.html">Flight Log</a>
+      <a href="/pages/flight-plan.html">Flight Planner</a>
+    </div>
+    <div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div>
+  </div>
+</nav>
+
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow">7th Bomb Wing · B-1B Lancer</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">Phrase &amp; Term <span>Glossary</span></h1>
+  <p class="hero-sub" style="font-size:15px">Every abbreviation, ATC phrase, navigation term, and systems acronym used in B-1B KwikFlight training — searchable A–Z.</p>
+</section>
+
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-box" id="search" placeholder="Search terms, abbreviations, or definitions…" oninput="filterTerms()">
+  </div>
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('nav',this)">Navigation</button>
+    <button class="filter-btn" onclick="setFilter('ap',this)">Autopilot</button>
+    <button class="filter-btn" onclick="setFilter('comm',this)">Comms &amp; ATC</button>
+    <button class="filter-btn" onclick="setFilter('sys',this)">Systems</button>
+    <button class="filter-btn" onclick="setFilter('proc',this)">Procedures</button>
+  </div>
+  <div class="term-grid" id="term-grid"></div>
+  <div id="no-results" class="empty-state hidden"><div class="icon">🔍</div><p>No terms match your search.</p></div>
+</div>
+
+<footer class="site-footer">
+  <p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p>
+  <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
+</footer>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
+const terms=[
+  {a:'APR',f:'Approach Mode',d:'Autopilot mode that arms and captures the ILS localizer and glideslope. Only works with a valid ILS signal tuned in FMS NAV page and PFD softkey set to ILS. Never use APR for RNAV or VOR approaches.',tags:['ap']},
+  {a:'AP',f:'Autopilot Master',d:'Master switch for the autopilot system. Must be engaged before any sub-mode (HDG, NAV, ALT, ATH, APR) will function. Press the AP ON button on the glareshield.',tags:['ap']},
+  {a:'ALT',f:'Altitude Hold',d:'Autopilot mode that holds the aircraft at its current altitude. The held value updates every time the mode is activated. Pre-select a target on the ALT selector knob for automatic level-off.',tags:['ap']},
+  {a:'ATH',f:'Autothrottle',d:'Holds the current airspeed. Critical limitation: disengages automatically below 2,500 ft AGL. Monitor airspeed manually on short final — the ATH is not available to maintain VREF near the runway.',tags:['ap','sys']},
+  {a:'HDG',f:'Heading Hold',d:'Autopilot mode that holds the aircraft on a set heading. Change the target by rotating the HDG selector knob. Drops out automatically when ILS localizer is captured in APR mode.',tags:['ap']},
+  {a:'NAV',f:'Navigation Hold',d:'Autopilot mode that tracks the deviation needle on the PFD compass rose. Tracks VOR radials in NAV1 mode, or the FMS GPS flight plan in GPS mode. What it follows depends entirely on the PFD softkey.',tags:['ap','nav']},
+  {a:'ILS',f:'Instrument Landing System',d:'Ground-based precision approach system providing lateral (localizer) and vertical (glideslope) guidance. Requires frequency tuned in FMS NAV page, PFD set to ILS, and APR mode. Uses a Decision Height (DH).',tags:['nav','proc']},
+  {a:'LOC',f:'Localizer',d:'The lateral component of an ILS. Provides left-right course guidance aligned with the runway centerline. APR mode arms to capture the LOC first, then the glideslope.',tags:['nav']},
+  {a:'G/S',f:'Glideslope',d:'The vertical component of an ILS. A 3° descent path from the FAF to the runway threshold. ALT HOLD changes to G/S annunciation on the PFD when the glideslope is captured in APR mode.',tags:['nav']},
+  {a:'RNAV',f:'Area Navigation / GPS Approach',d:'Non-precision approach using GPS position for lateral guidance. No ILS frequency required. Use NAV HOLD (not APR) and GPS PFD softkey. Descent managed manually to MDA — no automatic glideslope.',tags:['nav','proc']},
+  {a:'VOR',f:'VHF Omnidirectional Range',d:'Ground-based radio navaid. Tune in FMS NAV page, set CRS to the inbound radial, set PFD to NAV1, and use NAV HOLD. Approach uses step-down altitudes to MDA rather than a continuous glideslope.',tags:['nav']},
+  {a:'MDA',f:'Minimum Descent Altitude',d:'The lowest altitude a pilot may descend to on a non-precision approach (RNAV, VOR) before having the runway in sight. Unlike DH on an ILS, you level off at MDA and continue looking for the runway.',tags:['proc']},
+  {a:'DH',f:'Decision Height',d:'The height above touchdown on a precision ILS approach at which you must see the runway environment to continue landing. If no visual contact at DH, execute an immediate go-around.',tags:['proc']},
+  {a:'FAF',f:'Final Approach Fix',d:'The fix marking the beginning of the final segment of an instrument approach. On ILS, this is where the glideslope intercept typically occurs. On RNAV/VOR, this is where descent begins.',tags:['nav','proc']},
+  {a:'MAP',f:'Missed Approach Point',d:'The point on a non-precision approach at which, if the runway environment is not in sight, a missed approach must be executed. On RNAV/VOR, this is typically at or before the runway threshold.',tags:['proc']},
+  {a:'FMS',f:'Flight Management System',d:'The navigation computer accessed via the CDU keypad. Contains COMM (radio), NAV (radio navigation), PERF (performance/speeds), FPLN (flight plan), RNAV, and DIR pages.',tags:['sys']},
+  {a:'CDU',f:'Control Display Unit',d:'The physical keypad/screen used to interact with the FMS. Inputs are made via a scratch pad at the bottom of the screen, then loaded into fields using line-select keys.',tags:['sys']},
+  {a:'FPLN',f:'Flight Plan',d:'FMS page displaying the active route. On the B-1B, the FPLN is loaded from the World Map and cannot be manually typed into the CDU. Approach procedures are selected from the destination airport via FPLN.',tags:['sys','nav']},
+  {a:'DIR',f:'Direct To',d:'FMS function that routes the aircraft directly from its current position to a selected waypoint, bypassing intermediate fixes. Use the DIR key on the CDU, select the fix, and confirm ACTIVATE/YES.',tags:['nav']},
+  {a:'VREF',f:'Reference Landing Speed',d:'The target approach speed for landing, computed from the APPR page in FMS PERF based on current aircraft weight and configuration. Set on the SPD selector knob.',tags:['proc','sys']},
+  {a:'V1',f:'Decision Speed',d:'Takeoff decision speed. Below V1, abort if a critical engine fails. Above V1, continue the takeoff regardless. Values computed from the FMS PERF page.',tags:['proc']},
+  {a:'VR',f:'Rotation Speed',d:'Speed at which to initiate rotation during takeoff. Computed from FMS PERF page based on gross weight. Target a smooth, continuous rotation to the takeoff pitch attitude.',tags:['proc']},
+  {a:'V2',f:'Takeoff Safety Speed',d:'Target climb speed after rotation until flap retraction altitude is reached. Computed from FMS PERF page.',tags:['proc']},
+  {a:'QNH',f:'Altimeter Setting',d:'The local barometric pressure setting applied to the altimeter to show altitude above mean sea level. Obtain from ATIS and enter in the FMS PERF APPR page.',tags:['sys','proc']},
+  {a:'TACAN',f:'Tactical Air Navigation',d:'Military radio navigation system providing bearing and distance information. Appears on the FMS NAV page alongside VOR. Displayed on the MFD NAV page when the TAC select key is active.',tags:['nav']},
+  {a:'ATIS',f:'Automatic Terminal Information Service',d:'Continuous broadcast of airport weather, active runways, and NOTAMs. Listen before calling clearance or approach. Update QNH from the ATIS each flight.',tags:['comm']},
+  {a:'ATC',f:'Air Traffic Control',d:'The controlling authority for IFR and VFR operations. Vectors, altitude assignments, and approach clearances all come from ATC. Read back all altitude and heading clearances.',tags:['comm']},
+  {a:'ECS',f:'Environmental Control System',d:'Provides bleed-air derived pressurization and environmental management. Displayed on the MFD ECS page. Both cabin packs OFF is an abnormal condition shown on STATS.',tags:['sys']},
+  {a:'FCH / FCH page',f:'Flight Controls Health',d:'MFD sub-page showing the status of all flight control computers, actuators, and surfaces. "No X\'s on FCH" is a required Taxi checklist item — any X indicates a fault.',tags:['sys']},
+  {a:'STATS',f:'Crew Alert and Advisory System',d:'MFD page displaying all active warnings, cautions, and advisories. CHECK NO WARNINGS on STATS is a required Cruise checklist item.',tags:['sys']},
+  {a:'APU',f:'Auxiliary Power Unit',d:'Small jet engine providing ground electrical power and bleed air for main engine starting. APU 1 and APU 2 are started during Before Start and shut down After Start once main generators are online.',tags:['sys']},
+  {a:'MFD',f:'Multi Function Display',d:'Primary instrument display screens in the B-1B cockpit. Can be set to HUD or NAV primary mode, plus GPS, ECS, FUEL, FCH, ENG, and STATS sub-pages via soft-key selections.',tags:['sys']},
+  {a:'PFD',f:'Primary Flight Display',d:'Main attitude/navigation display. Has softkey at the bottom to select the navigation source (ILS, GPS, NAV1, ADF, VSD). The softkey selection determines what NAV HOLD or APR tracks.',tags:['sys']},
+  {a:'IFR',f:'Instrument Flight Rules',d:'Rules that govern flight in instrument meteorological conditions. All approach training assumes IFR-rated operations under ATC positive control.',tags:['proc','comm']},
+  {a:'VFR',f:'Visual Flight Rules',d:'Rules that govern flight when weather is above minimum visibility and ceiling thresholds. Departure and traffic pattern work in VMC is conducted under VFR.',tags:['proc','comm']},
+  {a:'IMC',f:'Instrument Meteorological Conditions',d:'Weather conditions below VFR minima, requiring instrument flight. Any time you enter clouds or visibility drops below VFR minimums, you are in IMC.',tags:['proc']},
+  {a:'VMC',f:'Visual Meteorological Conditions',d:'Weather at or above VFR minimums. Visible horizon, discernible terrain, and runway environment visible from the appropriate distance.',tags:['proc']},
+  {a:'CRS',f:'Course',d:'The desired track over the ground, in degrees magnetic. Set on the CRS selector knob when using APR or NAV HOLD with a VOR. For ILS, CRS is the runway magnetic heading.',tags:['nav']},
+  {a:'SPD',f:'Speed Selector',d:'One of four selector knobs on the autopilot panel. Sets the ATH (autothrottle) target airspeed. Rotate to set VREF before final approach.',tags:['ap']},
+];
+let activeFilter='all',searchText='';
+function renderTerms(){
+  const grid=document.getElementById('term-grid');
+  const q=searchText.toLowerCase();
+  const filtered=terms.filter(t=>{
+    const matchFilter=activeFilter==='all'||t.tags.includes(activeFilter);
+    const matchSearch=!q||(t.a+t.f+t.d).toLowerCase().includes(q);
+    return matchFilter&&matchSearch;
+  });
+  grid.innerHTML=filtered.map(t=>`
+    <div class="term-card">
+      <div class="term-abbr">${t.a}</div>
+      <div class="term-full">${t.f}</div>
+      <div class="term-def">${t.d}</div>
+      <div>${t.tags.map(g=>`<span class="term-tag tag-${g}">${g}</span>`).join('')}</div>
+    </div>`).join('');
+  document.getElementById('no-results').classList.toggle('hidden',filtered.length>0);
+}
+function filterTerms(){searchText=document.getElementById('search').value;renderTerms();}
+function setFilter(f,btn){
+  activeFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTerms();
+}
+renderTerms();
+</script>
+</body>
+</html>
