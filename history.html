@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>History — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.history-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.timeline{position:relative;padding-left:32px}
+.timeline::before{content:'';position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--border)}
+.tl-item{position:relative;margin-bottom:24px}
+.tl-dot{position:absolute;left:-32px;top:4px;width:16px;height:16px;border-radius:50%;background:var(--gold);border:3px solid var(--bg);box-shadow:0 0 0 2px var(--gold)}
+.tl-date{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
+.tl-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.tl-body{font-size:14px;color:var(--text2);line-height:1.7;white-space:pre-wrap}
+.tl-remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;float:right;display:none}
+.editable-mode .tl-remove{display:inline}
+.edit-pencil{background:rgba(200,169,81,.12);border:1px solid rgba(200,169,81,.3);color:var(--gold);border-radius:6px;padding:4px 11px;font-size:11px;cursor:pointer;font-family:var(--sans);display:none;align-items:center;gap:4px}
+.editable-mode .edit-pencil{display:inline-flex}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a>
+      <div class="nav-dropdown">
+        <input type="checkbox" id="wings-toggle">
+        <label for="wings-toggle" class="nav-drop-btn">Wings ▾</label>
+        <div class="nav-dropdown-menu">
+          <a href="/pages/wing.html?id=7bw">7th Bomb Wing</a>
+          <a href="/pages/wing.html?id=509bw">509th Bomb Wing</a>
+          <a href="/pages/wing.html?id=2bw">2nd Bomb Wing</a>
+        </div>
+      </div>
+      <a href="/pages/history.html" class="active">History</a>
+      <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html">Training</a>
+      <a href="/pages/flights.html">Flight Log</a>
+    </div>
+    <div class="nav-right" id="nav-right-area"><a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a></div>
+    <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+  </div>
+</nav>
+
+<div class="history-hero">
+  <div class="hero-eyebrow">Our Story</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Command <span>History</span></h1>
+  <p class="hero-sub" style="font-size:14px">The story of Virtual Global Strike Command — from founding to today.</p>
+</div>
+
+<div class="container page-body">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px">
+    <div class="section-label" style="margin-bottom:0;border-bottom:none;padding-bottom:0">Timeline</div>
+    <button class="edit-pencil" onclick="openAddEntry()">✏ Add Entry</button>
+  </div>
+  <div class="timeline" id="timeline">
+    <div class="empty-state"><p>Loading history...</p></div>
+  </div>
+</div>
+
+<!-- ADD/EDIT ENTRY MODAL -->
+<div class="modal-overlay" id="entry-modal">
+  <div class="modal">
+    <div class="modal-title" id="entry-modal-title">Add Timeline Entry</div>
+    <input type="hidden" id="entry-id">
+    <div class="form-group"><label>Date / Era label</label><input type="text" id="entry-date" placeholder="e.g. Founding, 2024, Year One"></div>
+    <div class="form-group"><label>Title</label><input type="text" id="entry-title" placeholder="e.g. VTAC GSC Established"></div>
+    <div class="form-group"><label>Description</label><textarea id="entry-body" style="min-height:120px" placeholder="What happened..."></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('entry-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEntry()">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
+
+let entries = [], canEdit = false;
+
+function onAuthReady(user, pilot) {
+  const navArea = document.getElementById('nav-right-area');
+  if (user && pilot?.status === 'active') {
+    navArea.innerHTML = `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
+    canEdit = pilot.role === 'master_admin';
+    if (canEdit) document.body.classList.add('editable-mode');
+  }
+  loadHistory();
+}
+
+async function loadHistory() {
+  try {
+    const doc = await db.collection('settings').doc('history').get();
+    entries = doc.exists ? (doc.data().entries||[]) : [];
+  } catch(e) { entries = []; }
+  if (!entries.length) {
+    entries = [{ id:'default1', date:'Founding', title:'VTAC Global Strike Command Established', body:'Virtual Global Strike Command was founded to bring together virtual bomber pilots flying the B-1B, B-2, and B-52 across MSFS 2020 and 2024. Three wings activated under one command structure.' }];
+  }
+  renderTimeline();
+}
+
+function renderTimeline() {
+  const el = document.getElementById('timeline');
+  el.innerHTML = entries.map(e => `
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <button class="tl-remove" onclick="removeEntry('${e.id}')">Remove ✕</button>
+      <div class="tl-date">${e.date}</div>
+      <div class="tl-title">${e.title} ${canEdit?`<button class="edit-pencil" style="margin-left:8px" onclick="openEditEntry('${e.id}')">✏</button>`:''}</div>
+      <div class="tl-body">${e.body}</div>
+    </div>`).join('');
+}
+
+function openAddEntry() {
+  document.getElementById('entry-modal-title').textContent = 'Add Timeline Entry';
+  document.getElementById('entry-id').value = '';
+  document.getElementById('entry-date').value = '';
+  document.getElementById('entry-title').value = '';
+  document.getElementById('entry-body').value = '';
+  document.getElementById('entry-modal').classList.add('open');
+}
+function openEditEntry(id) {
+  const e = entries.find(x=>x.id===id);
+  if (!e) return;
+  document.getElementById('entry-modal-title').textContent = 'Edit Timeline Entry';
+  document.getElementById('entry-id').value = id;
+  document.getElementById('entry-date').value = e.date;
+  document.getElementById('entry-title').value = e.title;
+  document.getElementById('entry-body').value = e.body;
+  document.getElementById('entry-modal').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+async function saveEntry() {
+  const id = document.getElementById('entry-id').value || 'entry_'+Date.now();
+  const entry = {
+    id, date: document.getElementById('entry-date').value.trim(),
+    title: document.getElementById('entry-title').value.trim(),
+    body:  document.getElementById('entry-body').value.trim(),
+  };
+  const idx = entries.findIndex(e=>e.id===id);
+  if (idx>-1) entries[idx]=entry; else entries.push(entry);
+  try {
+    await db.collection('settings').doc('history').set({entries});
+    renderTimeline();
+    closeModal('entry-modal');
+    toast('Saved!');
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+async function removeEntry(id) {
+  if (!confirm('Remove this timeline entry?')) return;
+  entries = entries.filter(e=>e.id!==id);
+  await db.collection('settings').doc('history').set({entries});
+  renderTimeline();
+  toast('Removed');
+}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+// Position the fixed-position Wings dropdown under its button
+(function() {
+  const toggle = document.getElementById('wings-toggle');
+  const label  = document.querySelector('label[for="wings-toggle"]');
+  const menu   = document.querySelector('.nav-dropdown-menu');
+  if (!toggle || !label || !menu) return;
+  function positionMenu() {
+    const r = label.getBoundingClientRect();
+    menu.style.top  = r.bottom + 'px';
+    menu.style.left = r.left + 'px';
+  }
+  toggle.addEventListener('change', () => { if (toggle.checked) positionMenu(); });
+  window.addEventListener('resize', () => { if (toggle.checked) positionMenu(); });
+  document.addEventListener('click', (e) => {
+    if (toggle.checked && !e.target.closest('.nav-dropdown')) toggle.checked = false;
+  });
+})();
+
+</script>
+</body>
+</html>
