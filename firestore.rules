@@ -6,10 +6,13 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function pilotDoc()   { return get(/databases/$(database)/documents/pilots/$(request.auth.uid)).data; }
     function isActive()   { return isSignedIn() && pilotDoc().status == 'active'; }
-    function isMasterAdmin() { return isActive() && pilotDoc().role == 'master_admin'; }
-    function isWingCommander(wingId) { return isActive() && pilotDoc().role == 'wing_commander' && pilotDoc().wing == wingId; }
-    function isSqCommander(sqId) { return isActive() && pilotDoc().role == 'sq_commander' && pilotDoc().squadron == sqId; }
-    function isInstructor() { return isActive() && (pilotDoc().role == 'instructor' || pilotDoc().role == 'sq_commander' || pilotDoc().role == 'wing_commander' || pilotDoc().role == 'master_admin'); }
+    function pilotHasRole(roleId) {
+      return ('roles' in pilotDoc() && roleId in pilotDoc().roles) || pilotDoc().role == roleId;
+    }
+    function isMasterAdmin() { return isActive() && pilotHasRole('master_admin'); }
+    function isWingCommander(wingId) { return isActive() && pilotHasRole('wing_commander') && pilotDoc().wing == wingId; }
+    function isSqCommander(sqId) { return isActive() && pilotHasRole('sq_commander') && pilotDoc().squadron == sqId; }
+    function isInstructor() { return isActive() && (pilotHasRole('instructor') || pilotHasRole('sq_commander') || pilotHasRole('wing_commander') || pilotHasRole('master_admin')); }
 
     // ── Pilots collection ─────────────────────────────────────
     match /pilots/{pilotId} {
