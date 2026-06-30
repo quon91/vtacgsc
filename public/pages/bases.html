@@ -194,14 +194,28 @@ document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click
   if (!toggle || !label || !menu) return;
   function positionMenu() {
     const r = label.getBoundingClientRect();
+    // If label has no real size (hidden/collapsed nav), fall back to a safe position
+    if (r.width === 0 && r.height === 0) {
+      menu.style.top  = '60px';
+      menu.style.left = '16px';
+      return;
+    }
     menu.style.top  = r.bottom + 'px';
-    menu.style.left = r.left + 'px';
+    menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
   }
-  toggle.addEventListener('change', () => { if (toggle.checked) positionMenu(); });
+  toggle.addEventListener('change', () => {
+    if (toggle.checked) { requestAnimationFrame(positionMenu); }
+  });
   window.addEventListener('resize', () => { if (toggle.checked) positionMenu(); });
+  window.addEventListener('scroll', () => { if (toggle.checked) positionMenu(); }, {passive:true});
   document.addEventListener('click', (e) => {
     if (toggle.checked && !e.target.closest('.nav-dropdown')) toggle.checked = false;
   });
+  // Close mobile nav drawer when a wing link is clicked
+  menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+    toggle.checked = false;
+    document.getElementById('nav-links')?.classList.remove('open');
+  }));
 })();
 
 </script>
