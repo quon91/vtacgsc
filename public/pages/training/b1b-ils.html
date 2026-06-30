@@ -6,18 +6,15 @@
 <title>ILS Approach — B-1B Lancer — VTAC GSC</title>
 <link rel="stylesheet" href="/css/main.css">
 <style>
-.phase-nav{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:0}
+.phase-nav{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:0}
 .phase-btn{padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;background:var(--card);border:1px solid var(--border);border-bottom:none;color:var(--text2);font-family:var(--sans);border-radius:8px 8px 0 0;transition:all .12s;white-space:nowrap}
 .phase-btn:hover{color:var(--text);background:var(--card2)}
 .phase-btn.active{background:var(--card2);color:var(--gold);border-color:var(--border2)}
-.phase-panel{display:none;padding:28px 0}
-.phase-panel.active{display:block}
+.phase-panel{display:none;padding:28px 0}.phase-panel.active{display:block}
 .fms{background:#050a08;border:1px solid #1a2e20;border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:12px;color:#5fe87a;line-height:1.8;margin-bottom:8px;white-space:pre;overflow-x:auto}
-.fms .hi{color:#ffe87a}
-.fms .dim{color:#1a3a22}
+.fms .hi{color:#ffe87a}.fms .dim{color:#1a3a22}
 .pfd{background:#060810;border:1px solid #1a2040;border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:12px;color:#8ab8ff;line-height:1.8;margin-bottom:8px;white-space:pre;overflow-x:auto}
-.pfd .grn{color:#5fe87a}
-.pfd .ann{background:#1a3a22;color:#5fe87a;padding:0 4px;border-radius:3px}
+.pfd .grn{color:#5fe87a}.pfd .ann{background:#1a3a22;color:#5fe87a;padding:0 4px;border-radius:3px}
 .ap-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
 .ap-btn{min-width:44px;padding:6px 8px;border-radius:6px;font-size:11px;font-weight:700;text-align:center;border:1px solid;font-family:var(--mono);position:relative}
 .ap-btn.on{background:#06241f;border-color:#1c8a76;color:#4dffea}
@@ -29,15 +26,17 @@
 .b-arm{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#2a1a00;color:#ffdd00;border:1px solid #aa8800}
 .b-cap{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#0a1a3a;color:#88ccff;border:1px solid #4488cc}
 .b-danger{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:rgba(208,64,64,.15);color:var(--red2);border:1px solid var(--red)}
-.cl{list-style:none;padding:0}
-.cl li{font-size:13px;color:var(--text2);padding:3px 0;display:flex;gap:8px;align-items:flex-start;line-height:1.6}
-.cl li::before{content:"▸";color:var(--gold);flex-shrink:0}
-.cl li strong{color:var(--text)}
-.freq-row{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:var(--card2);border-radius:6px;margin-bottom:4px}
+.cl{list-style:none;padding:0}.cl li{font-size:13px;color:var(--text2);padding:3px 0;display:flex;gap:8px;line-height:1.6}.cl li::before{content:"▸";color:var(--gold);flex-shrink:0}.cl li strong{color:var(--text)}
+.freq-row{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--card2);border-radius:6px;margin-bottom:4px;border-left:3px solid transparent}
+.freq-row.hi{border-left-color:var(--gold)}
 .freq-name{font-size:12px;color:var(--text2)}
 .freq-val{font-family:var(--mono);font-size:13px;color:var(--gold2);font-weight:600}
-.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}
-.back-link:hover{color:var(--gold)}
+.rwy-compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.rwy-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px}
+.rwy-hdr{font-size:14px;font-weight:800;color:var(--gold);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}.back-link:hover{color:var(--gold)}
+.source-note{font-size:11px;color:var(--text3);margin-top:16px;padding:8px 12px;background:var(--card2);border-radius:6px;border-left:2px solid var(--border2)}
+@media(max-width:600px){.rwy-compare{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -56,90 +55,219 @@
       <a href="/pages/flights.html">Flight Log</a>
       <a href="/pages/flight-plan.html">Flight Planner</a>
     </div>
-    <div class="nav-right">
-      <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
-    </div>
+    <div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div>
   </div>
 </nav>
 
 <section class="hero" style="padding:48px 24px 36px">
-  <div class="hero-eyebrow">7th Bomb Wing · B-1B Lancer · KDYS</div>
-  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">ILS <span>Approach</span></h1>
-  <p class="hero-sub" style="font-size:15px">Step-by-step FMS, NAV page, and autopilot setup for a full ILS from vectors to touchdown or go-around. Example: KDYS ILS RWY 34L — 109.9 / I-DYS / CRS 359°.</p>
+  <div class="hero-eyebrow" style="color:var(--gold)">7th Bomb Wing · B-1B Lancer · KDYS</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">ILS <span>Approach Guide</span></h1>
+  <p class="hero-sub" style="font-size:15px">Precision instrument approach procedures for Dyess AFB. Both Runway 16 and Runway 34 have published ILS approaches. All data sourced from FAA AirNav — effective 11 June 2026.</p>
 </section>
 
 <div class="container page-body">
   <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
 
   <div class="phase-nav">
-    <button class="phase-btn active" onclick="switchPhase('ils','setup')">1 — FMS Setup</button>
-    <button class="phase-btn" onclick="switchPhase('ils','pfd')">2 — PFD / APR Mode</button>
-    <button class="phase-btn" onclick="switchPhase('ils','seq')">3 — A/P Sequence</button>
-    <button class="phase-btn" onclick="switchPhase('ils','dh')">4 — DH &amp; Go-Around</button>
-    <button class="phase-btn" onclick="switchPhase('ils','ref')">5 — Quick Reference</button>
+    <button class="phase-btn active" onclick="switchPhase('ils','airfield')">1 — KDYS Airfield Data</button>
+    <button class="phase-btn" onclick="switchPhase('ils','setup')">2 — FMS Setup</button>
+    <button class="phase-btn" onclick="switchPhase('ils','pfd')">3 — PFD &amp; APR Mode</button>
+    <button class="phase-btn" onclick="switchPhase('ils','seq')">4 — A/P Sequence</button>
+    <button class="phase-btn" onclick="switchPhase('ils','dh')">5 — DH &amp; Go-Around</button>
+    <button class="phase-btn" onclick="switchPhase('ils','errors')">6 — Student Errors</button>
   </div>
 
-  <!-- PHASE 1 -->
-  <div id="ils-setup" class="phase-panel active">
+  <!-- PHASE 1 — KDYS AIRFIELD DATA -->
+  <div id="ils-airfield" class="phase-panel active">
     <div class="section">
-      <div class="section-label">Phase 1 — FMS setup before the approach</div>
-      <div class="grid-2">
+      <div class="section-label">KDYS — Dyess Air Force Base · Real FAA Data</div>
+
+      <div class="grid-2" style="margin-bottom:20px">
         <div class="card">
-          <div class="card-header"><div class="card-icon">1</div><div class="card-title">FMS NAV page — tune the ILS</div></div>
+          <div class="card-header"><div class="card-icon">📍</div><div class="card-title">Airport Overview</div></div>
           <div class="card-body">
-            <div class="fms">FMS → NAV
-NAV1          [<span class="hi">109.9</span>] →
- ---><span class="hi">LOC/ILS    [I-DYS]</span>
-CRS           [<span class="hi">359</span>] →
-NAV2          [0.000] →
-NAV MODE      [<span class="hi">NAV</span>] →</div>
-            <ul class="cl">
-              <li>Press <strong>NAV</strong> on the FMS keypad</li>
-              <li>Type <strong>109.9</strong> in the scratch pad → line-select into NAV1</li>
-              <li>Confirm ident shows <strong>LOC/ILS — I-DYS</strong></li>
-              <li>Set CRS to <strong>359°</strong> (inbound course for RWY 34L)</li>
-              <li>Confirm NAV MODE is <strong>NAV</strong> — not GPS</li>
-            </ul>
+            <div class="freq-row hi"><span class="freq-name">ICAO / FAA ID</span><span class="freq-val">KDYS / DYS</span></div>
+            <div class="freq-row"><span class="freq-name">Location</span><span class="freq-val">Abilene, TX</span></div>
+            <div class="freq-row"><span class="freq-name">Field Elevation</span><span class="freq-val">1,790 ft MSL</span></div>
+            <div class="freq-row"><span class="freq-name">Magnetic Variation</span><span class="freq-val">05°E</span></div>
+            <div class="freq-row"><span class="freq-name">B-1B Pattern</span><span class="freq-val">8,000 ft AGL overhead</span></div>
+            <div class="freq-row"><span class="freq-name">TPA Rectangular</span><span class="freq-val">1,210 ft AGL</span></div>
           </div>
         </div>
         <div class="card">
-          <div class="card-header"><div class="card-icon">2</div><div class="card-title">FMS PERF → APPR page — set DH</div></div>
+          <div class="card-header"><div class="card-icon">📻</div><div class="card-title">Communications</div></div>
+          <div class="card-body">
+            <div class="freq-row hi"><span class="freq-name">ATIS / ASOS</span><span class="freq-val">269.175</span></div>
+            <div class="freq-row"><span class="freq-name">Ground</span><span class="freq-val">118.35 / 275.8</span></div>
+            <div class="freq-row hi"><span class="freq-name">Tower</span><span class="freq-val">133.0 / 257.675</span></div>
+            <div class="freq-row"><span class="freq-name">Approach (East)</span><span class="freq-val">125.0</span></div>
+            <div class="freq-row"><span class="freq-name">Approach (West)</span><span class="freq-val">127.2</span></div>
+            <div class="freq-row"><span class="freq-name">Command Post</span><span class="freq-val">311.0 (RAYMOND 37)</span></div>
+            <div class="freq-row"><span class="freq-name">Emergency</span><span class="freq-val">121.5 / 243.0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">Runway 16/34 — Primary ILS Runway</div>
+      <div class="rwy-compare">
+        <div class="rwy-card">
+          <div class="rwy-hdr">▼ RUNWAY 34</div>
+          <div class="freq-row hi"><span class="freq-name">Magnetic Heading</span><span class="freq-val">340°</span></div>
+          <div class="freq-row"><span class="freq-name">Runway Length</span><span class="freq-val">13,500 ft</span></div>
+          <div class="freq-row"><span class="freq-name">Width</span><span class="freq-val">300 ft</span></div>
+          <div class="freq-row"><span class="freq-name">Surface</span><span class="freq-val">Concrete</span></div>
+          <div class="freq-row"><span class="freq-name">Threshold Elevation</span><span class="freq-val">1,787.6 ft MSL</span></div>
+          <div class="freq-row"><span class="freq-name">PAPI</span><span class="freq-val">4-light, left side · 2.50°</span></div>
+          <div class="freq-row"><span class="freq-name">Approach Lights</span><span class="freq-val">ALSF-1 (2,400 ft CAT I)</span></div>
+          <div class="freq-row hi"><span class="freq-name">Instrument Approach</span><span class="freq-val">ILS (HI-X and W)</span></div>
+          <div class="freq-row"><span class="freq-name">Traffic Pattern</span><span class="freq-val">Left</span></div>
+        </div>
+        <div class="rwy-card">
+          <div class="rwy-hdr">▼ RUNWAY 16</div>
+          <div class="freq-row hi"><span class="freq-name">Magnetic Heading</span><span class="freq-val">160°</span></div>
+          <div class="freq-row"><span class="freq-name">Runway Length</span><span class="freq-val">13,500 ft</span></div>
+          <div class="freq-row"><span class="freq-name">Width</span><span class="freq-val">300 ft</span></div>
+          <div class="freq-row"><span class="freq-name">Surface</span><span class="freq-val">Concrete</span></div>
+          <div class="freq-row"><span class="freq-name">Threshold Elevation</span><span class="freq-val">1,790.3 ft MSL</span></div>
+          <div class="freq-row"><span class="freq-name">PAPI</span><span class="freq-val">4-light, left side · 2.60°</span></div>
+          <div class="freq-row"><span class="freq-name">Approach Lights</span><span class="freq-val">ALSF-1 (2,400 ft CAT I)</span></div>
+          <div class="freq-row hi"><span class="freq-name">Instrument Approach</span><span class="freq-val">ILS (HI-X and W)</span></div>
+          <div class="freq-row"><span class="freq-name">Traffic Pattern</span><span class="freq-val">Left</span></div>
+        </div>
+      </div>
+
+      <div class="section-label">Assault Strips (Transition / Special Ops)</div>
+      <div class="rwy-compare">
+        <div class="rwy-card">
+          <div class="rwy-hdr">Runway 164/344</div>
+          <div class="freq-row"><span class="freq-name">Length</span><span class="freq-val">3,498 ft</span></div>
+          <div class="freq-row"><span class="freq-name">Width</span><span class="freq-val">60 ft</span></div>
+          <div class="freq-row"><span class="freq-name">Surface</span><span class="freq-val">Asphalt</span></div>
+          <div class="freq-row"><span class="freq-name">Instrument Approach</span><span class="freq-val">None — PPR + brief req'd</span></div>
+        </div>
+        <div class="rwy-card">
+          <div class="rwy-hdr">Runway 163/343</div>
+          <div class="freq-row"><span class="freq-name">Length</span><span class="freq-val">3,500 ft</span></div>
+          <div class="freq-row"><span class="freq-name">Width</span><span class="freq-val">60 ft</span></div>
+          <div class="freq-row"><span class="freq-name">Surface</span><span class="freq-val">Dirt</span></div>
+          <div class="freq-row"><span class="freq-name">Restriction</span><span class="freq-val">Landing zone CLOSED</span></div>
+        </div>
+      </div>
+
+      <div class="section-label">Published Approach Types — RWY 16 &amp; 34</div>
+      <div class="card">
+        <div class="card-body" style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Approach</th><th>RWY 16</th><th>RWY 34</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td><strong>HI-ILS OR LOC X</strong></td><td>✓ Published</td><td>✓ Published</td><td>High-altitude military version — used by B-1B in MSFS training profile</td></tr>
+              <tr><td><strong>ILS OR LOC W</strong></td><td>✓ Published</td><td>✓ Published</td><td>Standard CAT I ILS — most commonly simulated</td></tr>
+              <tr><td><strong>VOR/DME</strong></td><td>✓ Published</td><td>✓ Published</td><td>Non-precision — see VOR guide</td></tr>
+              <tr><td><strong>HI-TACAN X</strong></td><td>✓ Published</td><td>✓ Published</td><td>Military TACAN — not modeled in KwikFlight</td></tr>
+              <tr><td><strong>TACAN W</strong></td><td>✓ Published</td><td>✓ Published</td><td>Military TACAN — not modeled in KwikFlight</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="card-header"><div class="card-icon">📡</div><div class="card-title">Nearby Navaids</div></div>
+        <div class="card-body">
+          <div class="freq-row hi"><span class="freq-name">ABILENE VORTAC (ABI)</span><span class="freq-val">113.70 · R-165 / 3.8 NM</span></div>
+          <div class="freq-row"><span class="freq-name">TUSCOLA VOR/DME (TQA)</span><span class="freq-val">114.85 · R-340 / 11.1 NM</span></div>
+          <div class="freq-row"><span class="freq-name">TOMHI NDB (AB)</span><span class="freq-val">353 kHz · 303° / 11.7 NM</span></div>
+        </div>
+      </div>
+
+      <div class="alert alert-warn" style="margin-top:14px">
+        <strong>Real-world notes from FAA remarks:</strong> B-1B requires minimum ceiling/visibility 1,500 ft / 3 SM and runway surface DRY for local operations. B-52 aircraft approaching KDYS must provide at least 2–4 hrs notice before arrival for airfield prep. PPR required for all transient aircraft — valid ±30 min of scheduled landing time.
+      </div>
+      <div class="source-note">Data source: FAA AirNav (airnav.com/airport/kdys) · Effective 11 June 2026. NOT FOR NAVIGATION — for simulation training reference only.</div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 — FMS SETUP -->
+  <div id="ils-setup" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 2 — FMS setup before the approach</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-icon">1</div><div class="card-title">Step 1 — FMS NAV page: tune the ILS</div></div>
+          <div class="card-body">
+            <div class="fms">FMS → NAV
+NAV1          [<span class="hi">109.9</span>] →
+ ---><span class="hi">LOC/ILS    [I-DYS]</span>   ← RWY 34
+CRS           [<span class="hi">340</span>] →
+NAV MODE      [<span class="hi">NAV</span>] →
+
+── or for RWY 16 ──
+NAV1          [<span class="hi">108.9</span>] →
+ ---><span class="hi">LOC/ILS    [I-DYS]</span>   ← RWY 16
+CRS           [<span class="hi">160</span>] →</div>
+            <ul class="cl">
+              <li>Press <strong>NAV</strong> on the FMS keypad</li>
+              <li>Type the ILS frequency into the scratch pad → line-select into NAV1</li>
+              <li>Confirm ident shows <strong>LOC/ILS</strong> and correct ident code</li>
+              <li>Set CRS to the <strong>inbound runway heading</strong> (340° for RWY 34, 160° for RWY 16)</li>
+              <li>Confirm NAV MODE = <strong>NAV</strong>, not GPS</li>
+            </ul>
+            <div class="alert alert-warn" style="margin-top:10px">ILS frequency and DH values for RWY 16 and 34 must be confirmed from current approach plates before each flight. Frequencies shown are representative — always verify against current charts.</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-icon">2</div><div class="card-title">Step 2 — FMS PERF → APPR page</div></div>
           <div class="card-body">
             <div class="fms">FMS → PERF → CRZ PG → APPR PG
 APPR PAGE
-FLAPS --> <span class="hi">17°</span>
-VREF  --> <span class="hi">□□□ Kt</span>   ← auto-compute
-DH <span class="hi">□□□□</span> RADIO         ← enter DH from plate
-LAND QNH --> <span class="hi">29.92</span> inHg
+FLAPS  --> <span class="hi">17°</span>
+VREF   --> <span class="hi">□□□ Kt</span>   ← auto-computes
+DH <span class="hi">□□□□</span> RADIO        ← enter DH from plate
+LAND QNH --> <span class="hi">29.92</span>  ← update from ATIS
 &lt;--CRZ PG</div>
             <ul class="cl">
-              <li>Enter <strong>DH from approach plate</strong> (typically 200 ft HAT for CAT I)</li>
-              <li>Click VREF to auto-compute landing speed</li>
-              <li>Update QNH from current ATIS</li>
+              <li>Enter <strong>DH from the approach plate</strong> in the DH field — not MDA</li>
+              <li>VREF auto-computes from aircraft weight — click to confirm</li>
+              <li>Update QNH from ATIS (KDYS ATIS: 269.175)</li>
+              <li>Both approaches (RWY 16 and 34) have ALSF-1 CAT I approach lighting</li>
             </ul>
-            <div class="alert alert-warn" style="margin-top:10px">Enter the <strong>Decision Height (DH)</strong> here, not MDA. ILS is a precision approach — you're looking for the runway at DH, not MDA.</div>
+          </div>
+        </div>
+        <div class="card span-2">
+          <div class="card-header"><div class="card-icon">📋</div><div class="card-title">Runway 16 vs 34 — which to use?</div></div>
+          <div class="card-body" style="overflow-x:auto">
+            <table class="data-table">
+              <thead><tr><th>Factor</th><th>RWY 34</th><th>RWY 16</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Inbound heading</strong></td><td>340° (northbound)</td><td>160° (southbound)</td></tr>
+                <tr><td><strong>Threshold elevation</strong></td><td>1,787.6 ft MSL</td><td>1,790.3 ft MSL</td></tr>
+                <tr><td><strong>PAPI glideslope angle</strong></td><td>2.50°</td><td>2.60°</td></tr>
+                <tr><td><strong>Preferred wind</strong></td><td>Southerly winds (tail → north)</td><td>Northerly winds (tail → south)</td></tr>
+                <tr><td><strong>ILS type available</strong></td><td>HI-X and W variants</td><td>HI-X and W variants</td></tr>
+              </tbody>
+            </table>
+            <div class="alert alert-info" style="margin-top:10px">KDYS prevailing winds are typically from the south and southwest — Runway 34 (northbound landing, into a southerly headwind) is the most common active runway for arrivals at Dyess.</div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- PHASE 2 -->
+  <!-- PHASE 3 — PFD & APR -->
   <div id="ils-pfd" class="phase-panel">
     <div class="section">
-      <div class="section-label">Phase 2 — PFD softkey and APR mode</div>
+      <div class="section-label">Phase 3 — PFD softkey and APR mode</div>
       <div class="grid-2">
         <div class="card">
           <div class="card-header"><div class="card-icon">1</div><div class="card-title">Set PFD softkey to ILS</div></div>
           <div class="card-body">
             <div class="pfd">VSD | ADF | <span class="ann">ILS</span> | NAV1 | GPS
-                  ↑ press this</div>
+                   ↑ must be here</div>
             <ul class="cl">
-              <li>The PFD nav mode softkey controls what the compass rose deviation needle tracks</li>
-              <li>For ILS: set to <strong>ILS</strong> — this shows the LOC needle and activates ILS bars in HUD mode</li>
-              <li>Wrong softkey → APR captures nothing</li>
+              <li>PFD softkey controls what the compass-rose deviation needle tracks</li>
+              <li>For ILS: must be set to <strong>ILS</strong> — shows the LOC needle and activates ILS bars in HUD mode</li>
+              <li>Wrong softkey = APR mode captures nothing, even if frequency is tuned correctly</li>
             </ul>
-            <div class="alert alert-error" style="margin-top:10px">This is the most common student error. APR mode needs the PFD set to <strong>ILS</strong> — if it's on GPS or NAV1 the localizer will never capture.</div>
+            <div class="alert alert-error" style="margin-top:10px"><strong>Most common student error at KDYS.</strong> APR mode needs PFD = ILS. GPS or NAV1 → localizer will never capture, approach will fail silently.</div>
           </div>
         </div>
         <div class="card">
@@ -154,10 +282,59 @@ LAND QNH --> <span class="hi">29.92</span> inHg
               <div class="ap-btn arm">APR</div>
             </div>
             <ul class="cl">
-              <li>Press <strong>APR</strong> — button shows amber/orange = LOC armed</li>
-              <li>Keep HDG hold active — aircraft stays on ATC vector heading</li>
-              <li>When LOC needle comes alive (within ~30° of final): APR auto-captures LOC → <strong>HDG drops out</strong></li>
-              <li>APR button turns green = LOC captured</li>
+              <li>Press <strong>APR</strong> — button turns amber/orange = LOC armed, waiting</li>
+              <li>Keep HDG hold — holds ATC vector heading until intercept</li>
+              <li>LOC alive within ~30° of final course → APR captures LOC → <strong>HDG drops automatically</strong></li>
+              <li>APR button turns green = LOC captured, tracking centerline</li>
+            </ul>
+            <div class="alert alert-warn" style="margin-top:10px">Arm APR while within 30° of the inbound course. Arming too early (more than 30° off) risks a non-sequenced capture or overfly of the localizer.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4 — SEQUENCE -->
+  <div id="ils-seq" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 4 — Full autopilot sequence from vectors to DH</div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><div class="card-icon blue">▶</div><div class="card-title">Complete A/P mode sequence</div></div>
+        <div class="card-body" style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Phase</th><th>AP</th><th>ALT</th><th>HDG</th><th>NAV</th><th>ATH</th><th>APR</th><th>What happens</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Vectors</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td>HDG holds ATC heading. ALT holds assigned altitude.</td></tr>
+              <tr><td><strong>Arm APR</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-arm">ARM</span></td><td>APR armed, orange — waiting for LOC signal to go alive.</td></tr>
+              <tr><td><strong>LOC capture</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">drops</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-cap">CAP</span></td><td>HDG drops out automatically. APR green, tracking LOC centerline.</td></tr>
+              <tr><td><strong>G/S capture</strong></td><td><span class="b-on">ON</span></td><td><span class="b-cap">G/S</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-cap">CAP</span></td><td>ALT changes to G/S annunciation. Aircraft descends on glideslope automatically.</td></tr>
+              <tr><td><strong>2,500 ft AGL</strong></td><td><span class="b-on">ON</span></td><td><span class="b-cap">G/S</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-danger">ATH OFF</span></td><td><span class="b-cap">CAP</span></td><td>ATH disengages automatically. Take over throttle manually — maintain VREF.</td></tr>
+              <tr><td><strong>At DH</strong></td><td><span class="b-off">DISENGAGE</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td>Disengage AP. Visual: land. No visual: go-around immediately.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-icon">!</div><div class="card-title">ATH critical note — 2,500 ft AGL</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li>Autothrottle <strong>disengages automatically below 2,500 ft AGL</strong></li>
+              <li>At KDYS (field elevation 1,790 ft MSL), 2,500 ft AGL = ~4,290 ft MSL</li>
+              <li>This means ATH drops out <strong>well above the runway</strong> — not on short final</li>
+              <li>Take over throttle immediately — set SPD knob to VREF and manage manually for the rest of the approach</li>
+            </ul>
+            <div class="alert alert-error" style="margin-top:10px">Students who rely on ATH to hold VREF through touchdown will lose speed control and may become dangerously slow in the flare. Monitor airspeed manually from the ATH cutoff point.</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-icon">!</div><div class="card-title">KDYS-specific call-outs</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li>"Dyess Approach, <em>[callsign]</em>, with information <em>[ATIS letter]</em>, 20 miles east, request ILS RWY 34"</li>
+              <li>Expect vectors to final from Abilene Approach (125.0 East / 127.2 West)</li>
+              <li>Switch to Dyess Tower (133.0 UHF: 257.675) when instructed</li>
+              <li>UHF-equipped aircraft shall use <strong>257.675</strong> to max extent — per KDYS remarks</li>
             </ul>
           </div>
         </div>
@@ -165,103 +342,109 @@ LAND QNH --> <span class="hi">29.92</span> inHg
     </div>
   </div>
 
-  <!-- PHASE 3 -->
-  <div id="ils-seq" class="phase-panel">
-    <div class="section">
-      <div class="section-label">Phase 3 — Full autopilot sequence from vectors to DH</div>
-      <div class="card">
-        <div class="card-header"><div class="card-icon blue">▶</div><div class="card-title">Complete A/P mode sequence</div></div>
-        <div class="card-body" style="overflow-x:auto">
-          <table class="data-table">
-            <thead><tr><th>Phase</th><th>AP</th><th>ALT</th><th>HDG</th><th>NAV</th><th>ATH</th><th>APR</th><th>What happens</th></tr></thead>
-            <tbody>
-              <tr><td><strong>Vectors</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td>HDG holds ATC heading</td></tr>
-              <tr><td><strong>Arm APR</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-arm">ARM</span></td><td>APR armed — waiting for LOC</td></tr>
-              <tr><td><strong>LOC capture</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">drops</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-cap">CAP</span></td><td>HDG drops, APR tracks LOC</td></tr>
-              <tr><td><strong>G/S capture</strong></td><td><span class="b-on">ON</span></td><td><span class="b-cap">G/S</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-cap">CAP</span></td><td>ALT changes to G/S — descending</td></tr>
-              <tr><td><strong>At DH</strong></td><td><span class="b-off">OFF</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td>Disengage AP — land or go-around</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PHASE 4 -->
+  <!-- PHASE 5 — DH & GO-AROUND -->
   <div id="ils-dh" class="phase-panel">
     <div class="section">
-      <div class="section-label">Phase 4 — Decision Height and Go-Around</div>
+      <div class="section-label">Phase 5 — Decision Height and Go-Around</div>
       <div class="grid-2">
         <div class="card">
           <div class="card-header"><div class="card-icon">1</div><div class="card-title">At Decision Height</div></div>
           <div class="card-body">
             <ul class="cl">
-              <li>At DH: look for runway environment</li>
-              <li>Runway in sight and landing assured → disengage AP, land normally</li>
-              <li>No runway contact at DH → immediate go-around</li>
+              <li>DH is a <strong>hard decision point</strong> — not a target to cross first and then look</li>
+              <li>Look out for: runway lights, approach lights (ALSF-1 at KDYS), threshold markings, or touchdown zone markings</li>
+              <li>Any of those in sight + landing assured → disengage AP, transition to visual landing</li>
+              <li>Nothing in sight at DH → <strong>immediate go-around, no hesitation</strong></li>
             </ul>
-            <div class="alert alert-error" style="margin-top:10px">DH is a hard decision point. You must have the runway or approach lights in sight to continue below it. Never "peek" below DH hoping to find it.</div>
+            <div class="alert alert-error" style="margin-top:10px">KDYS has ALSF-1 approach lighting on both runways (2,400 ft of high-intensity centerline + sequenced flashers). Seeing the approach lights counts as visual contact for continuing — but you cannot descend below DH on lights alone unless runway environment is clearly visible.</div>
           </div>
         </div>
         <div class="card">
           <div class="card-header"><div class="card-icon red">!</div><div class="card-title">Go-Around procedure</div></div>
           <div class="card-body">
             <ul class="cl">
-              <li>Disengage AP</li>
-              <li>Full power — positive rate — gear up</li>
-              <li>Climb runway heading to missed approach altitude</li>
-              <li>Published missed approach: climb to <strong>3,000 ft</strong>, turn as published</li>
-              <li>Notify ATC: <em>"KDYS Tower, [callsign], going around"</em></li>
+              <li><strong>Full power</strong> — smooth, continuous advancement to prevent compressor stall</li>
+              <li><strong>Positive climb rate</strong> established → gear up</li>
+              <li>Climb runway heading — runway 34 missed approach: climb northbound to published altitude</li>
+              <li>Runway 16 missed approach: climb southbound — check current plate for published procedure</li>
+              <li>Contact Dyess Tower: <em>"Dyess Tower, [callsign], going around"</em></li>
+              <li>Expect vectors back for another approach or divert instructions</li>
             </ul>
           </div>
         </div>
         <div class="card span-2">
-          <div class="card-header"><div class="card-icon red">!</div><div class="card-title">Common student errors</div></div>
+          <div class="card-header"><div class="card-icon">📋</div><div class="card-title">KDYS Approach Quick-Reference — Both Runways</div></div>
           <div class="card-body">
-            <ul class="cl">
-              <li><strong>Wrong PFD softkey</strong> → LOC won't capture. Check softkey is ILS, not GPS.</li>
-              <li><strong>NAV MODE set to GPS</strong> in FMS → APR won't work. NAV MODE must be NAV.</li>
-              <li><strong>APR armed too early</strong> (more than 30° off final) → LOC may not sequence correctly. Arm APR when established within 30° of the inbound course.</li>
-              <li><strong>Re-engaging HDG after LOC capture</strong> → instantly kills the LOC track. Once APR is green, leave HDG alone.</li>
-              <li><strong>Forgetting to set DH in APPR page</strong> → no DH callout from the FMS PERF system.</li>
-            </ul>
+            <div class="rwy-compare">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">RWY 34 (Primary)</div>
+                <div class="freq-row hi"><span class="freq-name">Inbound Course</span><span class="freq-val">340°</span></div>
+                <div class="freq-row"><span class="freq-name">Threshold Elev</span><span class="freq-val">1,787.6 ft MSL</span></div>
+                <div class="freq-row"><span class="freq-name">PAPI Angle</span><span class="freq-val">2.50°</span></div>
+                <div class="freq-row"><span class="freq-name">Runway Length</span><span class="freq-val">13,500 ft</span></div>
+                <div class="freq-row"><span class="freq-name">Approach Lights</span><span class="freq-val">ALSF-1 (2,400 ft)</span></div>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">RWY 16</div>
+                <div class="freq-row hi"><span class="freq-name">Inbound Course</span><span class="freq-val">160°</span></div>
+                <div class="freq-row"><span class="freq-name">Threshold Elev</span><span class="freq-val">1,790.3 ft MSL</span></div>
+                <div class="freq-row"><span class="freq-name">PAPI Angle</span><span class="freq-val">2.60°</span></div>
+                <div class="freq-row"><span class="freq-name">Runway Length</span><span class="freq-val">13,500 ft</span></div>
+                <div class="freq-row"><span class="freq-name">Approach Lights</span><span class="freq-val">ALSF-1 (2,400 ft)</span></div>
+              </div>
+            </div>
+            <div class="source-note">ILS frequencies and DH/DA values must be verified from current FAA approach charts before each flight. NOT FOR NAVIGATION.</div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- PHASE 5 -->
-  <div id="ils-ref" class="phase-panel">
+  <!-- PHASE 6 — STUDENT ERRORS -->
+  <div id="ils-errors" class="phase-panel">
     <div class="section">
-      <div class="section-label">Phase 5 — Quick reference card</div>
+      <div class="section-label">Phase 6 — Common student errors and instructor coaching cues</div>
       <div class="grid-2">
-        <div class="card">
-          <div class="card-header"><div class="card-icon">📋</div><div class="card-title">KDYS ILS RWY 34L</div></div>
-          <div class="card-body">
-            <div class="freq-row"><span class="freq-name">Frequency</span><span class="freq-val">109.9</span></div>
-            <div class="freq-row"><span class="freq-name">Identifier</span><span class="freq-val">I-DYS</span></div>
-            <div class="freq-row"><span class="freq-name">Inbound Course</span><span class="freq-val">359°</span></div>
-            <div class="freq-row"><span class="freq-name">Glideslope</span><span class="freq-val">3.0°</span></div>
-            <div class="freq-row"><span class="freq-name">Decision Height</span><span class="freq-val">200 ft HAT</span></div>
-            <div class="freq-row"><span class="freq-name">FAF</span><span class="freq-val">MUCHO</span></div>
-            <div class="freq-row"><span class="freq-name">Field Elevation</span><span class="freq-val">1,789 ft MSL</span></div>
-            <div class="freq-row"><span class="freq-name">Runway Length</span><span class="freq-val">13,498 ft</span></div>
+        <div class="card span-2">
+          <div class="card-header"><div class="card-icon red">!</div><div class="card-title">Error matrix — ILS at KDYS</div></div>
+          <div class="card-body" style="overflow-x:auto">
+            <table class="data-table">
+              <thead><tr><th>Error</th><th>What the student does</th><th>What goes wrong</th><th>Coaching cue</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Wrong PFD softkey</strong></td><td>Leaves PFD on GPS or NAV1</td><td>APR mode arms but never captures LOC — aircraft continues on HDG indefinitely</td><td>"Check your PFD softkey — it needs to be ILS, not GPS"</td></tr>
+                <tr><td><strong>NAV MODE = GPS</strong></td><td>Leaves FMS NAV MODE on GPS</td><td>APR mode won't function correctly even with correct frequency</td><td>"FMS NAV page — what does your NAV MODE show?"</td></tr>
+                <tr><td><strong>APR armed too early</strong></td><td>Arms APR when more than 30° off final</td><td>LOC may not capture correctly, or aircraft overshoots centerline</td><td>"Hold off on APR until you're within 30° of the inbound course"</td></tr>
+                <tr><td><strong>Re-engages HDG after LOC</strong></td><td>Presses HDG after APR goes green</td><td>Instantly overrides LOC track — aircraft turns away from centerline</td><td>"Leave HDG alone — APR is tracking, you broke it"</td></tr>
+                <tr><td><strong>Ignores ATH cutoff</strong></td><td>Doesn't take throttle at 2,500 ft AGL</td><td>Speed decays silently below VREF — dangerously slow by the flare</td><td>"ATH is gone — where's your airspeed right now?"</td></tr>
+                <tr><td><strong>Peeking below DH</strong></td><td>Continues past DH hoping to find the runway</td><td>Descends into instrument conditions below ILS minimum — safety of flight</td><td>"That was DH — go around now"</td></tr>
+                <tr><td><strong>Wrong inbound course</strong></td><td>Sets CRS to 359° for RWY 34 instead of 340°</td><td>LOC course deflection shown incorrectly — approach appears off even on centerline</td><td>"What's the runway magnetic heading? Set that in CRS."</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
         <div class="card">
-          <div class="card-header"><div class="card-icon">📋</div><div class="card-title">ILS Setup Checklist</div></div>
+          <div class="card-header"><div class="card-icon">📋</div><div class="card-title">Pre-approach setup checklist — student brief item</div></div>
           <div class="card-body">
             <ul class="cl">
-              <li>FMS NAV → NAV1 = <strong>109.9</strong>, ident = I-DYS</li>
-              <li>FMS NAV → CRS = <strong>359°</strong></li>
+              <li>State the active runway and inbound course out loud before setup</li>
+              <li>FMS NAV → NAV1 frequency tuned, ident confirmed</li>
+              <li>FMS NAV → CRS set to runway magnetic heading</li>
               <li>FMS NAV → NAV MODE = <strong>NAV</strong></li>
-              <li>FMS PERF → APPR → DH from plate</li>
-              <li>PFD softkey = <strong>ILS</strong></li>
-              <li>Press <strong>APR</strong> — arm before LOC alive</li>
-              <li>Keep HDG until LOC captures (AP drops it)</li>
-              <li>G/S captures automatically once established</li>
-              <li>Disengage AP at DH — land or go-around</li>
+              <li>FMS PERF → APPR → DH entered from plate</li>
+              <li>PFD softkey = <strong>ILS</strong> confirmed</li>
+              <li>ATH set to VREF on SPD knob — ready to hand-fly below 2,500 ft AGL</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-icon">!</div><div class="card-title">KDYS airfield-specific gotchas</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li><strong>B-1B minimum VMC:</strong> ceiling 1,500 ft, visibility 3 SM, runway DRY required for local ops — per KDYS airfield remarks</li>
+              <li><strong>UHF comms:</strong> UHF-equipped aircraft use 257.675 for Tower — not the VHF 133.0 primary</li>
+              <li><strong>Pattern altitude:</strong> B-1B overhead pattern is 8,000 ft AGL — much higher than a typical airliner</li>
+              <li><strong>PAPI angles differ</strong> between RWY 16 (2.60°) and RWY 34 (2.50°) — subtle but worth noting on visual approach</li>
+              <li><strong>ATH drops at 4,290 ft MSL</strong> (2,500 ft AGL above 1,790 ft field elevation) — this is early in the approach</li>
             </ul>
           </div>
         </div>
@@ -273,7 +456,7 @@ LAND QNH --> <span class="hi">29.92</span> inHg
 
 <footer class="site-footer">
   <p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p>
-  <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
+  <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force. Airfield data from FAA AirNav — NOT FOR NAVIGATION.</p>
 </footer>
 <script>
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
