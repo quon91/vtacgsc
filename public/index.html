@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Virtual Global Strike Command — Elite virtual bomber squadron for MSFS 2020/2024">
+<title>VTAC Global Strike Command</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.wing-cards { display: grid; grid-template-columns: repeat(auto-fill,minmax(300px,1fr)); gap: 18px; }
+.wing-card  {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 24px; text-decoration: none; color: inherit;
+  transition: border-color .15s, transform .15s; display: block;
+}
+.wing-card:hover { transform: translateY(-3px); }
+.wing-card.w-7bw   { border-top: 3px solid var(--gold); }
+.wing-card.w-509bw { border-top: 3px solid var(--blue); }
+.wing-card.w-2bw   { border-top: 3px solid var(--green); }
+.wing-card:hover.w-7bw   { border-color: var(--gold); }
+.wing-card:hover.w-509bw { border-color: var(--blue); }
+.wing-card:hover.w-2bw   { border-color: var(--green); }
+.wc-label { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 6px; }
+.wc-name  { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
+.wc-base  { font-size: 13px; color: var(--text2); margin-bottom: 14px; }
+.wc-squads { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.wc-squad  { font-size: 12px; color: var(--text2); display: flex; align-items: center; gap-6px; }
+.wc-aircraft { font-size: 12px; font-weight: 600; }
+.wc-link { font-size: 12px; font-weight: 600; margin-top: 8px; }
+
+/* slideshow */
+.hero-slideshow { position: relative; overflow: hidden; max-height: 500px; background: #000; }
+.slide-track { display: flex; transition: transform .6s cubic-bezier(.4,0,.2,1); }
+.slide { min-width: 100%; max-height: 500px; position: relative; }
+.slide img { width: 100%; max-height: 500px; object-fit: cover; display: block; }
+.slide-cap { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,.8)); padding: 32px 24px 16px; color: #fff; font-size: 15px; font-weight: 500; }
+.ss-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.2); color: #fff; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; transition: background .15s; }
+.ss-arrow:hover { background: rgba(200,169,81,.6); }
+.ss-arrow.left { left: 14px; } .ss-arrow.right { right: 14px; }
+.ss-dots { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 7px; z-index: 10; }
+.ss-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.4); cursor: pointer; transition: all .2s; }
+.ss-dot.active { background: var(--gold); transform: scale(1.4); }
+.no-slides { display: flex; align-items: center; justify-content: center; min-height: 280px; background: linear-gradient(160deg,#050710,var(--bg)); border-bottom: 1px solid var(--border); }
+.no-slides-inner { text-align: center; }
+
+.stats-strip { background: var(--surface); border-bottom: 1px solid var(--border); padding: 20px 24px; }
+.stats-inner { max-width: 1240px; margin: 0 auto; display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; }
+.strip-stat .val { font-size: 28px; font-weight: 900; color: var(--gold); line-height: 1; }
+.strip-stat .lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .07em; margin-top: 2px; }
+
+.news-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 10px; }
+.news-date { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+.news-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.news-body { font-size: 13px; color: var(--text2); line-height: 1.65; }
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html">
+      <div class="nav-emblem" id="nav-emblem">GSC</div>
+      <div class="nav-brand-text">
+        <div class="org">Virtual</div>
+        <div class="name" id="nav-org-name">Global Strike Command</div>
+      </div>
+    </a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html" class="active">Home</a>
+      <div class="nav-dropdown">
+        <input type="checkbox" id="wings-toggle">
+        <label for="wings-toggle" class="nav-drop-btn">Wings ▾</label>
+        <div class="nav-dropdown-menu">
+          <a href="/pages/wing.html?id=7bw">7th Bomb Wing</a>
+          <a href="/pages/wing.html?id=509bw">509th Bomb Wing</a>
+          <a href="/pages/wing.html?id=2bw">2nd Bomb Wing</a>
+        </div>
+      </div>
+      <a href="/pages/history.html">History</a>
+      <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html">Training</a>
+      <a href="/pages/flights.html">Flight Log</a>
+    </div>
+    <div class="nav-right">
+      <div id="nav-auth-area">
+        <a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a>
+        <a href="/pages/register.html" class="btn btn-primary btn-sm">Apply to Join</a>
+      </div>
+      <div id="nav-user-area" style="display:none">
+        <a href="/pages/profile.html" class="btn btn-outline btn-sm" style="font-size:11px">My Profile</a>
+        <div class="nav-pilot-info">
+          <img class="nav-avatar" id="nav-avatar" src="" alt="">
+          <div>
+            <div class="nav-pilot-name" id="nav-pilot-name"></div>
+            <div class="nav-rank-badge" id="nav-rank-badge"></div>
+          </div>
+        </div>
+      </div>
+      <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── SLIDESHOW ── -->
+<div id="slideshow-wrap"></div>
+
+<!-- ── STATS STRIP ── -->
+<div class="stats-strip">
+  <div class="stats-inner">
+    <div class="strip-stat"><div class="val" id="stat-pilots">—</div><div class="lbl">Active Pilots</div></div>
+    <div class="strip-stat"><div class="val" id="stat-flights">—</div><div class="lbl">Total Flights</div></div>
+    <div class="strip-stat"><div class="val" id="stat-hours">—</div><div class="lbl">Flight Hours</div></div>
+    <div class="strip-stat"><div class="val">3</div><div class="lbl">Wings</div></div>
+    <div class="strip-stat"><div class="val">6</div><div class="lbl">Squadrons</div></div>
+    <div class="strip-stat"><div class="val">2</div><div class="lbl">Aircraft Types</div></div>
+  </div>
+</div>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-eyebrow">Virtual · Air Force Global Strike Command</div>
+  <h1 class="hero-title">Global Strike <span>Command</span></h1>
+  <p class="hero-sub" id="hero-sub-text">Elite virtual bomber operations across MSFS 2020 and 2024. Three wings. Six squadrons. One command.</p>
+  <div class="hero-actions">
+    <a href="/pages/register.html" class="btn btn-primary">Apply to Join</a>
+    <a href="/pages/history.html" class="btn btn-outline">Our History</a>
+    <a href="/pages/training/index.html" class="btn btn-outline">Training Guides</a>
+  </div>
+</section>
+
+<!-- ── MAIN ── -->
+<div class="container page-body">
+
+  <!-- Wings -->
+  <div class="section">
+    <div class="section-label">Our Wings</div>
+    <div class="wing-cards">
+
+      <a href="/pages/wing.html?id=7bw" class="wing-card w-7bw">
+        <div class="wc-label" style="color:var(--gold)">7th Bomb Wing</div>
+        <div class="wc-name" style="color:var(--gold)">7 BW</div>
+        <div class="wc-base">📍 Dyess AFB (KDYS) — Abilene, TX</div>
+        <div class="wc-squads">
+          <div class="wc-squad">⬥ 28th Bomb Squadron "Mohawks"</div>
+          <div class="wc-squad">⬥ 9th Bomb Squadron "Tigers"</div>
+        </div>
+        <div class="wc-aircraft" style="color:var(--gold)">B-1B Lancer</div>
+        <div class="wc-link" style="color:var(--gold)">View Wing →</div>
+      </a>
+
+      <a href="/pages/wing.html?id=509bw" class="wing-card w-509bw">
+        <div class="wc-label" style="color:var(--blue)">509th Bomb Wing</div>
+        <div class="wc-name" style="color:var(--blue)">509 BW</div>
+        <div class="wc-base">📍 Whiteman AFB (KSZL) — Knob Noster, MO</div>
+        <div class="wc-squads">
+          <div class="wc-squad">⬥ 13th Bomb Squadron "Devil's Advocates"</div>
+        </div>
+        <div class="wc-aircraft" style="color:var(--blue)">B-2 Spirit</div>
+        <div class="wc-link" style="color:var(--blue)">View Wing →</div>
+      </a>
+
+      <a href="/pages/wing.html?id=2bw" class="wing-card w-2bw">
+        <div class="wc-label" style="color:var(--green)">2nd Bomb Wing</div>
+        <div class="wc-name" style="color:var(--green)">2 BW</div>
+        <div class="wc-base">📍 Barksdale AFB (KBAD) — Bossier City, LA</div>
+        <div class="wc-squads">
+          <div class="wc-squad">⬥ 96th Bomb Squadron</div>
+          <div class="wc-squad">⬥ 343rd Bomb Squadron</div>
+          <div class="wc-squad">⬥ 11th Bomb Squadron</div>
+        </div>
+        <div class="wc-aircraft" style="color:var(--green)">B-52H Stratofortress</div>
+        <div class="wc-link" style="color:var(--green)">View Wing →</div>
+      </a>
+
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- News + Recent Flights -->
+  <div class="grid-2">
+    <div class="section">
+      <div class="section-label">Command News</div>
+      <div id="news-list">
+        <div class="news-item">
+          <div class="news-date">Founding</div>
+          <div class="news-title">VTAC Global Strike Command Established</div>
+          <div class="news-body">Virtual Global Strike Command is now operational. Three wings activated. Pilot applications now open. Join the premier virtual bomber community for MSFS 2020 and 2024.</div>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">Recent Flights</div>
+      <div id="recent-flights">
+        <div class="empty-state"><div class="icon">✈</div><p>No flights logged yet.<br>Be the first to log a flight.</p></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── FOOTER ── -->
+<footer class="site-footer">
+  <p id="footer-text">Virtual Global Strike Command · VTAC GSC · MSFS 2020 / 2024 · vtacgsc.com</p>
+  <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
+</footer>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+function toggleMobileNav() { document.getElementById('nav-links').classList.toggle('open'); }
+
+// ── AUTH STATE ────────────────────────────────────────────────
+function onAuthReady(user, pilot) {
+  if (user && pilot && pilot.status === 'active') {
+    document.getElementById('nav-auth-area').style.display = 'none';
+    const ua = document.getElementById('nav-user-area');
+    ua.style.display = 'flex';
+    document.getElementById('nav-pilot-name').textContent = pilot.callsign || pilot.displayName;
+    document.getElementById('nav-rank-badge').textContent = getRankAbbr(pilot.rank || 'ab');
+    if (pilot.avatarUrl) document.getElementById('nav-avatar').src = pilot.avatarUrl;
+  }
+}
+
+// ── LOAD STATS ────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const [pilotsSnap, flightsSnap] = await Promise.all([
+      db.collection('pilots').where('status','==','active').get(),
+      db.collection('flights').get()
+    ]);
+    document.getElementById('stat-pilots').textContent  = pilotsSnap.size;
+    document.getElementById('stat-flights').textContent = flightsSnap.size;
+    let totalMins = 0;
+    flightsSnap.forEach(d => totalMins += (d.data().durationMins || 0));
+    document.getElementById('stat-hours').textContent = Math.round(totalMins / 60);
+  } catch(e) {}
+}
+
+// ── LOAD RECENT FLIGHTS ───────────────────────────────────────
+async function loadRecentFlights() {
+  try {
+    const snap = await db.collection('flights')
+      .orderBy('loggedAt','desc').limit(5).get();
+    if (snap.empty) return;
+    const list = document.getElementById('recent-flights');
+    list.innerHTML = '';
+    snap.forEach(d => {
+      const f = d.data();
+      list.innerHTML += `
+        <div class="flight-row fade-in">
+          <div>
+            <div class="flight-route">${f.departure} <span class="flight-arrow">→</span> ${f.arrival}</div>
+            <div class="flight-meta">${f.pilotCallsign || 'Unknown'} · ${f.aircraft || '—'} · ${formatDate(f.loggedAt)}</div>
+          </div>
+          <div class="flight-duration">${Math.floor((f.durationMins||0)/60)}h ${(f.durationMins||0)%60}m</div>
+        </div>`;
+    });
+  } catch(e) {}
+}
+
+// ── SLIDESHOW ─────────────────────────────────────────────────
+let ssSlides = [], ssIdx = 0, ssTimer = null;
+async function loadSlideshow() {
+  try {
+    const snap = await db.collection('settings').doc('slideshow').get();
+    ssSlides = snap.exists ? (snap.data().slides || []) : [];
+  } catch(e) {}
+  renderSlideshow();
+}
+function renderSlideshow() {
+  const wrap = document.getElementById('slideshow-wrap');
+  if (!ssSlides.length) {
+    wrap.innerHTML = `<div class="no-slides"><div class="no-slides-inner"><div style="font-size:40px;opacity:.3">✈</div><div style="color:var(--text3);font-size:14px;margin-top:8px">VTAC Global Strike Command</div></div></div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="hero-slideshow">
+      <div class="slide-track" id="ss-track">
+        ${ssSlides.map(s=>`<div class="slide"><img src="${s.url}" alt="${s.caption||''}" onerror="this.parentElement.style.display='none'">${s.caption?`<div class="slide-cap">${s.caption}</div>`:''}</div>`).join('')}
+      </div>
+      <button class="ss-arrow left" onclick="ssMove(-1)">‹</button>
+      <button class="ss-arrow right" onclick="ssMove(1)">›</button>
+      <div class="ss-dots" id="ss-dots">
+        ${ssSlides.map((_,i)=>`<div class="ss-dot ${i===0?'active':''}" onclick="ssGoTo(${i})"></div>`).join('')}
+      </div>
+    </div>`;
+  if (ssSlides.length > 1) ssTimer = setInterval(()=>ssMove(1), 5500);
+}
+function ssMove(d) { ssIdx=(ssIdx+d+ssSlides.length)%ssSlides.length; ssApply(); }
+function ssGoTo(i) { ssIdx=i; ssApply(); }
+function ssApply() {
+  const t=document.getElementById('ss-track');
+  if(t) t.style.transform=`translateX(-${ssIdx*100}%)`;
+  document.querySelectorAll('.ss-dot').forEach((d,i)=>d.classList.toggle('active',i===ssIdx));
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+loadStats();
+loadRecentFlights();
+loadSlideshow();
+
+// Position the fixed-position Wings dropdown under its button
+(function() {
+  const toggle = document.getElementById('wings-toggle');
+  const label  = document.querySelector('label[for="wings-toggle"]');
+  const menu   = document.querySelector('.nav-dropdown-menu');
+  if (!toggle || !label || !menu) return;
+  function positionMenu() {
+    const r = label.getBoundingClientRect();
+    menu.style.top  = r.bottom + 'px';
+    menu.style.left = r.left + 'px';
+  }
+  toggle.addEventListener('change', () => { if (toggle.checked) positionMenu(); });
+  window.addEventListener('resize', () => { if (toggle.checked) positionMenu(); });
+  document.addEventListener('click', (e) => {
+    if (toggle.checked && !e.target.closest('.nav-dropdown')) toggle.checked = false;
+  });
+})();
+
+</script>
+</body>
+</html>
