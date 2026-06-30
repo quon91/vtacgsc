@@ -81,39 +81,43 @@ const RANKS = [
 // Categorized real-world USAF decorations. Master admin (and anyone
 // granted the 'award_medals' permission) can award these to pilots.
 const MEDALS_CATALOG = [
-  { id:'medal_honor',          name:'Medal of Honor',                    category:'Personal Decoration', tier:1 },
-  { id:'afcross',              name:'Air Force Cross',                   category:'Personal Decoration', tier:2 },
-  { id:'dsm',                  name:'Defense Distinguished Service Medal', category:'Personal Decoration', tier:3 },
-  { id:'dsm_af',               name:'Distinguished Service Medal',       category:'Personal Decoration', tier:3 },
-  { id:'silver_star',          name:'Silver Star',                       category:'Personal Decoration', tier:4 },
-  { id:'def_superior',         name:'Defense Superior Service Medal',    category:'Personal Decoration', tier:5 },
-  { id:'legion_merit',         name:'Legion of Merit',                   category:'Personal Decoration', tier:5 },
-  { id:'dfc',                  name:'Distinguished Flying Cross',        category:'Personal Decoration', tier:6 },
-  { id:'airmans_medal',        name:"Airman's Medal",                    category:'Personal Decoration', tier:6 },
-  { id:'bronze_star',          name:'Bronze Star Medal',                 category:'Personal Decoration', tier:7 },
-  { id:'purple_heart',         name:'Purple Heart',                      category:'Personal Decoration', tier:7 },
-  { id:'meritorious_svc',      name:'Meritorious Service Medal',         category:'Personal Decoration', tier:8 },
-  { id:'air_medal',            name:'Air Medal',                         category:'Personal Decoration', tier:9 },
-  { id:'aerial_achievement',   name:'Aerial Achievement Medal',          category:'Personal Decoration', tier:10 },
-  { id:'commendation',         name:'Air Force Commendation Medal',      category:'Personal Decoration', tier:11 },
-  { id:'achievement',          name:'Air Force Achievement Medal',       category:'Personal Decoration', tier:12 },
+  // ── Personal Decorations — stripe patterns approximate real USAF ribbons ──
+  { id:'medal_honor',        name:'Medal of Honor',                             category:'Personal Decoration', tier:1,  stripes:['#5b92e5'] },
+  { id:'afcross',            name:'Air Force Cross',                            category:'Personal Decoration', tier:2,  stripes:['#5b92e5','#ffffff','#5b92e5'] },
+  { id:'dsm',                name:'Defense Distinguished Service Medal',        category:'Personal Decoration', tier:3,  stripes:['#002868','#ffffff','#bf0a30','#ffffff','#002868'] },
+  { id:'dsm_af',             name:'Distinguished Service Medal',                category:'Personal Decoration', tier:3,  stripes:['#002868','#ffffff','#bf0a30'] },
+  { id:'silver_star',        name:'Silver Star',                                category:'Personal Decoration', tier:4,  stripes:['#bf0a30','#002868','#ffffff','#002868','#bf0a30'] },
+  { id:'def_superior',       name:'Defense Superior Service Medal',             category:'Personal Decoration', tier:5,  stripes:['#7c1c2c','#c9a04a','#7c1c2c'] },
+  { id:'legion_merit',       name:'Legion of Merit',                            category:'Personal Decoration', tier:5,  stripes:['#ffffff','#3d2b1f','#ffffff'] },
+  { id:'dfc',                name:'Distinguished Flying Cross',                 category:'Personal Decoration', tier:6,  stripes:['#bf0a30','#ffffff','#002868','#ffffff','#bf0a30'] },
+  { id:'airmans_medal',      name:"Airman's Medal",                             category:'Personal Decoration', tier:6,  stripes:['#002868','#bf0a30','#ffffff','#bf0a30','#002868'] },
+  { id:'bronze_star',        name:'Bronze Star Medal',                          category:'Personal Decoration', tier:7,  stripes:['#bf0a30','#ffffff','#002868','#ffffff','#bf0a30'] },
+  { id:'purple_heart',       name:'Purple Heart',                               category:'Personal Decoration', tier:7,  stripes:['#5b3a78','#ffffff','#5b3a78'] },
+  { id:'meritorious_svc',    name:'Meritorious Service Medal',                  category:'Personal Decoration', tier:8,  stripes:['#3c3b6e','#ffffff','#bf0a30','#ffffff','#3c3b6e'] },
+  { id:'air_medal',          name:'Air Medal',                                  category:'Personal Decoration', tier:9,  stripes:['#002868','#ffd700','#002868'] },
+  { id:'aerial_achievement', name:'Aerial Achievement Medal',                   category:'Personal Decoration', tier:10, stripes:['#5b92e5','#ffffff','#bf0a30','#ffffff','#5b92e5'] },
+  { id:'commendation',       name:'Air Force Commendation Medal',               category:'Personal Decoration', tier:11, stripes:['#bf0a30','#002868','#ffffff','#002868','#bf0a30'] },
+  { id:'achievement',        name:'Air Force Achievement Medal',                category:'Personal Decoration', tier:12, stripes:['#002868','#c9a04a','#bf0a30'] },
 
-  { id:'pres_unit',            name:'Presidential Unit Citation',        category:'Unit Award', tier:1 },
-  { id:'valorous_unit',        name:'Valorous Unit Award',               category:'Unit Award', tier:2 },
-  { id:'af_unit_award',        name:'Air Force Outstanding Unit Award',  category:'Unit Award', tier:3 },
-  { id:'af_org_excellence',    name:'Air Force Organizational Excellence Award', category:'Unit Award', tier:4 },
+  // ── Unit Awards ──
+  { id:'pres_unit',          name:'Presidential Unit Citation',                 category:'Unit Award', tier:1, stripes:['#002868','#ffffff','#bf0a30'] },
+  { id:'valorous_unit',      name:'Valorous Unit Award',                        category:'Unit Award', tier:2, stripes:['#bf0a30','#ffffff','#002868'] },
+  { id:'af_unit_award',      name:'Air Force Outstanding Unit Award',           category:'Unit Award', tier:3, stripes:['#5b92e5','#c9a04a','#5b92e5'] },
+  { id:'af_org_excellence',  name:'Air Force Organizational Excellence Award',  category:'Unit Award', tier:4, stripes:['#3c3b6e','#5b92e5','#3c3b6e'] },
 
-  { id:'good_conduct',         name:'Air Force Good Conduct Medal',      category:'Service Award', tier:1 },
-  { id:'longevity',            name:'Air Force Longevity Service Award', category:'Service Award', tier:2 },
-  { id:'training_ribbon',      name:'Air Force Training Ribbon',         category:'Service Award', tier:3 },
-  { id:'recruiter_ribbon',     name:'Air Force Recruiter Ribbon',        category:'Service Award', tier:4 },
-  { id:'small_arms',           name:'Air Force Small Arms Expert Marksmanship Ribbon', category:'Service Award', tier:5 },
+  // ── Service Awards ──
+  { id:'good_conduct',       name:'Air Force Good Conduct Medal',               category:'Service Award', tier:1, stripes:['#bf0a30','#5b92e5','#bf0a30'] },
+  { id:'longevity',          name:'Air Force Longevity Service Award',          category:'Service Award', tier:2, stripes:['#5b92e5','#ffffff','#5b92e5'] },
+  { id:'training_ribbon',    name:'Air Force Training Ribbon',                  category:'Service Award', tier:3, stripes:['#5b92e5','#ffd700','#5b92e5'] },
+  { id:'recruiter_ribbon',   name:'Air Force Recruiter Ribbon',                 category:'Service Award', tier:4, stripes:['#002868','#ffffff','#bf0a30','#ffffff','#002868'] },
+  { id:'small_arms',         name:'Air Force Small Arms Expert Marksmanship Ribbon', category:'Service Award', tier:5, stripes:['#3c3b6e','#ffd700'] },
 
-  { id:'combat_readiness',     name:'Combat Readiness Medal',            category:'Campaign / Service', tier:1 },
-  { id:'afem',                 name:'Armed Forces Expeditionary Medal',  category:'Campaign / Service', tier:2 },
-  { id:'afsm',                 name:'Armed Forces Service Medal',        category:'Campaign / Service', tier:3 },
-  { id:'humanitarian',         name:'Humanitarian Service Medal',        category:'Campaign / Service', tier:4 },
-  { id:'nato_medal',           name:'NATO Medal',                        category:'Campaign / Service', tier:5 },
+  // ── Campaign / Service Medals ──
+  { id:'combat_readiness',   name:'Combat Readiness Medal',                     category:'Campaign / Service', tier:1, stripes:['#bf0a30','#002868','#bf0a30'] },
+  { id:'afem',               name:'Armed Forces Expeditionary Medal',           category:'Campaign / Service', tier:2, stripes:['#3c3b6e','#ffffff','#bf0a30','#ffffff','#3c3b6e'] },
+  { id:'afsm',                name:'Armed Forces Service Medal',                category:'Campaign / Service', tier:3, stripes:['#002868','#5b92e5','#ffffff','#5b92e5','#002868'] },
+  { id:'humanitarian',       name:'Humanitarian Service Medal',                 category:'Campaign / Service', tier:4, stripes:['#5b92e5','#ffffff','#bf0a30'] },
+  { id:'nato_medal',          name:'NATO Medal',                                 category:'Campaign / Service', tier:5, stripes:['#5b92e5','#ffffff','#5b92e5'] },
 ];
 
 // ── PILOT / AIRCREW WINGS TIERS ──────────────────────────────────
@@ -122,6 +126,42 @@ const WINGS_BADGES = [
   { id:'wings_senior',  name:'Senior Pilot Wings',  tier:2, desc:'Awarded for sustained flight experience and proficiency.' },
   { id:'wings_command', name:'Command Pilot Wings', tier:3, desc:'The highest pilot rating, awarded for extensive flight leadership and experience.' },
 ];
+
+// ── RIBBON & WINGS SVG RENDERING ─────────────────────────────────
+// Renders an authentic-style ribbon bar (small rectangle with vertical stripes)
+// matching real USAF ribbon color patterns. Returns an <svg> string.
+function renderRibbonSVG(medalId, w, h) {
+  w = w || 44; h = h || 16;
+  const medal = MEDALS_CATALOG.find(m => m.id === medalId);
+  const stripes = medal?.stripes || ['#888888'];
+  const stripeW = w / stripes.length;
+  const rects = stripes.map((color, i) =>
+    `<rect x="${(i*stripeW).toFixed(2)}" y="0" width="${stripeW.toFixed(2)}" height="${h}" fill="${color}"/>`
+  ).join('');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:1px;box-shadow:0 1px 2px rgba(0,0,0,.4)">
+    ${rects}
+    <rect x="0" y="0" width="${w}" height="${h}" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="0.75"/>
+  </svg>`;
+}
+
+// Renders a pilot wings badge — shield + spread wings, with star tiers for Senior/Command
+function renderWingsBadgeSVG(badgeId, size) {
+  size = size || 32;
+  const tier = WINGS_BADGES.find(w => w.id === badgeId)?.tier || 1;
+  const starHtml = tier >= 2 ? `<circle cx="32" cy="16" r="3.2" fill="#1a1a1a"/>
+    <path d="M32 13.2l.7 2.1h2.2l-1.8 1.3.7 2.1-1.8-1.3-1.8 1.3.7-2.1-1.8-1.3h2.2z" fill="#c9a04a"/>` : '';
+  const wreathHtml = tier >= 3 ? `<path d="M22 16a10 10 0 0 1 20 0" fill="none" stroke="#c9a04a" stroke-width="1.2" stroke-dasharray="1.5,1.2"/>` : '';
+  return `<svg width="${size}" height="${size*0.5}" viewBox="0 0 64 32" xmlns="http://www.w3.org/2000/svg" style="display:block">
+    <!-- left wing -->
+    <path d="M30 16 C22 10, 10 9, 2 14 C10 17, 18 17, 24 19 C18 19, 10 21, 4 24 C12 26, 22 25, 28 21 Z" fill="#c9a04a" opacity="0.92"/>
+    <!-- right wing (mirrored) -->
+    <path d="M34 16 C42 10, 54 9, 62 14 C54 17, 46 17, 40 19 C46 19, 54 21, 60 24 C52 26, 42 25, 36 21 Z" fill="#c9a04a" opacity="0.92"/>
+    <!-- center shield -->
+    <path d="M32 9 L37 11 L37 19 C37 23 35 26 32 28 C29 26 27 23 27 19 L27 11 Z" fill="#1a1a1a" stroke="#c9a04a" stroke-width="1"/>
+    ${wreathHtml}
+    ${starHtml}
+  </svg>`;
+}
 
 
 const ALL_PERMISSIONS = [
