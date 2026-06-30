@@ -566,8 +566,8 @@ function renderEarnedWingsBadges(p) {
   const badges = p.wingsBadges || [];
   if (!badges.length) return;
   el.innerHTML = badges.map(b => `
-    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--border)">
-      <span style="font-size:22px">🎖</span>
+    <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:0.5px solid var(--border)">
+      ${renderWingsBadgeSVG(b.id, 48)}
       <div>
         <div style="font-size:14px;font-weight:700;color:var(--gold)">${b.name}</div>
         <div style="font-size:11px;color:var(--text3)">Awarded ${formatDate(b.awardedAt)}</div>
@@ -581,8 +581,8 @@ function renderEarnedMedals(p) {
   const medals = p.medals || [];
   if (!medals.length) return;
   el.innerHTML = medals.map(m => `
-    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--border)">
-      <span style="font-size:20px">🏅</span>
+    <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:0.5px solid var(--border)">
+      ${renderRibbonSVG(m.id, 50, 18)}
       <div>
         <div style="font-size:14px;font-weight:700;color:var(--text)">${m.name}</div>
         <div style="font-size:11px;color:var(--text3)">Awarded ${formatDate(m.awardedAt)}</div>

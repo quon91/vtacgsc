@@ -20,13 +20,20 @@
 .rs-item{text-align:center}
 .rs-val{font-size:16px;font-weight:800;color:var(--gold)}
 .rs-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
-.ribbon-row{display:flex;flex-wrap:wrap;gap:3px;margin-top:8px;width:100%}
-.ribbon{
-  width:26px;height:9px;border-radius:1px;
-  background:linear-gradient(180deg,var(--rc1,#888),var(--rc2,#666));
-  border:1px solid rgba(0,0,0,.3);
-  cursor:default;position:relative;
+.ribbon-row{display:flex;flex-wrap:wrap;gap:3px;margin-top:8px;width:100%;align-items:center}
+.ribbon-wrap{cursor:default;position:relative;transition:transform .12s}
+.ribbon-wrap:hover{transform:translateY(-2px)}
+.ribbon-tooltip{
+  position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:#0a0c14;border:1px solid var(--border2);border-radius:6px;
+  padding:5px 10px;font-size:11px;color:var(--text);white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity .15s;z-index:50;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);
 }
+.ribbon-wrap:hover .ribbon-tooltip{opacity:1}
+.wings-badge-row{display:flex;align-items:center;gap:6px;margin-top:6px}
+.wings-badge-wrap{cursor:default;position:relative;display:flex;align-items:center;gap:5px;background:rgba(200,169,81,.08);border:1px solid rgba(200,169,81,.25);border-radius:14px;padding:3px 10px 3px 6px}
+.wings-badge-label{font-size:10px;font-weight:700;color:var(--gold2)}
 .wings-badge-icon{
   font-size:10px;font-weight:700;background:rgba(200,169,81,.15);color:var(--gold2);
   border:1px solid rgba(200,169,81,.3);border-radius:10px;padding:2px 8px;
@@ -113,14 +120,6 @@ function filterRoster(wingId, btn) {
   renderRosterList();
 }
 
-// Simple ribbon color mapping so each decoration shows a distinct stripe pattern
-const ribbonColors = {
-  'Personal Decoration': ['#c8a951','#7a5c1a'],
-  'Unit Award':          ['#4a90d9','#1e4a7a'],
-  'Service Award':       ['#3dba6e','#1e6038'],
-  'Campaign / Service':  ['#9b59b6','#5a2e6b'],
-};
-
 function renderRosterList() {
   const q = document.getElementById('roster-search').value.toLowerCase();
   const el = document.getElementById('roster-list');
@@ -142,13 +141,17 @@ function renderRosterList() {
         <div class="roster-meta">${getRankName(p.rank||'rec')} · ${getWingName(p.wing)||'Unassigned'}${p.squadron?' · '+getSqName(p.wing,p.squadron):''}</div>
         <div class="roster-roles">
           ${roles.map(r=>`<span class="badge" style="background:${r.color}22;color:${r.color};border:1px solid ${r.color}55">${r.name}</span>`).join('')}
-          ${wingsBadges.map(w=>`<span class="wings-badge-icon">🎖 ${w.name}</span>`).join('')}
         </div>
-        ${medals.length ? `<div class="ribbon-row">${medals.map(m=>{
-          const cat = MEDALS_CATALOG.find(x=>x.id===m.id)?.category || 'Service Award';
-          const colors = ribbonColors[cat] || ['#888','#555'];
-          return `<div class="ribbon" style="--rc1:${colors[0]};--rc2:${colors[1]}" title="${m.name}"></div>`;
-        }).join('')}</div>` : ''}
+        ${wingsBadges.length ? `<div class="wings-badge-row">${wingsBadges.map(w=>`
+          <div class="wings-badge-wrap" title="${w.name}">
+            ${renderWingsBadgeSVG(w.id, 28)}
+            <span class="wings-badge-label">${w.name}</span>
+          </div>`).join('')}</div>` : ''}
+        ${medals.length ? `<div class="ribbon-row">${medals.map(m=>`
+          <div class="ribbon-wrap">
+            ${renderRibbonSVG(m.id, 40, 14)}
+            <div class="ribbon-tooltip">${m.name}</div>
+          </div>`).join('')}</div>` : ''}
       </div>
       <div class="roster-stats">
         <div class="rs-item"><div class="rs-val">${p.totalFlights||0}</div><div class="rs-lbl">Flights</div></div>

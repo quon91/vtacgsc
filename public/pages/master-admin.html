@@ -1231,6 +1231,7 @@ function renderMedalsCatalog() {
       <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin-bottom:8px">${cat}</div>
       ${MEDALS_CATALOG.filter(m=>m.category===cat).map(m => `
         <div class="pilot-row" style="background:var(--card2)">
+          <div style="flex-shrink:0">${renderRibbonSVG(m.id, 44, 16)}</div>
           <div class="pilot-row-info">
             <div class="pilot-row-name">${m.name}</div>
           </div>
@@ -1246,6 +1247,7 @@ function renderWingsBadges() {
   const el = document.getElementById('wings-badges-list');
   el.innerHTML = WINGS_BADGES.map(w => `
     <div class="pilot-row" style="background:var(--card2)">
+      <div style="flex-shrink:0">${renderWingsBadgeSVG(w.id, 40)}</div>
       <div class="pilot-row-info">
         <div class="pilot-row-name">${w.name}</div>
         <div class="pilot-row-meta">${w.desc}</div>
@@ -1263,9 +1265,9 @@ function renderCurrentMedals() {
   if (!medals.length && !wings.length) { el.innerHTML = '<div class="empty-state"><p>No medals or wings awarded yet</p></div>'; return; }
   el.innerHTML =
     (wings.length ? `<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Pilot Wings</div>` +
-      wings.map(w=>`<div class="pilot-row" style="background:var(--card2)"><div class="pilot-row-info"><div class="pilot-row-name">${w.name}</div><div class="pilot-row-meta">Awarded ${formatDate(w.awardedAt)}</div></div></div>`).join('') : '') +
+      wings.map(w=>`<div class="pilot-row" style="background:var(--card2)"><div style="flex-shrink:0">${renderWingsBadgeSVG(w.id, 36)}</div><div class="pilot-row-info"><div class="pilot-row-name">${w.name}</div><div class="pilot-row-meta">Awarded ${formatDate(w.awardedAt)}</div></div></div>`).join('') : '') +
     (medals.length ? `<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">Decorations</div>` +
-      medals.map(m=>`<div class="pilot-row" style="background:var(--card2)"><div class="pilot-row-info"><div class="pilot-row-name">${m.name}</div><div class="pilot-row-meta">Awarded ${formatDate(m.awardedAt)}</div></div></div>`).join('') : '');
+      medals.map(m=>`<div class="pilot-row" style="background:var(--card2)"><div style="flex-shrink:0">${renderRibbonSVG(m.id, 44, 16)}</div><div class="pilot-row-info"><div class="pilot-row-name">${m.name}</div><div class="pilot-row-meta">Awarded ${formatDate(m.awardedAt)}</div></div></div>`).join('') : '');
 }
 
 async function awardMedal(medalId, medalName) {
