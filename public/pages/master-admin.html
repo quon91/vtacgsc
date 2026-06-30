@@ -508,8 +508,27 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-<script src="/js/firebase-config.js"></script>
+<script src="/js/firebase-config.js?v=2"></script>
 <script>
+// ── SAFETY NET: guarantees the medal/wings SVG renderers exist even if
+// firebase-config.js failed to load, was cached stale, or is missing the
+// functions in a given deploy. Prevents a silent ReferenceError from
+// blanking the whole Medals & Awards panel.
+if (typeof renderRibbonSVG !== 'function') {
+  console.error('[VTAC] renderRibbonSVG missing from firebase-config.js — using fallback. Check /js/firebase-config.js deployed correctly.');
+  window.renderRibbonSVG = function(medalId, w, h) {
+    w = w || 44; h = h || 16;
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:1px;background:#888"></svg>`;
+  };
+}
+if (typeof renderWingsBadgeSVG !== 'function') {
+  console.error('[VTAC] renderWingsBadgeSVG missing from firebase-config.js — using fallback. Check /js/firebase-config.js deployed correctly.');
+  window.renderWingsBadgeSVG = function(badgeId, size) {
+    size = size || 32;
+    return `<svg width="${size}" height="${size*0.5}" viewBox="0 0 64 32" xmlns="http://www.w3.org/2000/svg" style="display:block;background:#888"></svg>`;
+  };
+}
+
 // ── AUTH GUARD ────────────────────────────────────────────────
 function onAuthReady(user, pilot) {
   if (!user) { window.location.href = '/pages/login.html'; return; }
