@@ -5,12 +5,14 @@
 // ═══════════════════════════════════════════════════════════════
 
 const firebaseConfig = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+  apiKey:            "AIzaSyBLdlfTeRz9BIRlEaw7M4QPmgrtFin9ueo",
+  authDomain:        "vtacgsc.firebaseapp.com",
+  databaseURL:       "https://vtacgsc-default-rtdb.firebaseio.com",
+  projectId:         "vtacgsc",
+  storageBucket:     "vtacgsc.firebasestorage.app",
+  messagingSenderId: "644890316006",
+  appId:             "1:644890316006:web:4b99f864c98f31f2d47f27",
+  measurementId:     "G-W1D1VE7C29"
 };
 
 // Initialize Firebase
