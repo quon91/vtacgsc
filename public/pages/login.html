@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login — vTAC GSC</title>
+<title>Login — VTAC GSC</title>
 <link rel="stylesheet" href="/css/main.css">
 <style>
 .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: radial-gradient(ellipse at top, rgba(200,169,81,.06) 0%, transparent 60%), var(--bg); }
@@ -36,7 +36,7 @@
     <form id="login-form" onsubmit="handleLogin(event)">
       <div class="form-group">
         <label>Email address</label>
-        <input type="email" id="email" placeholder="pilot@vTACgsc.com" required autocomplete="email">
+        <input type="email" id="email" placeholder="pilot@vtacgsc.com" required autocomplete="email">
       </div>
       <div class="form-group">
         <label>Password</label>
@@ -76,7 +76,7 @@ if (new URLSearchParams(location.search).get('denied')) {
 function onAuthReady(user, pilot) {
   if (!user) return;
   if (pilot?.status === 'active') {
-    if (pilot.role === 'master_admin') { window.location.href = '/pages/master-admin.html'; return; }
+    if (isMasterAdminPilot(pilot)) { window.location.href = '/pages/master-admin.html'; return; }
     window.location.href = '/pages/dashboard.html';
   } else if (pilot?.status === 'pending') {
     window.location.href = '/pages/pending.html';
@@ -106,7 +106,7 @@ async function handleLogin(e) {
     if (pilot.status === 'pending') { window.location.href = '/pages/pending.html'; return; }
     // Log last login
     await db.collection('pilots').doc(cred.user.uid).update({ lastLogin: firebase.firestore.FieldValue.serverTimestamp() });
-    if (pilot.role === 'master_admin') { window.location.href = '/pages/master-admin.html'; return; }
+    if (isMasterAdminPilot(pilot)) { window.location.href = '/pages/master-admin.html'; return; }
     window.location.href = '/pages/dashboard.html';
   } catch(err) {
     const msgs = { 'auth/user-not-found':'No account found with that email.', 'auth/wrong-password':'Incorrect password.', 'auth/too-many-requests':'Too many attempts. Please wait before trying again.', 'auth/invalid-email':'Invalid email address.' };

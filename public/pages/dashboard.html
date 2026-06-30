@@ -84,6 +84,17 @@
       <div id="my-recent-flights"><div class="empty-state" style="padding:20px"><p>No flights logged yet</p></div></div>
     </div>
   </div>
+
+  <div class="grid-2" style="margin-top:24px">
+    <div>
+      <div class="section-label">Pilot Wings Rating</div>
+      <div id="dash-wings-badges"><div class="empty-state" style="padding:20px"><p>No pilot wings rating awarded yet</p></div></div>
+    </div>
+    <div>
+      <div class="section-label">Decorations &amp; Ribbons</div>
+      <div id="dash-medals"><div class="empty-state" style="padding:20px"><p>No decorations awarded yet</p></div></div>
+    </div>
+  </div>
 </div>
 
 <footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
@@ -98,7 +109,7 @@ function toggleMobileNav(){document.getElementById('nav-links').classList.toggle
 
 function onAuthReady(user, pilot) {
   if (!user) { window.location.href = '/pages/login.html'; return; }
-  if (pilot?.role === 'master_admin') { window.location.href = '/pages/master-admin.html'; return; }
+  if (isMasterAdminPilot(pilot)) { window.location.href = '/pages/master-admin.html'; return; }
   if (!pilot) return;
 
   document.getElementById('dash-welcome').textContent = 'Welcome back, ' + (pilot.displayName || pilot.callsign);
@@ -108,6 +119,36 @@ function onAuthReady(user, pilot) {
   document.getElementById('my-wing-link').href = '/pages/wing.html?id=' + (pilot.wing || '7bw');
 
   loadMyFlights(user.uid);
+  renderDashWingsBadges(pilot);
+  renderDashMedals(pilot);
+}
+
+function renderDashWingsBadges(p) {
+  const el = document.getElementById('dash-wings-badges');
+  const badges = p.wingsBadges || [];
+  if (!badges.length) return;
+  el.innerHTML = badges.map(b => `
+    <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:0.5px solid var(--border)">
+      ${renderWingsBadgeSVG(b.id, 44)}
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--gold)">${b.name}</div>
+        <div style="font-size:11px;color:var(--text3)">Awarded ${formatDate(b.awardedAt)}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderDashMedals(p) {
+  const el = document.getElementById('dash-medals');
+  const medals = p.medals || [];
+  if (!medals.length) return;
+  el.innerHTML = medals.map(m => `
+    <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:0.5px solid var(--border)">
+      ${renderRibbonSVG(m.id, 46, 16)}
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${m.name}</div>
+        <div style="font-size:11px;color:var(--text3)">Awarded ${formatDate(m.awardedAt)}</div>
+      </div>
+    </div>`).join('');
 }
 
 async function loadMyFlights(uid) {
