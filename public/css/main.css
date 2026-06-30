@@ -130,7 +130,8 @@ code { background: var(--card2); border: 1px solid var(--border); border-radius:
   border-radius: 8px; min-width: 200px; padding: 6px 0;
   box-shadow: 0 8px 32px rgba(0,0,0,.5); z-index: 300;
 }
-.nav-dropdown:hover .nav-dropdown-menu { display: block; }
+.nav-dropdown-menu.open { display: block; }
+.nav-drop-btn.open { color: var(--gold); border-bottom-color: var(--gold); }
 .nav-dropdown-menu a { display: block; padding: 9px 16px; height: auto; font-size: 13px; border-bottom: none; letter-spacing: 0; text-transform: none; color: var(--text2); }
 .nav-dropdown-menu a:hover { background: var(--card2); color: var(--text); border-bottom-color: transparent; }
 .nav-sep { width: 1px; height: 28px; background: var(--border); flex-shrink: 0; margin: 0 6px; }
