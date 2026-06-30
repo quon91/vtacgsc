@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Training — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.training-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.wing-train-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:18px}
+.wtc-head{padding:18px 20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border)}
+.wtc-name{font-size:17px;font-weight:700;color:var(--text)}
+.wtc-aircraft{font-size:12px;color:var(--text2)}
+.module-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;padding:18px 20px}
+.module-card{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:14px;text-decoration:none;transition:border-color .15s}
+.module-card:hover{border-color:var(--gold)}
+.module-icon{font-size:20px;margin-bottom:6px}
+.module-title{font-size:13px;font-weight:600;color:var(--text)}
+.module-desc{font-size:11px;color:var(--text3);margin-top:3px}
+.edit-pencil{background:rgba(200,169,81,.12);border:1px solid rgba(200,169,81,.3);color:var(--gold);border-radius:6px;padding:4px 11px;font-size:11px;cursor:pointer;font-family:var(--sans);display:none;align-items:center;gap:4px;margin-left:auto}
+.editable-mode .edit-pencil{display:inline-flex}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a>
+      <div class="nav-dropdown">
+        <input type="checkbox" id="wings-toggle">
+        <label for="wings-toggle" class="nav-drop-btn">Wings ▾</label>
+        <div class="nav-dropdown-menu">
+          <a href="/pages/wing.html?id=7bw">7th Bomb Wing</a>
+          <a href="/pages/wing.html?id=509bw">509th Bomb Wing</a>
+          <a href="/pages/wing.html?id=2bw">2nd Bomb Wing</a>
+        </div>
+      </div>
+      <a href="/pages/history.html">History</a>
+      <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html" class="active">Training</a>
+      <a href="/pages/flights.html">Flight Log</a>
+    </div>
+    <div class="nav-right" id="nav-right-area"><a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a></div>
+    <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+  </div>
+</nav>
+
+<div class="training-hero">
+  <div class="hero-eyebrow">Instructor Resources</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Training <span>Center</span></h1>
+  <p class="hero-sub" style="font-size:14px">Aircraft-specific training guides, checklists, and syllabi for every wing.</p>
+</div>
+
+<div class="container page-body">
+  <div id="training-list"><div class="empty-state"><p>Loading training modules...</p></div></div>
+</div>
+
+<!-- EDIT MODULES MODAL -->
+<div class="modal-overlay" id="modules-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">Edit Training Modules</div>
+    <div class="modal-sub" id="modules-wing-name"></div>
+    <input type="hidden" id="modules-wing-id">
+    <div id="module-rows" style="margin-bottom:12px"></div>
+    <button type="button" class="btn btn-outline btn-sm" onclick="addModuleRow()">+ Add Module</button>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modules-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveModules()">Save</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
+
+let allWingsData = {}, currentPilotRole=null, currentPilotWing=null, moduleRows=[];
+
+const defaultModules = {
+  '7bw':   [{icon:'🎯',title:'ILS Approach',desc:'B-1B precision approach',url:'/pages/training/b1b-ils.html'},{icon:'📖',title:'Glossary',desc:'B-1B terminology',url:'/pages/training/b1b-glossary.html'},{icon:'✅',title:'QRC Checklist',desc:'Quick reference checklist',url:'/pages/training/b1b-qrc.html'}],
+  '509bw': [{icon:'🎯',title:'ILS Approach',desc:'B-2 precision approach',url:'#'},{icon:'📖',title:'Glossary',desc:'B-2 terminology',url:'#'}],
+  '2bw':   [{icon:'🎯',title:'ILS Approach',desc:'B-52 precision approach',url:'#'},{icon:'📖',title:'Glossary',desc:'B-52 terminology',url:'#'}],
+};
+
+function onAuthReady(user, pilot) {
+  const navArea = document.getElementById('nav-right-area');
+  if (user && pilot?.status === 'active') {
+    navArea.innerHTML = `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
+    currentPilotRole = pilot.role;
+    currentPilotWing = pilot.wing;
+    if (pilot.role === 'master_admin' || pilot.role === 'wing_commander') {
+      document.body.classList.add('editable-mode');
+    }
+  }
+  loadTraining();
+}
+function canEditWing(wingId) {
+  return currentPilotRole === 'master_admin' || (currentPilotRole === 'wing_commander' && currentPilotWing === wingId);
+}
+
+async function loadTraining() {
+  allWingsData = {...WINGS};
+  try {
+    const snap = await db.collection('wings').get();
+    snap.forEach(d => { allWingsData[d.id] = {...(allWingsData[d.id]||{}), ...d.data(), id:d.id}; });
+  } catch(e) {}
+  renderTraining();
+}
+
+function renderTraining() {
+  const el = document.getElementById('training-list');
+  const entries = Object.entries(allWingsData);
+  el.innerHTML = entries.map(([wingId,wing]) => {
+    const modules = wing.trainingModules || defaultModules[wingId] || [];
+    const color = wing.color||'#c8a951';
+    return `
+    <div class="wing-train-card">
+      <div class="wtc-head">
+        <div>
+          <div class="wtc-name" style="color:${color}">${wing.name}</div>
+          <div class="wtc-aircraft">${(wing.aircraft||[]).join(', ')}</div>
+        </div>
+        ${canEditWing(wingId)?`<button class="edit-pencil" onclick="openModulesEditor('${wingId}')">✏ Edit Modules</button>`:''}
+      </div>
+      <div class="module-grid">
+        ${modules.length ? modules.map(m=>`
+          <a href="${m.url}" class="module-card">
+            <div class="module-icon">${m.icon||'📘'}</div>
+            <div class="module-title">${m.title}</div>
+            <div class="module-desc">${m.desc||''}</div>
+          </a>`).join('') : '<div style="font-size:13px;color:var(--text3);padding:10px">No training modules added yet</div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openModulesEditor(wingId) {
+  document.getElementById('modules-wing-id').value = wingId;
+  document.getElementById('modules-wing-name').textContent = allWingsData[wingId]?.name;
+  moduleRows = JSON.parse(JSON.stringify(allWingsData[wingId]?.trainingModules || defaultModules[wingId] || []));
+  renderModuleRows();
+  document.getElementById('modules-modal').classList.add('open');
+}
+function renderModuleRows() {
+  document.getElementById('module-rows').innerHTML = moduleRows.map((m,i)=>`
+    <div style="display:grid;grid-template-columns:50px 1fr 1fr;gap:6px;margin-bottom:6px">
+      <input type="text" value="${m.icon||''}" placeholder="🎯" oninput="moduleRows[${i}].icon=this.value" style="text-align:center">
+      <input type="text" value="${m.title||''}" placeholder="Module title" oninput="moduleRows[${i}].title=this.value">
+      <input type="text" value="${m.url||''}" placeholder="/pages/..." oninput="moduleRows[${i}].url=this.value">
+    </div>`).join('') || '<div style="font-size:12px;color:var(--text3)">No modules — add one below</div>';
+}
+function addModuleRow() { moduleRows.push({icon:'📘',title:'',url:'#'}); renderModuleRows(); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+async function saveModules() {
+  const wingId = document.getElementById('modules-wing-id').value;
+  try {
+    await db.collection('wings').doc(wingId).set({ trainingModules: moduleRows }, {merge:true});
+    allWingsData[wingId].trainingModules = moduleRows;
+    renderTraining();
+    closeModal('modules-modal');
+    toast('Modules saved!');
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+</script>
+</body>
+</html>
