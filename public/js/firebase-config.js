@@ -75,7 +75,53 @@ const RANKS = [
   { id: 'gen',   name: 'General',             abbr: 'Gen',  level: 17 },
 ];
 
-// ── PERMISSIONS — the full list of things a role can be allowed to do ──
+// ── USAF MEDALS & DECORATIONS CATALOG ───────────────────────────
+// Categorized real-world USAF decorations. Master admin (and anyone
+// granted the 'award_medals' permission) can award these to pilots.
+const MEDALS_CATALOG = [
+  { id:'medal_honor',          name:'Medal of Honor',                    category:'Personal Decoration', tier:1 },
+  { id:'afcross',              name:'Air Force Cross',                   category:'Personal Decoration', tier:2 },
+  { id:'dsm',                  name:'Defense Distinguished Service Medal', category:'Personal Decoration', tier:3 },
+  { id:'dsm_af',               name:'Distinguished Service Medal',       category:'Personal Decoration', tier:3 },
+  { id:'silver_star',          name:'Silver Star',                       category:'Personal Decoration', tier:4 },
+  { id:'def_superior',         name:'Defense Superior Service Medal',    category:'Personal Decoration', tier:5 },
+  { id:'legion_merit',         name:'Legion of Merit',                   category:'Personal Decoration', tier:5 },
+  { id:'dfc',                  name:'Distinguished Flying Cross',        category:'Personal Decoration', tier:6 },
+  { id:'airmans_medal',        name:"Airman's Medal",                    category:'Personal Decoration', tier:6 },
+  { id:'bronze_star',          name:'Bronze Star Medal',                 category:'Personal Decoration', tier:7 },
+  { id:'purple_heart',         name:'Purple Heart',                      category:'Personal Decoration', tier:7 },
+  { id:'meritorious_svc',      name:'Meritorious Service Medal',         category:'Personal Decoration', tier:8 },
+  { id:'air_medal',            name:'Air Medal',                         category:'Personal Decoration', tier:9 },
+  { id:'aerial_achievement',   name:'Aerial Achievement Medal',          category:'Personal Decoration', tier:10 },
+  { id:'commendation',         name:'Air Force Commendation Medal',      category:'Personal Decoration', tier:11 },
+  { id:'achievement',          name:'Air Force Achievement Medal',       category:'Personal Decoration', tier:12 },
+
+  { id:'pres_unit',            name:'Presidential Unit Citation',        category:'Unit Award', tier:1 },
+  { id:'valorous_unit',        name:'Valorous Unit Award',               category:'Unit Award', tier:2 },
+  { id:'af_unit_award',        name:'Air Force Outstanding Unit Award',  category:'Unit Award', tier:3 },
+  { id:'af_org_excellence',    name:'Air Force Organizational Excellence Award', category:'Unit Award', tier:4 },
+
+  { id:'good_conduct',         name:'Air Force Good Conduct Medal',      category:'Service Award', tier:1 },
+  { id:'longevity',            name:'Air Force Longevity Service Award', category:'Service Award', tier:2 },
+  { id:'training_ribbon',      name:'Air Force Training Ribbon',         category:'Service Award', tier:3 },
+  { id:'recruiter_ribbon',     name:'Air Force Recruiter Ribbon',        category:'Service Award', tier:4 },
+  { id:'small_arms',           name:'Air Force Small Arms Expert Marksmanship Ribbon', category:'Service Award', tier:5 },
+
+  { id:'combat_readiness',     name:'Combat Readiness Medal',            category:'Campaign / Service', tier:1 },
+  { id:'afem',                 name:'Armed Forces Expeditionary Medal',  category:'Campaign / Service', tier:2 },
+  { id:'afsm',                 name:'Armed Forces Service Medal',        category:'Campaign / Service', tier:3 },
+  { id:'humanitarian',         name:'Humanitarian Service Medal',        category:'Campaign / Service', tier:4 },
+  { id:'nato_medal',           name:'NATO Medal',                        category:'Campaign / Service', tier:5 },
+];
+
+// ── PILOT / AIRCREW WINGS TIERS ──────────────────────────────────
+const WINGS_BADGES = [
+  { id:'wings_basic',   name:'Basic Pilot Wings',   tier:1, desc:'Awarded upon completion of initial qualification training.' },
+  { id:'wings_senior',  name:'Senior Pilot Wings',  tier:2, desc:'Awarded for sustained flight experience and proficiency.' },
+  { id:'wings_command', name:'Command Pilot Wings', tier:3, desc:'The highest pilot rating, awarded for extensive flight leadership and experience.' },
+];
+
+
 const ALL_PERMISSIONS = [
   { id: 'approve_pilots',    label: 'Approve / deny pilot applications' },
   { id: 'edit_ranks',        label: 'Edit pilot ranks & roles' },
@@ -89,6 +135,7 @@ const ALL_PERMISSIONS = [
   { id: 'view_all_flights',  label: 'View all flight logs (not just own)' },
   { id: 'delete_flights',    label: 'Delete any flight log entry' },
   { id: 'manage_training',   label: 'Edit training modules' },
+  { id: 'award_medals',      label: 'Award medals, ribbons & pilot wings' },
 ];
 
 // ── ROLES — defaults used until Firestore overrides are loaded ─────────
@@ -123,29 +170,71 @@ async function loadRolesFromFirestore() {
   } catch(e) { console.warn('Could not load custom roles, using defaults', e); }
 }
 
-// Check if a pilot has a specific permission (master_admin always passes)
-function hasPermission(pilot, permId) {
-  if (!pilot) return false;
-  const role = ROLES[pilot.role];
-  if (!role) return false;
-  if (role.isMasterAdmin) return true; // master admin silently has everything
-  return (role.permissions || []).includes(permId);
+// ── MULTI-ROLE SUPPORT ──────────────────────────────────────────
+// Pilots can hold multiple roles (e.g. Wing Commander + Instructor).
+// pilot.roles is an array of role IDs. Falls back to legacy pilot.role
+// (single string) for older accounts that haven't been migrated yet.
+function getPilotRoleIds(pilot) {
+  if (!pilot) return ['pending'];
+  if (Array.isArray(pilot.roles) && pilot.roles.length) return pilot.roles;
+  if (pilot.role) return [pilot.role];
+  return ['pending'];
 }
 
-// Get the role info that should DISPLAY for a pilot (hides master_admin identity)
+// Check if a pilot has a specific permission across ANY of their roles
+function hasPermission(pilot, permId) {
+  if (!pilot) return false;
+  const roleIds = getPilotRoleIds(pilot);
+  for (const rid of roleIds) {
+    const role = ROLES[rid];
+    if (!role) continue;
+    if (role.isMasterAdmin) return true; // master admin silently has everything
+    if ((role.permissions || []).includes(permId)) return true;
+  }
+  return false;
+}
+
+function isMasterAdminPilot(pilot) {
+  return getPilotRoleIds(pilot).some(rid => ROLES[rid]?.isMasterAdmin);
+}
+
+// Get the SINGLE highest-authority role to display as primary (hides master_admin identity)
 function getDisplayRole(pilot) {
   if (!pilot) return ROLES.pending;
-  const role = ROLES[pilot.role];
-  if (!role) return ROLES.pending;
-  if (role.isMasterAdmin) {
-    // Show their chosen public title instead of "Master Admin"
+  const roleIds = getPilotRoleIds(pilot);
+  // If they hold the hidden master_admin role, show their chosen public title instead
+  if (roleIds.some(rid => ROLES[rid]?.isMasterAdmin)) {
     return {
       name:  pilot.publicTitle || 'Wing Commander',
       color: pilot.publicColor || '#c8a951',
-      level: role.level,
+      level: 99,
     };
   }
-  return role;
+  // Otherwise show whichever held role has the highest authority level
+  let best = null;
+  for (const rid of roleIds) {
+    const role = ROLES[rid];
+    if (!role) continue;
+    if (!best || (role.level||0) > (best.level||0)) best = role;
+  }
+  return best || ROLES.pending;
+}
+
+// Get ALL display roles for a pilot (for showing multiple badges, e.g. "Wing Commander" + "Instructor")
+function getAllDisplayRoles(pilot) {
+  if (!pilot) return [ROLES.pending];
+  const roleIds = getPilotRoleIds(pilot);
+  const out = [];
+  for (const rid of roleIds) {
+    const role = ROLES[rid];
+    if (!role) continue;
+    if (role.isMasterAdmin) {
+      out.push({ name: pilot.publicTitle || 'Wing Commander', color: pilot.publicColor || '#c8a951', level: 99 });
+    } else {
+      out.push(role);
+    }
+  }
+  return out.length ? out.sort((a,b)=>(b.level||0)-(a.level||0)) : [ROLES.pending];
 }
 
 // ── AUTH STATE WATCHER ───────────────────────────────────────
@@ -195,12 +284,13 @@ function requireAuth() {
 }
 function requireRole(minLevel) {
   requireAuth();
-  const role = currentPilot?.role || 'pending';
-  if ((ROLES[role]?.level || 0) < minLevel) window.location.href = '/index.html';
+  const roleIds = getPilotRoleIds(currentPilot);
+  const maxLevel = Math.max(0, ...roleIds.map(rid => ROLES[rid]?.level || 0));
+  if (maxLevel < minLevel) window.location.href = '/index.html';
 }
 function requireMasterAdmin() {
   requireAuth();
-  if (currentPilot?.role !== 'master_admin') window.location.href = '/index.html';
+  if (!isMasterAdminPilot(currentPilot)) window.location.href = '/index.html';
 }
 
 function getRankName(rankId) {
