@@ -1,6 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   VTAC GLOBAL STRIKE COMMAND — MAIN STYLESHEET
-   vtacgsc.com
+    MAINSTREET
 ═══════════════════════════════════════════════════════════ */
 
 :root {
@@ -318,3 +317,17 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
 
 /* ── PRINT ── */
 @media print { .site-nav,.site-footer { display: none !important; } body { background: #fff; color: #000; } }
+
+/* ── BULLETPROOF DROPDOWN (works without JS) ──────────────── */
+.nav-dropdown { position: relative; }
+.nav-dropdown > input[type="checkbox"] { display: none; }
+.nav-dropdown > label.nav-drop-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 0 14px; height: 60px; cursor: pointer;
+  font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--text2); border-bottom: 2px solid transparent;
+  white-space: nowrap; transition: all .14s; user-select: none;
+}
+.nav-dropdown > label.nav-drop-btn:hover { color: var(--text); }
+.nav-dropdown > input:checked ~ label.nav-drop-btn { color: var(--gold); border-bottom-color: var(--gold); }
+.nav-dropdown > input:checked ~ .nav-dropdown-menu { display: block; }
