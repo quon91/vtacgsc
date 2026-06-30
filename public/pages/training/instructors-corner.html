@@ -1,129 +1,820 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Instructor's Corner — VTAC GSC</title>
 <link rel="stylesheet" href="/css/main.css">
 <style>
+/* ── TABS ── */
 .ic-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:28px;overflow-x:auto}
-.ic-tab{padding:10px 20px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--sans);white-space:nowrap;transition:all .14s}
+.ic-tab{padding:10px 20px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;
+  border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;
+  border-right:none;font-family:var(--sans);white-space:nowrap;transition:all .14s}
 .ic-tab:hover{color:var(--text)}
-.ic-tab.active.t-b1b{color:var(--gold);border-bottom-color:var(--gold)}
-.ic-tab.active.t-b2{color:var(--blue);border-bottom-color:var(--blue)}
-.ic-tab.active.t-b52h{color:var(--green);border-bottom-color:var(--green)}
+.ic-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
 .ic-panel{display:none}.ic-panel.active{display:block}
-.cl{list-style:none;padding:0}.cl li{font-size:13px;color:var(--text2);padding:4px 0;display:flex;gap:8px;line-height:1.6}.cl li::before{content:"▸";flex-shrink:0}.cl li strong{color:var(--text)}
-.cl.gold li::before{color:var(--gold)}.cl.blue li::before{color:var(--blue)}.cl.grn li::before{color:var(--green)}
-.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}.back-link:hover{color:var(--gold)}
+
+/* ── CERT CARDS ── */
+.cert-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-bottom:24px}
+.cert-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;
+  border-left:4px solid var(--gold)}
+.cert-abbr{font-size:14px;font-weight:900;margin-bottom:2px}
+.cert-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+.cert-phase{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text3);margin-bottom:6px}
+.cert-desc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:12px}
+.cert-awards{font-size:11px;color:var(--text3);margin-bottom:10px}
+
+/* ── PILOT SEARCH ── */
+.pilot-search-row{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.pilot-result{background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:14px;display:flex;align-items:center;gap:14px;margin-bottom:10px;cursor:pointer;
+  transition:border-color .15s}
+.pilot-result:hover{border-color:var(--gold)}
+.pilot-result.selected{border-color:var(--gold);background:rgba(200,169,81,.06)}
+.pilot-avatar-sm{width:40px;height:40px;border-radius:50%;object-fit:cover;
+  border:2px solid var(--border2);flex-shrink:0;background:var(--card2);
+  display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:18px}
+
+/* ── QUAL STATUS SELECTOR ── */
+.qual-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:20px}
+.qual-opt{background:var(--card2);border:1px solid var(--border);border-radius:8px;
+  padding:12px;cursor:pointer;transition:all .15s;text-align:center}
+.qual-opt:hover{border-color:var(--border2)}
+.qual-opt.selected{background:rgba(200,169,81,.08)}
+.qual-abbr{font-size:18px;font-weight:900;margin-bottom:4px}
+.qual-name-sm{font-size:11px;color:var(--text2)}
+
+/* ── AWARDED CERTS ── */
+.awarded-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.awarded-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.awarded-date{font-size:11px;color:var(--text3);margin-top:6px}
+.awarded-by{font-size:11px;color:var(--text3)}
+.revoke-btn{float:right;padding:2px 8px;font-size:11px;border-radius:6px;
+  background:rgba(208,64,64,.1);color:var(--red2);border:1px solid rgba(208,64,64,.3);
+  cursor:pointer;font-family:var(--sans)}
+.revoke-btn:hover{background:rgba(208,64,64,.2)}
+
+/* ── PILOT RECORD PANEL ── */
+.record-header{display:flex;align-items:center;gap:16px;padding:18px;
+  background:var(--card2);border:1px solid var(--border);border-radius:12px;margin-bottom:20px}
+.record-avatar{width:60px;height:60px;border-radius:50%;object-fit:cover;
+  border:2px solid var(--gold);flex-shrink:0}
+.record-name{font-size:18px;font-weight:800}
+.record-rank{font-size:13px;color:var(--gold);margin-top:2px}
+.record-wing{font-size:12px;color:var(--text2);margin-top:2px}
+
+/* ── GRADING TABLES ── */
+.cl{list-style:none;padding:0}
+.cl li{font-size:13px;color:var(--text2);padding:4px 0;display:flex;gap:8px;line-height:1.6}
+.cl li::before{content:"▸";color:var(--gold);flex-shrink:0}
+.cl li strong{color:var(--text)}
 </style>
 </head>
 <body>
-<nav class="site-nav"><div class="nav-inner"><a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a><div class="nav-links" id="nav-links"><a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a><a href="/pages/training/index.html" class="active">Training</a><a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a></div><div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div></div></nav>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html">
+      <div class="nav-emblem">GSC</div>
+      <div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div>
+    </a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a>
+      <a href="/pages/roster.html">Roster</a>
+      <a href="/pages/history.html">History</a>
+      <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html" class="active">Training</a>
+      <a href="/pages/flights.html">Flight Log</a>
+      <a href="/pages/flight-plan.html">Flight Planner</a>
+    </div>
+    <div class="nav-right">
+      <div id="nav-user-area" style="display:none">
+        <div class="nav-pilot-info">
+          <img class="nav-avatar" id="nav-avatar" src="" alt="">
+          <div>
+            <div class="nav-pilot-name" id="nav-pilot-name"></div>
+            <div class="nav-rank-badge" id="nav-rank-badge"></div>
+          </div>
+        </div>
+      </div>
+      <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+    </div>
+  </div>
+</nav>
+
 <section class="hero" style="padding:48px 24px 36px">
-  <div class="hero-eyebrow">For Instructor Pilots</div>
+  <div class="hero-eyebrow">For Instructor Pilots &amp; Wing Commanders</div>
   <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">Instructor's <span>Corner</span></h1>
-  <p class="hero-sub" style="font-size:15px">Grading standards, common student errors, and preflight brief checklists — one section per airframe, for IPs only.</p>
+  <p class="hero-sub" style="font-size:15px">Award training certifications, manage pilot qualifications, and access grading standards — one section per airframe.</p>
 </section>
+
 <div class="container page-body">
-  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
-  <div class="ic-tabs">
-    <button class="ic-tab active t-b1b" onclick="icSwitch('b1b',this)">✈ B-1B Lancer (7 BW)</button>
-    <button class="ic-tab t-b2" onclick="icSwitch('b2',this)">✈ B-2 Spirit (509 BW)</button>
-    <button class="ic-tab t-b52h" onclick="icSwitch('b52h',this)">✈ B-52H Stratofortress (2 BW)</button>
+
+  <!-- ACCESS DENIED STATE -->
+  <div id="access-denied" style="display:none" class="empty-state">
+    <div class="icon">🔒</div>
+    <p>This page requires Instructor or Wing Commander access.<br>Contact your Wing Commander to request access.</p>
   </div>
 
-  <!-- B-1B -->
-  <div id="ic-b1b" class="ic-panel active">
-    <div class="grid-2">
-      <div class="card span-2"><div class="card-header"><div class="card-icon">📋</div><div class="card-title">Grading Standards — Quick Reference</div></div><div class="card-body" style="overflow-x:auto">
-        <table class="data-table"><thead><tr><th>Parameter</th><th>Q Standard</th><th>U Condition</th></tr></thead><tbody>
-          <tr><td><strong>Takeoff rotation (VR)</strong></td><td>±5 KIAS</td><td>±10 KIAS or wrong speed</td></tr>
-          <tr><td><strong>Approach speed (VREF)</strong></td><td>Stable ±5 KIAS by 500 ft AGL</td><td>Unstable or ±10 KIAS</td></tr>
-          <tr><td><strong>ILS localizer tracking</strong></td><td>±½ dot FAF to DH</td><td>Full-scale deflection at any point</td></tr>
-          <tr><td><strong>ILS glideslope tracking</strong></td><td>±½ dot FAF to DH</td><td>Full-scale deflection below 500 ft AGL</td></tr>
-          <tr><td><strong>Pattern altitude</strong></td><td>±100 ft</td><td>Greater than ±200 ft</td></tr>
-          <tr><td><strong>Touchdown zone</strong></td><td>First 2,000 ft</td><td>Beyond or short of threshold</td></tr>
-        </tbody></table>
-      </div></div>
-      <div class="card"><div class="card-header"><div class="card-icon">!</div><div class="card-title">Common Student Errors</div></div><div class="card-body"><ul class="cl gold">
-        <li><strong>ILS:</strong> Wrong PFD softkey (GPS instead of ILS). APR not armed before LOC alive.</li>
-        <li><strong>NAV MODE:</strong> Left on GPS instead of switching to NAV for ILS approach.</li>
-        <li><strong>RNAV:</strong> Pressing APR instead of NAV HOLD. Forgetting ALT HOLD at MDA.</li>
-        <li><strong>ATH:</strong> Relying on autothrottle below 2,500 ft AGL — it disengages at that altitude.</li>
-        <li><strong>Go-around:</strong> Delayed call. Coach immediate execution at DH with no runway contact.</li>
-      </ul></div></div>
-      <div class="card"><div class="card-header"><div class="card-icon">📋</div><div class="card-title">Preflight Brief Checklist — IP</div></div><div class="card-body"><ul class="cl gold">
-        <li>Quiz VR and VREF from FMS PERF page before taxi</li>
-        <li>Confirm student knows pattern altitude (2,500 ft MSL) and circuit direction</li>
-        <li>For ILS/RNAV: student must state the correct PFD softkey and A/P lateral mode before the brief ends</li>
-        <li>Brief go-around criteria explicitly: engine issues, unstable approach, ATC instruction</li>
-        <li>Phase 3 = observed only — intervention limited to safety of flight</li>
-      </ul></div></div>
-    </div>
-  </div>
+  <!-- MAIN CONTENT (shown after auth) -->
+  <div id="main-content" style="display:none">
 
-  <!-- B-2 -->
-  <div id="ic-b2" class="ic-panel">
-    <div class="grid-2">
-      <div class="card"><div class="card-header"><div class="card-icon blue">!</div><div class="card-title">Common Student Errors</div></div><div class="card-body"><ul class="cl blue">
-        <li><strong>Weapon release out of envelope:</strong> below 20,000 ft AGL or 230 KIAS. Have student call out altitude and airspeed before every attempt.</li>
-        <li><strong>Stealth Mode:</strong> button has no effect below 3,000 ft AGL — student assumes broken control rather than checking altitude.</li>
-        <li><strong>APP mode won't capture:</strong> FMS NAV MODE set to GPS instead of NAV. First check, every time.</li>
-        <li><strong>Cargo doors left open after release:</strong> unnecessary drag on egress. Make closure a verbal callout item.</li>
-        <li><strong>Wrong sim version:</strong> See which B-2 they have</li>
-      </ul></div></div>
-      <div class="card"><div class="card-header"><div class="card-icon blue">📋</div><div class="card-title">Preflight Brief Checklist — IP</div></div><div class="card-body"><ul class="cl blue">
-        <li>See which B-2 they have</li>
-        <li>Quiz the 3 release criteria (20,000 ft / 230 KIAS / wings level)</li>
-        <li>Brief CFD flight model differences — handling won't match real Spirit</li>
-        <li>Brief Stealth Mode altitude restriction (3,000 ft AGL minimum)</li>
-        <li>Confirm student can state FMS NAV MODE requirement for APP before stepping to jet</li>
-      </ul></div></div>
-      <div class="card span-2"><div class="card-header"><div class="card-icon blue">▶</div><div class="card-title">What to Watch For In-Flight</div></div><div class="card-body" style="overflow-x:auto">
-        <table class="data-table"><thead><tr><th>Phase</th><th>Watch For</th><th>Coaching Cue</th></tr></thead><tbody>
-          <tr><td>Ground ops</td><td>Hatch left open; doors not verified closed</td><td>"Crew Hatch — closed?"</td></tr>
-          <tr><td>Climb</td><td>Stealth Mode attempted too early</td><td>"What's your altitude AGL?"</td></tr>
-          <tr><td>ILS approach</td><td>APP not capturing</td><td>"Check your FMS NAV MODE field"</td></tr>
-          <tr><td>Weapons run</td><td>Release attempted before all 3 criteria met</td><td>"State altitude, airspeed, bank before you press fire"</td></tr>
-          <tr><td>Post-release</td><td>Cargo doors left open</td><td>"Close your bay doors"</td></tr>
-        </tbody></table>
-      </div></div>
+    <div class="ic-tabs">
+      <button class="ic-tab active" onclick="icTab('award',this)">🎖 Award Certifications</button>
+      <button class="ic-tab" onclick="icTab('records',this)">📋 Pilot Records</button>
+      <button class="ic-tab" onclick="icTab('standards',this)">📏 Grading Standards</button>
     </div>
-  </div>
 
-  <!-- B-52H -->
-  <div id="ic-b52h" class="ic-panel">
-    <div class="grid-2">
-      <div class="card"><div class="card-header"><div class="card-icon green">!</div><div class="card-title">Common Student Errors by Phase</div></div><div class="card-body"><ul class="cl grn">
-        <li><strong>Phase 1:</strong> Over-rotating on takeoff — the B-52's pitch response is slower than fighter instincts expect. Coach steady, deliberate rotation, not a snap to attitude.</li>
-        <li><strong>Phase 2 (AR):</strong> Over-controlling in the contact position. Coach small inputs and an early, decisive breakaway call rather than trying to salvage an unstable picture.</li>
-        <li><strong>Phase 3 (TOT):</strong> TOT drift not corrected early enough — by the IP it's usually too late to fix within ±30 sec. Coach continuous time checks against waypoints throughout the low-level, not just near the target.</li>
-        <li><strong>Phase 3 (Night):</strong> Exterior/interior lighting not reconfigured before the night portion — make this a deliberate checklist item, not an afterthought.</li>
-      </ul></div></div>
-      <div class="card"><div class="card-header"><div class="card-icon green">📋</div><div class="card-title">Preflight Brief Checklist — IP</div></div><div class="card-body"><ul class="cl grn">
-        <li>Confirm student has briefed TOLD V-speeds for current gross weight before stepping — heavy unstick varies meaningfully</li>
-        <li>For Phase 2: confirm tanker rejoin type and contact altitude block are briefed explicitly</li>
-        <li>For Phase 3: brief low-level abort criteria (weather, terrain clearance, TOT recovery limits) before the flight</li>
-        <li>Brief safe-escape maneuver and timing before the IP — not the first time on the run-in</li>
-      </ul></div></div>
-      <div class="card span-2"><div class="card-header"><div class="card-icon green">▶</div><div class="card-title">Grading Focus by Phase</div></div><div class="card-body" style="overflow-x:auto">
-        <table class="data-table"><thead><tr><th>Phase</th><th>Grading Focus</th><th>Standard</th></tr></thead><tbody>
-          <tr><td><strong>Phase 1</strong></td><td>Smooth control, checklist discipline, communications, on-speed approaches</td><td>Grade 3</td></tr>
-          <tr><td><strong>Phase 2</strong></td><td>Holding accuracy, AR contact / CG management, ILS tracking, missed approach</td><td>Grade 3</td></tr>
-          <tr><td><strong>Phase 3</strong></td><td>Route / altitude discipline, TOT accuracy (±30 sec), safe escape, night currency and landing</td><td>Grade 3</td></tr>
-        </tbody></table>
-      </div></div>
+    <!-- ═══════════════ AWARD CERTS TAB ═══════════════ -->
+    <div id="tab-award" class="ic-panel active">
+
+      <!-- Step 1: Select Pilot -->
+      <div class="section">
+        <div class="section-label">Step 1 — Select a pilot</div>
+        <div class="pilot-search-row">
+          <input type="text" id="pilot-search" placeholder="Search by callsign, name, or wing…"
+            oninput="searchPilots(this.value)"
+            style="flex:1;padding:10px 14px;background:var(--card);border:1px solid var(--border2);
+            border-radius:8px;color:var(--text);font-size:14px;font-family:var(--sans);outline:none">
+          <button onclick="clearSelection()" class="btn btn-outline btn-sm">Clear</button>
+        </div>
+        <div id="pilot-results"></div>
+        <div id="selected-pilot-card" style="display:none">
+          <div class="record-header">
+            <img id="sel-avatar" class="record-avatar" src="/assets/img/default-avatar.png" alt="">
+            <div>
+              <div class="record-name" id="sel-name"></div>
+              <div class="record-rank" id="sel-rank"></div>
+              <div class="record-wing" id="sel-wing"></div>
+            </div>
+            <div style="margin-left:auto">
+              <div id="sel-qual-badge"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Select Aircraft -->
+      <div class="section" id="step2" style="display:none">
+        <div class="section-label">Step 2 — Select aircraft</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+          <button onclick="selectAircraft('B-1B')" id="acft-b1b"
+            class="btn btn-outline" style="border-color:var(--gold)">
+            <span style="color:var(--gold)">●</span> B-1B Lancer (7 BW)
+          </button>
+          <button onclick="selectAircraft('B-2')" id="acft-b2"
+            class="btn btn-outline" style="border-color:var(--blue)">
+            <span style="color:var(--blue)">●</span> B-2 Spirit (509 BW)
+          </button>
+          <button onclick="selectAircraft('B-52H')" id="acft-b52"
+            class="btn btn-outline" style="border-color:var(--green)">
+            <span style="color:var(--green)">●</span> B-52H Stratofortress (2 BW)
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Award Cert or Qual -->
+      <div class="section" id="step3" style="display:none">
+        <div class="section-label">Step 3 — Award a certification or qualification status</div>
+
+        <div class="tab-nav" style="margin-bottom:16px">
+          <button class="tab-btn active" onclick="awardSubTab('certs',this)">Training Certifications</button>
+          <button class="tab-btn" onclick="awardSubTab('qual',this)">Qualification Status</button>
+        </div>
+
+        <!-- Cert sub-tab -->
+        <div id="sub-certs" class="tab-panel active">
+          <div class="cert-grid" id="cert-list"></div>
+        </div>
+
+        <!-- Qual status sub-tab -->
+        <div id="sub-qual" class="tab-panel">
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px">
+            Set the pilot's overall qualification status on the selected aircraft. This updates their Firestore pilot record and displays on their profile.
+          </p>
+          <div class="qual-grid" id="qual-list"></div>
+        </div>
+      </div>
+
+      <!-- Currently Awarded (for selected pilot + aircraft) -->
+      <div class="section" id="awarded-section" style="display:none">
+        <div class="section-label">Currently awarded to this pilot</div>
+        <div class="awarded-grid" id="awarded-list">
+          <div class="empty-state" style="padding:20px"><p>No certifications awarded yet.</p></div>
+        </div>
+      </div>
+
     </div>
-  </div>
+
+    <!-- ═══════════════ PILOT RECORDS TAB ═══════════════ -->
+    <div id="tab-records" class="ic-panel">
+      <div class="section">
+        <div class="section-label">Pilot training records</div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <select id="records-wing-filter" onchange="loadRecordsForWing(this.value)"
+            style="padding:8px 12px;background:var(--card);border:1px solid var(--border2);
+            border-radius:8px;color:var(--text);font-family:var(--sans)">
+            <option value="">All wings</option>
+            <option value="7bw">7th Bomb Wing (B-1B)</option>
+            <option value="509bw">509th Bomb Wing (B-2)</option>
+            <option value="2bw">2nd Bomb Wing (B-52H)</option>
+          </select>
+          <select id="records-qual-filter" onchange="filterRecords()"
+            style="padding:8px 12px;background:var(--card);border:1px solid var(--border2);
+            border-radius:8px;color:var(--text);font-family:var(--sans)">
+            <option value="">All qual statuses</option>
+            <option value="iqt">IQT</option>
+            <option value="bmc">BMC</option>
+            <option value="cmr">CMR</option>
+            <option value="ncmr">N-CMR</option>
+            <option value="ip">IP</option>
+          </select>
+        </div>
+        <div id="records-list">
+          <div class="empty-state"><div class="icon">📋</div><p>Select a wing to load records.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ GRADING STANDARDS TAB ═══════════════ -->
+    <div id="tab-standards" class="ic-panel">
+      <div class="ic-tabs" style="margin-bottom:20px">
+        <button class="ic-tab active" onclick="stdTab('b1b',this)">B-1B Lancer</button>
+        <button class="ic-tab" onclick="stdTab('b2',this)">B-2 Spirit</button>
+        <button class="ic-tab" onclick="stdTab('b52h',this)">B-52H Stratofortress</button>
+      </div>
+
+      <!-- B-1B standards -->
+      <div id="std-b1b" class="ic-panel active">
+        <div class="grid-2">
+          <div class="card span-2">
+            <div class="card-header"><div class="card-icon">📋</div><div class="card-title">B-1B Grading Standards — Grade 3 = Qualified</div></div>
+            <div class="card-body" style="overflow-x:auto">
+              <table class="data-table">
+                <thead><tr><th>Event</th><th>Grade 3 Standard (Q)</th><th>Unqualified Condition</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Takeoff rotation (VR)</strong></td><td>±5 KIAS of computed VR</td><td>±10 KIAS, wrong speed, or abrupt control inputs</td></tr>
+                  <tr><td><strong>Climb heading</strong></td><td>±5° of assigned heading</td><td>Greater than ±10°</td></tr>
+                  <tr><td><strong>Pattern altitude (TPA)</strong></td><td>±100 ft</td><td>Greater than ±200 ft</td></tr>
+                  <tr><td><strong>Approach speed (VREF)</strong></td><td>VREF ±5 KIAS stable by 500 ft AGL</td><td>Not stable, or ±10 KIAS at any point on final</td></tr>
+                  <tr><td><strong>Touchdown zone</strong></td><td>First 2,000 ft of runway</td><td>Beyond 2,000 ft or short of threshold</td></tr>
+                  <tr><td><strong>ILS LOC tracking (FAF–DH)</strong></td><td>±½ dot full scale</td><td>Full-scale deflection at any point</td></tr>
+                  <tr><td><strong>ILS G/S tracking (FAF–DH)</strong></td><td>±½ dot full scale</td><td>Full-scale deflection below 500 ft AGL</td></tr>
+                  <tr><td><strong>RNAV MDA level-off</strong></td><td>MDA ±50 ft, re-engaged ALT HOLD</td><td>Bust below MDA without visual contact</td></tr>
+                  <tr><td><strong>TOT accuracy</strong></td><td>±30 seconds of planned TOT</td><td>Greater than ±60 seconds</td></tr>
+                  <tr><td><strong>Low-level altitude</strong></td><td>500 ft AGL ±100 ft</td><td>Below 400 ft or above 700 ft sustained</td></tr>
+                  <tr><td><strong>AR contact (IDs)</strong></td><td>≤2 inadvertent disconnects</td><td>3+ IDs, or unable to establish contact</td></tr>
+                  <tr><td><strong>Checklist discipline</strong></td><td>All items called, actioned, and verified</td><td>Missed or skipped checklist item affecting safety</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-icon red">!</div><div class="card-title">Common Student Errors — B-1B</div></div>
+            <div class="card-body">
+              <ul class="cl">
+                <li><strong>ILS:</strong> Wrong PFD softkey (GPS instead of ILS). Coach: "Check your PFD softkey."</li>
+                <li><strong>ILS:</strong> FMS NAV MODE left on GPS. Coach: "FMS NAV page — what's your NAV MODE?"</li>
+                <li><strong>RNAV:</strong> Pressing APR instead of NAV HOLD. Coach: "NAV, not APR, for RNAV."</li>
+                <li><strong>ATH:</strong> Expecting autothrottle to hold VREF below 2,500 ft AGL. Coach: "ATH is gone — take your throttle."</li>
+                <li><strong>DH:</strong> Continuing past DH with no visual. Coach: "That was DH — go around now."</li>
+                <li><strong>AR:</strong> Over-controlling in contact. Coach: "Small inputs. Stabilize first."</li>
+                <li><strong>TOT:</strong> Late correction on run-in. Coach: "Check your timing now — before the IP."</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-icon">📋</div><div class="card-title">IP Pre-Brief Checklist — B-1B</div></div>
+            <div class="card-body">
+              <ul class="cl">
+                <li>Student states VR and VREF from FMS PERF before taxi</li>
+                <li>Student states active runway, inbound course, and ILS frequency before approach setup</li>
+                <li>Student states PFD softkey and A/P lateral mode for each approach type before brief ends</li>
+                <li>Go-around criteria explicitly briefed: IMC at DH, engine issue, ATC instruction</li>
+                <li>TOT window (±30 sec) and abort criteria briefed for all Phase 3 events</li>
+                <li>For AR: rejoin type, contact altitude, and breakaway triggers briefed before pushback</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- B-2 standards -->
+      <div id="std-b2" class="ic-panel">
+        <div class="grid-2">
+          <div class="card span-2">
+            <div class="card-header"><div class="card-icon blue">▶</div><div class="card-title">B-2 Grading Standards</div></div>
+            <div class="card-body" style="overflow-x:auto">
+              <table class="data-table">
+                <thead><tr><th>Event</th><th>Grade 3 Standard</th><th>Unqualified Condition</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>ILS APP capture</strong></td><td>LOC captured before FAF, G/S captured at or above published altitude</td><td>LOC not captured; approach abandoned due to setup error</td></tr>
+                  <tr><td><strong>Approach speed</strong></td><td>VREF ±5 KIAS stable by 500 ft AGL</td><td>Unstable, or ATH relied upon below 2,500 ft AGL</td></tr>
+                  <tr><td><strong>Weapon release criteria</strong></td><td>All 3 criteria met before fire command: alt, speed, wings level</td><td>Release attempted outside envelope</td></tr>
+                  <tr><td><strong>Cargo door sequence</strong></td><td>Opened after criteria met, closed within 30 sec of release</td><td>Doors left open; doors opened before criteria met</td></tr>
+                  <tr><td><strong>Stealth mode</strong></td><td>Activated above 3,000 ft AGL, deactivated before landing checklist</td><td>Attempted below 3,000 ft AGL; not deactivated for landing</td></tr>
+                  <tr><td><strong>Crew hatch</strong></td><td>Confirmed CLOSED on Before Start checklist before taxi</td><td>Taxied with hatch open</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-icon blue">!</div><div class="card-title">Common Student Errors — B-2</div></div>
+            <div class="card-body">
+              <ul class="cl">
+                <li><strong>APP won't capture:</strong> FMS NAV MODE = GPS instead of NAV. First check every time.</li>
+                <li><strong>Weapon release fails:</strong> Below 20,000 ft AGL or 230 KIAS. Have student call alt and speed aloud.</li>
+                <li><strong>Stealth Mode won't engage:</strong> Below 3,000 ft AGL. Check altitude first.</li>
+                <li><strong>Doors left open:</strong> Make door closure a verbal callout item on egress.</li>
+                <li><strong>Version check:</strong> Confirm iniBuilds store version before any weapon delivery event.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-icon blue">📋</div><div class="card-title">IP Pre-Brief Checklist — B-2</div></div>
+            <div class="card-body">
+              <ul class="cl">
+                <li>Confirm iniBuilds store version before any weapon delivery event</li>
+                <li>Student states 3 release criteria before stepping to aircraft</li>
+                <li>Student states FMS NAV MODE requirement for APP mode before brief ends</li>
+                <li>Brief Stealth Mode altitude restriction (3,000 ft AGL minimum)</li>
+                <li>Brief CFD flight model — handling differs from real Spirit FBW</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- B-52H standards -->
+      <div id="std-b52h" class="ic-panel">
+        <div class="grid-2">
+          <div class="card span-2">
+            <div class="card-header"><div class="card-icon green">▶</div><div class="card-title">B-52H Grading Standards</div></div>
+            <div class="card-body" style="overflow-x:auto">
+              <table class="data-table">
+                <thead><tr><th>Phase</th><th>Event</th><th>Grade 3 Standard</th><th>Unqualified Condition</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Phase 1</strong></td><td>Takeoff rotation</td><td>Smooth, deliberate ~10° pitch at VR</td><td>Abrupt snap rotation; VR ±10 KIAS</td></tr>
+                  <tr><td><strong>Phase 1</strong></td><td>Final approach speed</td><td>130–145 KIAS per TOLD ±5 KIAS</td><td>±10 KIAS or unstable at 500 ft AGL</td></tr>
+                  <tr><td><strong>Phase 2</strong></td><td>Holding</td><td>Standard 1-min legs, ±100 ft altitude, ±5° heading</td><td>Bust of assigned altitude or heading by ±200 ft / ±10°</td></tr>
+                  <tr><td><strong>Phase 2</strong></td><td>AR contact</td><td>Stabilized in precontact, ≤2 IDs, positive CG monitoring</td><td>3+ IDs, or early breakaway not called when required</td></tr>
+                  <tr><td><strong>Phase 3</strong></td><td>Low-level altitude</td><td>500 ft AGL ±100 ft throughout route</td><td>Below 400 ft or above 700 ft sustained</td></tr>
+                  <tr><td><strong>Phase 3</strong></td><td>TOT accuracy</td><td>±30 seconds of planned TOT</td><td>Greater than ±60 seconds</td></tr>
+                  <tr><td><strong>Phase 3</strong></td><td>Night landing</td><td>On-speed, correct lighting, within TDZ</td><td>Lighting not configured; out of TDZ</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-icon green">!</div><div class="card-title">Common Student Errors — B-52H</div></div>
+            <div class="card-body">
+              <ul class="cl">
+                <li><strong>Phase 1:</strong> Snap rotation — coach steady, deliberate pitch-up, not fighter-style.</li>
+                <li><strong>Phase 2 AR:</strong> Over-controlling at contact — small inputs, early breakaway call.</li>
+                <li><strong>Phase 3 TOT:</strong> Drift uncorrected until IP — coach time checks throughout route.</li>
+                <li><strong>Phase 3 Night:</strong> Lighting not reconfigured — make it a deliberate checklist item.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-icon green">📋</div><div class="card-title">IP Pre-Brief Checklist — B-52H</div></div>
+            <div class="card-body">
+              <ul class="cl">
+                <li>Student states TOLD V-speeds for current gross weight before taxi</li>
+                <li>For Phase 2: tanker rejoin type, contact altitude, and breakaway triggers briefed</li>
+                <li>For Phase 3: abort criteria (weather, terrain, TOT recovery limits) briefed before flight</li>
+                <li>Safe-escape maneuver and timing briefed before the IP — not first time on run-in</li>
+                <li>TOT window (±30 sec) confirmed understood and time-check plan briefed</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end main-content -->
 </div>
-<footer class="site-footer"><p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p><p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p></footer>
+
+<footer class="site-footer">
+  <p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p>
+  <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
+</footer>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
 <script>
-function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
-function icSwitch(id,btn){
-  document.querySelectorAll('.ic-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('ic-'+id).classList.add('active');
-  document.querySelectorAll('.ic-tab').forEach(b=>b.classList.remove('active'));
+
+// ── TRAINING CERTS DATA (inline so page is self-contained) ──────
+const QUAL_STATUS = [
+  { id:'iqt',  name:'Initial Qualification Training', abbr:'IQT',   color:'#9aa0b8' },
+  { id:'bmc',  name:'Basic Mission Capable',          abbr:'BMC',   color:'#4a90d9' },
+  { id:'cmr',  name:'Combat Mission Ready',           abbr:'CMR',   color:'#3dba6e' },
+  { id:'ncmr', name:'Non-Combat Mission Ready',       abbr:'N-CMR', color:'#e09030' },
+  { id:'ip',   name:'Instructor Pilot',               abbr:'IP',    color:'#c8a951' },
+];
+
+const TRAINING_CERTS = [
+  // B-1B
+  { id:'b1b_module100', aircraft:'B-1B', wing:'7bw',   phase:'Module 100', name:'Local Area Orientation & Aircraft Familiarization', abbr:'LAO/BMC',   color:'#c8a951', awardsQual:'bmc',  desc:'Completion of Module 100. Awards BMC status. Authorizes B-1B operations in local area under IP supervision.' },
+  { id:'b1b_instruments',aircraft:'B-1B',wing:'7bw',   phase:'Phase 1',    name:'Instrument Qualification',                          abbr:'INST QUAL',  color:'#c8a951', awardsQual:null,   desc:'IFR proficiency, instrument departure, holding, precision ILS, and non-precision RNAV/VOR at KDYS.' },
+  { id:'b1b_ils_cert',  aircraft:'B-1B', wing:'7bw',   phase:'Phase 1',    name:'ILS Approach Certification',                        abbr:'ILS CERT',   color:'#c8a951', awardsQual:null,   desc:'Precision ILS at KDYS. FMS setup, APR sequence, ATH management below 2,500 ft AGL, DH procedure.' },
+  { id:'b1b_rnav_cert', aircraft:'B-1B', wing:'7bw',   phase:'Phase 1',    name:'RNAV/GPS Approach Certification',                   abbr:'RNAV CERT',  color:'#c8a951', awardsQual:null,   desc:'GPS/RNAV approach. NAV HOLD, GPS softkey, FPLN load, V/S descent, MDA level-off.' },
+  { id:'b1b_night',     aircraft:'B-1B', wing:'7bw',   phase:'Phase 2',    name:'Night Currency Qualification',                      abbr:'NIGHT QUAL', color:'#c8a951', awardsQual:null,   desc:'Night VFR/IFR departure, pattern, instrument approach, and full-stop night landing.' },
+  { id:'b1b_ar',        aircraft:'B-1B', wing:'7bw',   phase:'Phase 2',    name:'Air Refueling Qualification',                       abbr:'AR QUAL',    color:'#c8a951', awardsQual:null,   desc:'Tanker rejoin, precontact, contact, simulated onload, and breakaway.' },
+  { id:'b1b_lowlevel',  aircraft:'B-1B', wing:'7bw',   phase:'Phase 2',    name:'Low-Level Navigation Qualification',                abbr:'LL QUAL',    color:'#c8a951', awardsQual:null,   desc:'Low-level route at 500–1,000 ft AGL, terrain clearance, abort criteria.' },
+  { id:'b1b_sat',       aircraft:'B-1B', wing:'7bw',   phase:'Phase 3',    name:'Surface Attack Certification',                      abbr:'SAT CERT',   color:'#c8a951', awardsQual:null,   desc:'Simulated surface attack with TOT ±30 sec, safe escape maneuver. Grade 3 standard.' },
+  { id:'b1b_cmr',       aircraft:'B-1B', wing:'7bw',   phase:'CMR',        name:'Combat Mission Ready — B-1B',                       abbr:'B-1B CMR',   color:'#c8a951', awardsQual:'cmr',  desc:'Full CMR on B-1B. All Phase 1/2/3 complete. Current in instruments, night, AR, LL, SAT.' },
+  { id:'b1b_ip',        aircraft:'B-1B', wing:'7bw',   phase:'IP',         name:'Instructor Pilot — B-1B',                           abbr:'B-1B IP',    color:'#f0cc72', awardsQual:'ip',   desc:'Certified IP on B-1B. Authorized to instruct and evaluate all MQT phases. Sq/CC certified.' },
+  // B-2
+  { id:'b2_iqt',        aircraft:'B-2',  wing:'509bw', phase:'IQT',        name:'B-2 Initial Qualification Training',                abbr:'B-2 IQT',   color:'#4a90d9', awardsQual:'iqt',  desc:'Initial qualification. Cockpit, MFD, FMS, autopilot, stealth mode. Full IP supervision.' },
+  { id:'b2_cockpit',    aircraft:'B-2',  wing:'509bw', phase:'Phase 1',    name:'Cockpit Systems Certification',                     abbr:'SYS CERT',  color:'#4a90d9', awardsQual:null,   desc:'All 8 MFD sub-pages, FMS pages, stealth mode, cargo door/hatch operations.' },
+  { id:'b2_ils_cert',   aircraft:'B-2',  wing:'509bw', phase:'Phase 1',    name:'ILS Approach Certification — B-2',                  abbr:'ILS CERT',  color:'#4a90d9', awardsQual:null,   desc:'Precision ILS on B-2. NAV MODE = NAV required. APP capture, CRS SEL, full sequence.' },
+  { id:'b2_weapons',    aircraft:'B-2',  wing:'509bw', phase:'Phase 2',    name:'Weapon Delivery Certification',                     abbr:'WPN CERT',  color:'#4a90d9', awardsQual:null,   desc:'Release criteria met, STATS READY FOR RELEASE, cargo door sequence, post-release closure.' },
+  { id:'b2_bmc',        aircraft:'B-2',  wing:'509bw', phase:'BMC',        name:'Basic Mission Capable — B-2',                       abbr:'B-2 BMC',   color:'#4a90d9', awardsQual:'bmc',  desc:'BMC on B-2 Spirit. Phase 1 complete. Qualified in basic flight ops and instruments.' },
+  { id:'b2_cmr',        aircraft:'B-2',  wing:'509bw', phase:'CMR',        name:'Combat Mission Ready — B-2',                        abbr:'B-2 CMR',   color:'#7ab8ff', awardsQual:'cmr',  desc:'Full CMR on B-2 Spirit. All phases complete.' },
+  { id:'b2_ip',         aircraft:'B-2',  wing:'509bw', phase:'IP',         name:'Instructor Pilot — B-2',                            abbr:'B-2 IP',    color:'#f0cc72', awardsQual:'ip',   desc:'Certified IP on B-2 Spirit. All phases, Sq/CC certified.' },
+  // B-52H
+  { id:'b52_p1',        aircraft:'B-52H',wing:'2bw',   phase:'Phase 1',    name:'Transition & Aircraft Familiarization',             abbr:'TRANS CERT',color:'#3dba6e', awardsQual:null,   desc:'Ground ops, engine start, taxi, takeoff, pattern, go-around, full-stop landing.' },
+  { id:'b52_inst',      aircraft:'B-52H',wing:'2bw',   phase:'Phase 2',    name:'Instrument Qualification — B-52H',                  abbr:'INST QUAL', color:'#3dba6e', awardsQual:null,   desc:'IFR departure, holding, ILS to DA, missed approach, instrument full-stop landing.' },
+  { id:'b52_ar',        aircraft:'B-52H',wing:'2bw',   phase:'Phase 2',    name:'Air Refueling Qualification — B-52H',               abbr:'AR QUAL',   color:'#3dba6e', awardsQual:null,   desc:'Rejoin 270–290 KIAS, precontact, contact, onload with CG monitoring, breakaway.' },
+  { id:'b52_ll',        aircraft:'B-52H',wing:'2bw',   phase:'Phase 3',    name:'Low-Level Navigation Qualification — B-52H',        abbr:'LL QUAL',   color:'#3dba6e', awardsQual:null,   desc:'Low-level route 500–1,000 ft AGL / 300–360 KCAS, terrain clearance, abort criteria.' },
+  { id:'b52_tot',       aircraft:'B-52H',wing:'2bw',   phase:'Phase 3',    name:'Surface Attack / TOT Certification — B-52H',        abbr:'SAT/TOT',   color:'#3dba6e', awardsQual:null,   desc:'Simulated surface attack with TOT ±30 sec, safe escape maneuver. Grade 3 standard.' },
+  { id:'b52_night',     aircraft:'B-52H',wing:'2bw',   phase:'Phase 3',    name:'Night Currency Qualification — B-52H',              abbr:'NIGHT QUAL',color:'#3dba6e', awardsQual:null,   desc:'Night lighting config, night VFR/IFR departure, night instrument approach and landing.' },
+  { id:'b52_bmc',       aircraft:'B-52H',wing:'2bw',   phase:'BMC',        name:'Basic Mission Capable — B-52H',                     abbr:'B-52 BMC',  color:'#3dba6e', awardsQual:'bmc',  desc:'BMC on B-52H. Phase 1 and 2 complete. Qualified in handling, instruments, AR.' },
+  { id:'b52_cmr',       aircraft:'B-52H',wing:'2bw',   phase:'CMR',        name:'Combat Mission Ready — B-52H',                      abbr:'B-52 CMR',  color:'#6ddea0', awardsQual:'cmr',  desc:'Full CMR on B-52H. All three phases complete.' },
+  { id:'b52_ip',        aircraft:'B-52H',wing:'2bw',   phase:'IP',         name:'Instructor Pilot — B-52H',                          abbr:'B-52 IP',   color:'#f0cc72', awardsQual:'ip',   desc:'Certified IP on B-52H Stratofortress. All phases, Sq/CC certified.' },
+];
+
+// ── STATE ────────────────────────────────────────────────────
+let selectedPilot   = null;
+let selectedAircraft = null;
+let allPilots       = [];
+let pilotCerts      = {};  // certId → {awardedAt, awardedBy}
+let pilotQuals      = {};  // aircraft → qualId
+
+// ── NAV ─────────────────────────────────────────────────────
+function toggleMobileNav(){ document.getElementById('nav-links').classList.toggle('open'); }
+
+// ── AUTH ─────────────────────────────────────────────────────
+// KEY FIX: auth check is INSIDE onAuthReady — never synchronous
+function onAuthReady(user, pilot) {
+  hideAuthLoading();
+  if (!user || !pilot) {
+    window.location.href = '/pages/login.html';
+    return;
+  }
+  // Check for instructor or higher
+  const canAccess = hasPermission(pilot, 'manage_training') ||
+                    hasPermission(pilot, 'award_medals') ||
+                    isMasterAdminPilot(pilot);
+  if (!canAccess) {
+    document.getElementById('access-denied').style.display = 'block';
+    return;
+  }
+  // Wire up nav
+  document.getElementById('nav-user-area').style.display = 'flex';
+  document.getElementById('nav-pilot-name').textContent = pilot.callsign || pilot.displayName || '';
+  document.getElementById('nav-rank-badge').textContent = getRankAbbr(pilot.rank || 'ab');
+  if (pilot.avatarUrl) document.getElementById('nav-avatar').src = pilot.avatarUrl;
+
+  document.getElementById('main-content').style.display = 'block';
+  loadAllPilots();
+}
+
+// Show spinner immediately — removed by onAuthReady once Firebase responds
+showAuthLoading();
+
+// ── LOAD ALL PILOTS ──────────────────────────────────────────
+async function loadAllPilots() {
+  try {
+    const snap = await db.collection('pilots').where('status','==','active').get();
+    allPilots = [];
+    snap.forEach(doc => allPilots.push({ uid: doc.id, ...doc.data() }));
+  } catch(e) { console.error(e); }
+}
+
+// ── PILOT SEARCH ─────────────────────────────────────────────
+function searchPilots(q) {
+  const container = document.getElementById('pilot-results');
+  if (!q || q.length < 2) { container.innerHTML = ''; return; }
+  q = q.toLowerCase();
+  const matches = allPilots.filter(p =>
+    (p.callsign||'').toLowerCase().includes(q) ||
+    (p.displayName||'').toLowerCase().includes(q) ||
+    (p.wing||'').toLowerCase().includes(q)
+  ).slice(0, 8);
+  if (!matches.length) {
+    container.innerHTML = '<p style="font-size:13px;color:var(--text3);padding:10px 0">No pilots found.</p>';
+    return;
+  }
+  container.innerHTML = matches.map(p => `
+    <div class="pilot-result" onclick="selectPilot('${p.uid}')">
+      <div class="pilot-avatar-sm">
+        ${p.avatarUrl ? `<img src="${p.avatarUrl}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : '👤'}
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${p.callsign || p.displayName || 'Unknown'}</div>
+        <div style="font-size:12px;color:var(--text3)">${getRankAbbr(p.rank||'ab')} · ${getWingName(p.wing||'')||'Unassigned'}</div>
+      </div>
+    </div>`
+  ).join('');
+}
+
+async function selectPilot(uid) {
+  selectedPilot = allPilots.find(p => p.uid === uid);
+  if (!selectedPilot) return;
+  // Load their certs and quals from Firestore
+  try {
+    const doc = await db.collection('pilots').doc(uid).get();
+    const data = doc.data() || {};
+    pilotCerts = data.trainingCerts || {};
+    pilotQuals = data.trainingQuals || {};
+  } catch(e) { pilotCerts = {}; pilotQuals = {}; }
+
+  document.getElementById('pilot-results').innerHTML = '';
+  document.getElementById('pilot-search').value = selectedPilot.callsign || selectedPilot.displayName || '';
+
+  const card = document.getElementById('selected-pilot-card');
+  document.getElementById('sel-avatar').src = selectedPilot.avatarUrl || '/assets/img/default-avatar.png';
+  document.getElementById('sel-name').textContent = selectedPilot.callsign || selectedPilot.displayName || 'Unknown';
+  document.getElementById('sel-rank').textContent = getRankName(selectedPilot.rank || 'ab');
+  document.getElementById('sel-wing').textContent = getWingName(selectedPilot.wing || '') || 'Unassigned';
+  card.style.display = 'block';
+  document.getElementById('step2').style.display = 'block';
+  document.getElementById('step3').style.display = 'none';
+  document.getElementById('awarded-section').style.display = 'none';
+  selectedAircraft = null;
+}
+
+function clearSelection() {
+  selectedPilot = null; selectedAircraft = null;
+  document.getElementById('pilot-search').value = '';
+  document.getElementById('pilot-results').innerHTML = '';
+  document.getElementById('selected-pilot-card').style.display = 'none';
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step3').style.display = 'none';
+  document.getElementById('awarded-section').style.display = 'none';
+}
+
+// ── AIRCRAFT SELECTION ────────────────────────────────────────
+function selectAircraft(aircraft) {
+  selectedAircraft = aircraft;
+  // Visual feedback
+  ['b1b','b2','b52'].forEach(id => {
+    document.getElementById('acft-'+id)?.classList.remove('btn-primary');
+  });
+  const map = {'B-1B':'b1b','B-2':'b2','B-52H':'b52'};
+  document.getElementById('acft-'+map[aircraft])?.classList.add('btn-primary');
+  document.getElementById('step3').style.display = 'block';
+  renderCertList(aircraft);
+  renderQualList(aircraft);
+  renderAwarded();
+  document.getElementById('awarded-section').style.display = 'block';
+}
+
+// ── RENDER CERT LIST ──────────────────────────────────────────
+function renderCertList(aircraft) {
+  const certs = TRAINING_CERTS.filter(c => c.aircraft === aircraft);
+  const container = document.getElementById('cert-list');
+  container.innerHTML = certs.map(c => {
+    const awarded = pilotCerts[c.id];
+    return `
+      <div class="cert-card" style="border-left-color:${c.color}">
+        <div class="cert-phase">${c.phase}</div>
+        <div class="cert-abbr" style="color:${c.color}">${c.abbr}</div>
+        <div class="cert-name">${c.name}</div>
+        <div class="cert-desc">${c.desc}</div>
+        ${c.awardsQual ? `<div class="cert-awards">⭐ Also sets qualification status: <strong>${QUAL_STATUS.find(q=>q.id===c.awardsQual)?.abbr||c.awardsQual}</strong></div>` : ''}
+        ${awarded
+          ? `<div class="alert alert-ok" style="padding:6px 10px;font-size:12px;margin:0">
+               ✓ Awarded ${formatDate(awarded.awardedAt?.toDate ? awarded.awardedAt.toDate() : awarded.awardedAt)}
+               <button onclick="revokeCert('${c.id}')" class="revoke-btn">Revoke</button>
+             </div>`
+          : `<button onclick="awardCert('${c.id}')" class="btn btn-primary btn-sm" style="background:${c.color};border-color:${c.color};color:#000">
+               Award ${c.abbr}
+             </button>`
+        }
+      </div>`;
+  }).join('');
+}
+
+// ── RENDER QUAL LIST ──────────────────────────────────────────
+function renderQualList(aircraft) {
+  const current = pilotQuals[aircraft];
+  const container = document.getElementById('qual-list');
+  container.innerHTML = QUAL_STATUS.map(q => `
+    <div class="qual-opt ${current===q.id?'selected':''}"
+         style="${current===q.id?`border-color:${q.color};background:${q.color}15`:''}"
+         onclick="setQualStatus('${aircraft}','${q.id}')">
+      <div class="qual-abbr" style="color:${q.color}">${q.abbr}</div>
+      <div class="qual-name-sm">${q.name}</div>
+    </div>`
+  ).join('');
+}
+
+// ── RENDER AWARDED (summary) ──────────────────────────────────
+function renderAwarded() {
+  const awarded = Object.entries(pilotCerts)
+    .filter(([id]) => {
+      const cert = TRAINING_CERTS.find(c => c.id === id);
+      return cert && cert.aircraft === selectedAircraft;
+    });
+  const container = document.getElementById('awarded-list');
+  if (!awarded.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:20px"><p>No certifications awarded yet for this aircraft.</p></div>';
+    return;
+  }
+  container.innerHTML = awarded.map(([id, data]) => {
+    const cert = TRAINING_CERTS.find(c => c.id === id);
+    if (!cert) return '';
+    return `
+      <div class="awarded-card" style="border-left:3px solid ${cert.color}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="cert-abbr" style="color:${cert.color};font-size:13px">${cert.abbr}</div>
+          <button onclick="revokeCert('${id}')" class="revoke-btn">Revoke</button>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin:2px 0">${cert.name}</div>
+        <div class="awarded-date">Awarded: ${formatDate(data.awardedAt?.toDate ? data.awardedAt.toDate() : data.awardedAt)}</div>
+        <div class="awarded-by">By: ${data.awardedBy || 'IP'}</div>
+      </div>`;
+  }).join('');
+}
+
+// ── AWARD CERT (Firestore write) ──────────────────────────────
+async function awardCert(certId) {
+  if (!selectedPilot || !currentPilot) return;
+  const cert = TRAINING_CERTS.find(c => c.id === certId);
+  if (!cert) return;
+  if (!confirm(`Award ${cert.name} to ${selectedPilot.callsign || selectedPilot.displayName}?`)) return;
+
+  try {
+    const update = {
+      [`trainingCerts.${certId}`]: {
+        awardedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        awardedBy: currentPilot.callsign || currentPilot.displayName || 'IP',
+        awardedByUid: currentPilot.uid,
+      }
+    };
+    // If this cert also awards a qual status, update that too
+    if (cert.awardsQual) {
+      update[`trainingQuals.${cert.aircraft}`] = cert.awardsQual;
+      pilotQuals[cert.aircraft] = cert.awardsQual;
+    }
+    await db.collection('pilots').doc(selectedPilot.uid).update(update);
+    pilotCerts[certId] = {
+      awardedAt: new Date(),
+      awardedBy: currentPilot.callsign || currentPilot.displayName || 'IP',
+    };
+    toast(`✓ ${cert.abbr} awarded to ${selectedPilot.callsign || selectedPilot.displayName}`, 'success');
+    renderCertList(selectedAircraft);
+    renderQualList(selectedAircraft);
+    renderAwarded();
+  } catch(e) {
+    console.error(e);
+    toast('Error awarding certification — check console', 'error');
+  }
+}
+
+// ── REVOKE CERT ───────────────────────────────────────────────
+async function revokeCert(certId) {
+  if (!selectedPilot) return;
+  const cert = TRAINING_CERTS.find(c => c.id === certId);
+  if (!confirm(`Revoke ${cert?.name || certId} from ${selectedPilot.callsign || selectedPilot.displayName}? This cannot be undone.`)) return;
+  try {
+    await db.collection('pilots').doc(selectedPilot.uid).update({
+      [`trainingCerts.${certId}`]: firebase.firestore.FieldValue.delete()
+    });
+    delete pilotCerts[certId];
+    toast(`${cert?.abbr || certId} revoked`, 'warn');
+    renderCertList(selectedAircraft);
+    renderAwarded();
+  } catch(e) {
+    toast('Error revoking — check console', 'error');
+  }
+}
+
+// ── SET QUAL STATUS ───────────────────────────────────────────
+async function setQualStatus(aircraft, qualId) {
+  if (!selectedPilot) return;
+  const qual = QUAL_STATUS.find(q => q.id === qualId);
+  if (!confirm(`Set ${selectedPilot.callsign || selectedPilot.displayName}'s ${aircraft} qualification to ${qual?.name || qualId}?`)) return;
+  try {
+    await db.collection('pilots').doc(selectedPilot.uid).update({
+      [`trainingQuals.${aircraft}`]: qualId,
+      [`trainingQualUpdated.${aircraft}`]: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    pilotQuals[aircraft] = qualId;
+    toast(`Qualification status updated: ${qual?.abbr || qualId}`, 'success');
+    renderQualList(aircraft);
+  } catch(e) {
+    toast('Error updating qualification — check console', 'error');
+  }
+}
+
+// ── PILOT RECORDS ─────────────────────────────────────────────
+async function loadRecordsForWing(wingId) {
+  const container = document.getElementById('records-list');
+  container.innerHTML = '<div class="empty-state"><div class="icon" style="animation:spin 1s linear infinite;display:inline-block">⚙</div><p>Loading...</p></div>';
+  try {
+    let query = db.collection('pilots').where('status','==','active');
+    if (wingId) query = query.where('wing','==',wingId);
+    const snap = await query.get();
+    const pilots = [];
+    snap.forEach(doc => pilots.push({ uid: doc.id, ...doc.data() }));
+    renderRecords(pilots);
+  } catch(e) {
+    container.innerHTML = '<div class="empty-state"><p>Error loading records.</p></div>';
+  }
+}
+
+function renderRecords(pilots) {
+  const container = document.getElementById('records-list');
+  if (!pilots.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>No pilots found.</p></div>';
+    return;
+  }
+  container.innerHTML = `
+    <table class="data-table">
+      <thead><tr><th>Pilot</th><th>Wing</th><th>B-1B</th><th>B-2</th><th>B-52H</th><th>Certs</th></tr></thead>
+      <tbody>
+        ${pilots.map(p => {
+          const quals = p.trainingQuals || {};
+          const certs = p.trainingCerts || {};
+          const certCount = Object.keys(certs).length;
+          const qBadge = (aircraft) => {
+            const qid = quals[aircraft];
+            if (!qid) return '<span style="color:var(--text3);font-size:11px">—</span>';
+            const q = QUAL_STATUS.find(x => x.id === qid);
+            return `<span style="display:inline-block;padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;background:${q?.color||'#888'}22;color:${q?.color||'#888'};border:1px solid ${q?.color||'#888'}55">${q?.abbr||qid}</span>`;
+          };
+          return `<tr>
+            <td>
+              <strong>${p.callsign || p.displayName || 'Unknown'}</strong>
+              <div style="font-size:11px;color:var(--text3)">${getRankAbbr(p.rank||'ab')}</div>
+            </td>
+            <td style="font-size:12px;color:var(--text2)">${getWingName(p.wing||'')||'—'}</td>
+            <td>${qBadge('B-1B')}</td>
+            <td>${qBadge('B-2')}</td>
+            <td>${qBadge('B-52H')}</td>
+            <td><span style="font-size:13px;font-weight:700;color:var(--gold)">${certCount}</span></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────
+function icTab(id, btn) {
+  document.querySelectorAll('.ic-panel').forEach(p => {
+    if (p.closest('.ic-panels-root') === null) p.classList.remove('active');
+  });
+  // only top-level panels
+  ['tab-award','tab-records','tab-standards'].forEach(tid => {
+    const el = document.getElementById(tid);
+    if (el) el.classList.toggle('active', tid === 'tab-'+id);
+  });
+  document.querySelectorAll('.ic-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+}
+function awardSubTab(id, btn) {
+  ['sub-certs','sub-qual'].forEach(tid => {
+    const el = document.getElementById(tid);
+    if (el) el.classList.toggle('active', tid === 'sub-'+id);
+  });
+  btn.closest('.tab-nav').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function stdTab(id, btn) {
+  ['std-b1b','std-b2','std-b52h'].forEach(tid => {
+    const el = document.getElementById(tid);
+    if (el) el.classList.toggle('active', tid === 'std-'+id);
+  });
+  btn.closest('.ic-tabs').querySelectorAll('.ic-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function showAuthLoading() {
+  const el = document.createElement('div');
+  el.id = 'auth-loading';
+  el.style.cssText = 'position:fixed;inset:0;background:#080a0f;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:9999';
+  el.innerHTML = '<div style="width:36px;height:36px;border:3px solid #1e2440;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite"></div><div style="color:#404860;font-size:13px;font-family:sans-serif">Authenticating…</div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+  document.body.appendChild(el);
+}
+function hideAuthLoading() {
+  const el = document.getElementById('auth-loading');
+  if (el) el.remove();
+}
+function formatDate(d) {
+  if (!d) return '—';
+  if (typeof d === 'object' && d.toDate) d = d.toDate();
+  return new Date(d).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
 }
 </script>
 </body>
