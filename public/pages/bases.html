@@ -14,13 +14,23 @@
 .base-name{font-size:18px;font-weight:700;color:var(--text)}
 .base-loc{font-size:13px;color:var(--text2);margin-top:2px}
 .base-wing-tag{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px}
-.base-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;padding:0 20px 20px}
+.base-quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:0 20px 16px}
 .bd-item{background:var(--card2);border-radius:8px;padding:10px 12px}
 .bd-lbl{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px}
 .bd-val{font-size:13px;color:var(--text);font-family:var(--mono)}
+.base-section-lbl{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);padding:0 20px;margin-bottom:8px;margin-top:6px}
+.freq-table{width:100%;font-size:13px;margin-bottom:6px}
+.freq-table td{padding:5px 20px;color:var(--text2);border-bottom:0.5px solid var(--border)}
+.freq-table td:first-child{color:var(--text3);width:140px}
+.freq-table td:last-child{font-family:var(--mono);color:var(--blue2);text-align:right;padding-right:20px}
+.runway-row{display:grid;grid-template-columns:60px 1fr 90px 110px 90px;gap:10px;padding:8px 20px;font-size:12px;color:var(--text2);border-bottom:0.5px solid var(--border);align-items:center}
+.runway-row.header{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);border-bottom:1px solid var(--border)}
+.rwy-id{font-family:var(--mono);font-weight:700;color:var(--text)}
+.ils-tag{font-size:10px;background:rgba(74,144,217,.15);color:var(--blue2);border:1px solid rgba(74,144,217,.3);border-radius:8px;padding:1px 6px}
 .edit-pencil{background:rgba(200,169,81,.12);border:1px solid rgba(200,169,81,.3);color:var(--gold);border-radius:6px;padding:4px 11px;font-size:11px;cursor:pointer;font-family:var(--sans);display:none;align-items:center;gap:4px;margin-left:auto}
 .editable-mode .edit-pencil{display:inline-flex}
 .editable-mode .base-card-top{flex-wrap:nowrap}
+.rwy-builder-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:6px;margin-bottom:6px;align-items:center}
 </style>
 </head>
 <body>
@@ -29,11 +39,13 @@
     <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
     <div class="nav-links" id="nav-links">
       <a href="/index.html">Home</a>
+      <a href="/pages/wings.html">Wings</a>
       <a href="/pages/roster.html">Roster</a>
       <a href="/pages/history.html">History</a>
       <a href="/pages/bases.html" class="active">Bases</a>
       <a href="/pages/training/index.html">Training</a>
       <a href="/pages/flights.html">Flight Log</a>
+      <a href="/pages/flight-plan.html">Flight Planner</a>
     </div>
     <div class="nav-right" id="nav-right-area"><a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a></div>
     <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
@@ -43,7 +55,7 @@
 <div class="bases-hero">
   <div class="hero-eyebrow">Operating Locations</div>
   <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Wing <span>Bases</span></h1>
-  <p class="hero-sub" style="font-size:14px">Home airfields for every wing in Virtual Global Strike Command.</p>
+  <p class="hero-sub" style="font-size:14px">Real-world airfield data for every wing — runways, frequencies, and navaids.</p>
 </div>
 
 <div class="container page-body">
@@ -52,22 +64,43 @@
 
 <!-- EDIT BASE MODAL -->
 <div class="modal-overlay" id="base-modal">
-  <div class="modal">
+  <div class="modal" style="max-width:640px">
     <div class="modal-title">Edit Base Details</div>
     <input type="hidden" id="base-wing-id">
+
     <div class="form-row">
       <div class="form-group"><label>ICAO Code</label><input type="text" id="base-icao" maxlength="4" style="text-transform:uppercase"></div>
       <div class="form-group"><label>Base name</label><input type="text" id="base-name"></div>
     </div>
-    <div class="form-group"><label>Location (city, state/country)</label><input type="text" id="base-location"></div>
     <div class="form-row">
-      <div class="form-group"><label>Elevation (ft MSL)</label><input type="text" id="base-elev" placeholder="e.g. 1,789 ft"></div>
-      <div class="form-group"><label>Runway info</label><input type="text" id="base-runway" placeholder="e.g. 34L/16R 10,000 ft"></div>
+      <div class="form-group"><label>Location (city, state/country)</label><input type="text" id="base-location"></div>
+      <div class="form-group"><label>Field elevation (ft MSL)</label><input type="text" id="base-elev" placeholder="e.g. 1,789 ft"></div>
+    </div>
+
+    <hr class="divider">
+    <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px">RUNWAYS</div>
+    <div id="rwy-builder-list"></div>
+    <button type="button" class="btn btn-outline btn-sm" onclick="addRunwayRow()" style="margin-bottom:16px">+ Add Runway</button>
+
+    <hr class="divider">
+    <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px">ATC FREQUENCIES</div>
+    <div class="form-row">
+      <div class="form-group"><label>ATIS</label><input type="text" id="base-atis" placeholder="e.g. 134.05"></div>
+      <div class="form-group"><label>Ground</label><input type="text" id="base-ground" placeholder="e.g. 121.65"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>ATIS frequency</label><input type="text" id="base-atis" placeholder="e.g. 134.05"></div>
-      <div class="form-group"><label>Tower frequency</label><input type="text" id="base-tower" placeholder="e.g. 126.2"></div>
+      <div class="form-group"><label>Tower</label><input type="text" id="base-tower" placeholder="e.g. 126.2"></div>
+      <div class="form-group"><label>Clearance Delivery</label><input type="text" id="base-clearance" placeholder="e.g. 125.4"></div>
     </div>
+    <div class="form-group"><label>Approach / Departure</label><input type="text" id="base-approach" placeholder="e.g. 119.3"></div>
+
+    <hr class="divider">
+    <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px">NAVAIDS</div>
+    <div class="form-row">
+      <div class="form-group"><label>VOR Frequency / Ident</label><input type="text" id="base-vor" placeholder="e.g. 113.7 ABI"></div>
+      <div class="form-group"><label>TACAN Channel / Ident</label><input type="text" id="base-tacan" placeholder="e.g. CH83 DYS"></div>
+    </div>
+
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('base-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveBase()">Save</button>
@@ -86,14 +119,15 @@
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
 
 let allWingsData = {}, currentPilotRole=null, currentPilotWing=null;
+let rwyBuilderItems = [];
 
 function onAuthReady(user, pilot) {
   const navArea = document.getElementById('nav-right-area');
   if (user && pilot?.status === 'active') {
     navArea.innerHTML = `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
-    currentPilotRole = pilot.role;
+    currentPilotRole = getPilotRoleIds(pilot);
     currentPilotWing = pilot.wing;
-    if (pilot.role === 'master_admin' || pilot.role === 'wing_commander') {
+    if (hasPermission(pilot,'edit_any_wing') || hasPermission(pilot,'edit_own_wing')) {
       document.body.classList.add('editable-mode');
     }
   }
@@ -101,7 +135,9 @@ function onAuthReady(user, pilot) {
 }
 
 function canEditWing(wingId) {
-  return currentPilotRole === 'master_admin' || (currentPilotRole === 'wing_commander' && currentPilotWing === wingId);
+  if (!currentPilotRole) return false;
+  if (currentPilotRole.some(r => hasPermission({roles:[r]}, 'edit_any_wing'))) return true;
+  return currentPilotWing === wingId && currentPilotRole.some(r => hasPermission({roles:[r]}, 'edit_own_wing'));
 }
 
 async function loadBases() {
@@ -121,6 +157,8 @@ function renderBases() {
     const b = wing.baseDetails || {};
     const color = wing.color||'#c8a951';
     const icao = (wing.base||'').match(/\(([^)]+)\)/)?.[1] || b.icao || '----';
+    const runways = b.runways || [];
+
     return `
     <div class="base-card">
       <div class="base-card-top">
@@ -132,13 +170,35 @@ function renderBases() {
         </div>
         ${canEditWing(wingId)?`<button class="edit-pencil" onclick="openBaseEditor('${wingId}')">✏ Edit</button>`:''}
       </div>
-      <div class="base-details">
+
+      <div class="base-quick">
         <div class="bd-item"><div class="bd-lbl">Elevation</div><div class="bd-val">${b.elevation||'—'}</div></div>
-        <div class="bd-item"><div class="bd-lbl">Runway</div><div class="bd-val">${b.runway||'—'}</div></div>
-        <div class="bd-item"><div class="bd-lbl">ATIS</div><div class="bd-val">${b.atis||'—'}</div></div>
-        <div class="bd-item"><div class="bd-lbl">Tower</div><div class="bd-val">${b.tower||'—'}</div></div>
+        <div class="bd-item"><div class="bd-lbl">VOR</div><div class="bd-val">${b.vor||'—'}</div></div>
+        <div class="bd-item"><div class="bd-lbl">TACAN</div><div class="bd-val">${b.tacan||'—'}</div></div>
         <div class="bd-item"><div class="bd-lbl">Aircraft</div><div class="bd-val">${(wing.aircraft||[]).join(', ')||'—'}</div></div>
       </div>
+
+      ${runways.length ? `
+        <div class="base-section-lbl">Runways</div>
+        <div class="runway-row header"><div>RWY</div><div>Heading</div><div>Length</div><div>ILS Freq</div><div>ILS Course</div></div>
+        ${runways.map(r=>`
+          <div class="runway-row">
+            <div class="rwy-id">${r.id}</div>
+            <div>${r.heading||'—'}°</div>
+            <div>${r.length||'—'}</div>
+            <div>${r.ilsFreq ? `${r.ilsFreq} <span class="ils-tag">${r.ilsIdent||''}</span>` : '—'}</div>
+            <div>${r.ilsCourse?r.ilsCourse+'°':'—'}</div>
+          </div>`).join('')}
+      ` : ''}
+
+      <div class="base-section-lbl" style="margin-top:14px">ATC Frequencies</div>
+      <table class="freq-table">
+        <tr><td>ATIS</td><td>${b.atis||'—'}</td></tr>
+        <tr><td>Clearance Delivery</td><td>${b.clearance||'—'}</td></tr>
+        <tr><td>Ground</td><td>${b.ground||'—'}</td></tr>
+        <tr><td>Tower</td><td>${b.tower||'—'}</td></tr>
+        <tr><td>Approach / Departure</td><td>${b.approach||'—'}</td></tr>
+      </table>
     </div>`;
   }).join('');
 }
@@ -151,22 +211,57 @@ function openBaseEditor(wingId) {
   document.getElementById('base-name').value     = b.name || wing.base || '';
   document.getElementById('base-location').value = b.location || wing.location || '';
   document.getElementById('base-elev').value     = b.elevation || '';
-  document.getElementById('base-runway').value   = b.runway || '';
   document.getElementById('base-atis').value     = b.atis || '';
+  document.getElementById('base-ground').value   = b.ground || '';
   document.getElementById('base-tower').value    = b.tower || '';
+  document.getElementById('base-clearance').value= b.clearance || '';
+  document.getElementById('base-approach').value = b.approach || '';
+  document.getElementById('base-vor').value      = b.vor || '';
+  document.getElementById('base-tacan').value    = b.tacan || '';
+  rwyBuilderItems = JSON.parse(JSON.stringify(b.runways || []));
+  renderRwyBuilder();
   document.getElementById('base-modal').classList.add('open');
 }
+
+function addRunwayRow() {
+  rwyBuilderItems.push({ id:'', heading:'', length:'', ilsFreq:'', ilsIdent:'', ilsCourse:'' });
+  renderRwyBuilder();
+}
+function renderRwyBuilder() {
+  const el = document.getElementById('rwy-builder-list');
+  el.innerHTML = rwyBuilderItems.map((r,i)=>`
+    <div class="rwy-builder-row">
+      <input type="text" placeholder="34L" value="${r.id||''}" oninput="rwyBuilderItems[${i}].id=this.value" style="font-size:12px">
+      <input type="text" placeholder="Heading °" value="${r.heading||''}" oninput="rwyBuilderItems[${i}].heading=this.value" style="font-size:12px">
+      <input type="text" placeholder="Length ft" value="${r.length||''}" oninput="rwyBuilderItems[${i}].length=this.value" style="font-size:12px">
+      <input type="text" placeholder="ILS 110.3 IDYS 359°" value="${r.ilsFreq?`${r.ilsFreq} ${r.ilsIdent||''} ${r.ilsCourse||''}`:''}" oninput="parseIlsInput(${i},this.value)" style="font-size:12px">
+      <button type="button" onclick="rwyBuilderItems.splice(${i},1);renderRwyBuilder()" style="background:none;border:none;color:var(--red2);cursor:pointer;font-size:15px">×</button>
+    </div>`).join('') || '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">No runways added yet</div>';
+}
+function parseIlsInput(i, val) {
+  const parts = val.trim().split(/\s+/);
+  rwyBuilderItems[i].ilsFreq   = parts[0] || '';
+  rwyBuilderItems[i].ilsIdent  = parts[1] || '';
+  rwyBuilderItems[i].ilsCourse = (parts[2]||'').replace('°','');
+}
+
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
 async function saveBase() {
   const wingId = document.getElementById('base-wing-id').value;
   const baseDetails = {
-    icao:     document.getElementById('base-icao').value.trim().toUpperCase(),
-    name:     document.getElementById('base-name').value.trim(),
-    location: document.getElementById('base-location').value.trim(),
-    elevation:document.getElementById('base-elev').value.trim(),
-    runway:   document.getElementById('base-runway').value.trim(),
-    atis:     document.getElementById('base-atis').value.trim(),
-    tower:    document.getElementById('base-tower').value.trim(),
+    icao:      document.getElementById('base-icao').value.trim().toUpperCase(),
+    name:      document.getElementById('base-name').value.trim(),
+    location:  document.getElementById('base-location').value.trim(),
+    elevation: document.getElementById('base-elev').value.trim(),
+    atis:      document.getElementById('base-atis').value.trim(),
+    ground:    document.getElementById('base-ground').value.trim(),
+    tower:     document.getElementById('base-tower').value.trim(),
+    clearance: document.getElementById('base-clearance').value.trim(),
+    approach:  document.getElementById('base-approach').value.trim(),
+    vor:       document.getElementById('base-vor').value.trim(),
+    tacan:     document.getElementById('base-tacan').value.trim(),
+    runways:   rwyBuilderItems.filter(r=>r.id),
   };
   try {
     await db.collection('wings').doc(wingId).set({ baseDetails }, {merge:true});
@@ -177,8 +272,6 @@ async function saveBase() {
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
-
-
 </script>
 </body>
 </html>

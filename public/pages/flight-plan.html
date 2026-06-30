@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight Planner — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.fp-hero{padding:48px 24px 32px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.fp-layout{display:grid;grid-template-columns:1fr 360px;gap:24px}
+@media(max-width:900px){.fp-layout{grid-template-columns:1fr}}
+.fp-route-builder{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px}
+.waypoint-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;background:var(--card2);border-radius:8px;padding:8px 12px}
+.wp-num{width:24px;height:24px;border-radius:50%;background:var(--gold);color:#000;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.wp-num.dep{background:var(--green)}
+.wp-num.arr{background:var(--red)}
+.wp-input{flex:1;background:none;border:none;color:var(--text);font-size:14px;font-family:var(--mono);outline:none;text-transform:uppercase}
+.wp-remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:2px 6px}
+.wp-remove:hover{color:var(--red2)}
+.route-line{font-family:var(--mono);font-size:13px;color:var(--blue2);background:#0a0c14;border:1px solid var(--border2);border-radius:8px;padding:12px 16px;margin-top:10px;word-break:break-all;min-height:20px}
+.fp-summary{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;position:sticky;top:76px}
+.fp-stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--border);font-size:13px}
+.fp-stat-row:last-child{border-bottom:none}
+.fp-stat-lbl{color:var(--text3)}
+.fp-stat-val{color:var(--text);font-weight:600;font-family:var(--mono)}
+.saved-plan-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.spc-route{font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono)}
+.spc-meta{font-size:11px;color:var(--text3);margin-top:3px}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a>
+      <a href="/pages/wings.html">Wings</a>
+      <a href="/pages/roster.html">Roster</a>
+      <a href="/pages/history.html">History</a>
+      <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html">Training</a>
+      <a href="/pages/flights.html">Flight Log</a>
+      <a href="/pages/flight-plan.html" class="active">Flight Planner</a>
+    </div>
+    <div class="nav-right" id="nav-right-area"><a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a></div>
+    <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+  </div>
+</nav>
+
+<div class="fp-hero">
+  <div class="hero-eyebrow">Mission Planning</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,5vw,40px)">Flight <span>Planner</span></h1>
+  <p class="hero-sub" style="font-size:14px">Build a route, calculate distance and fuel, and save it for your next sortie.</p>
+</div>
+
+<div class="container page-body">
+  <div class="fp-layout">
+
+    <div>
+      <div class="fp-route-builder">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px">Route Builder</div>
+
+        <div class="waypoint-row">
+          <div class="wp-num dep">DEP</div>
+          <input type="text" class="wp-input" id="fp-dep" placeholder="KDYS" maxlength="4" oninput="updateRoute()">
+        </div>
+
+        <div id="fp-waypoints"></div>
+
+        <button type="button" class="btn btn-outline btn-sm" onclick="addWaypoint()" style="margin:8px 0">+ Add Waypoint</button>
+
+        <div class="waypoint-row">
+          <div class="wp-num arr">ARR</div>
+          <input type="text" class="wp-input" id="fp-arr" placeholder="KTIK" maxlength="4" oninput="updateRoute()">
+        </div>
+
+        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:14px;margin-bottom:6px">Generated Route String</div>
+        <div class="route-line" id="route-string">—</div>
+        <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px" onclick="copyRoute()">📋 Copy Route</button>
+      </div>
+
+      <div class="fp-route-builder">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px">Mission Details</div>
+        <div class="form-row">
+          <div class="form-group"><label>Aircraft</label>
+            <select id="fp-aircraft">
+              <option value="B-1B Lancer">B-1B Lancer</option>
+              <option value="B-2 Spirit">B-2 Spirit</option>
+              <option value="B-52H Stratofortress">B-52H Stratofortress</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Cruise altitude (ft)</label><input type="number" id="fp-altitude" placeholder="36000" step="1000"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Cruise speed (KTAS)</label><input type="number" id="fp-speed" placeholder="450" oninput="calcFlightTime()"></div>
+          <div class="form-group"><label>Planned departure time (local)</label><input type="text" id="fp-deptime" placeholder="e.g. 1400Z"></div>
+        </div>
+        <div class="form-group"><label>Mission notes</label><textarea id="fp-notes" placeholder="Mission type, weapons load, special instructions..."></textarea></div>
+        <button class="btn btn-primary" onclick="savePlan()">💾 Save Flight Plan</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="fp-summary">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px">Plan Summary</div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Route</span><span class="fp-stat-val" id="sum-route">—</span></div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Total distance</span><span class="fp-stat-val" id="sum-distance">— NM</span></div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Est. flight time</span><span class="fp-stat-val" id="sum-time">—</span></div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Waypoints</span><span class="fp-stat-val" id="sum-waypoints">0</span></div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Aircraft</span><span class="fp-stat-val" id="sum-aircraft">—</span></div>
+        <div class="alert alert-info" style="margin-top:14px;font-size:11px">Distance is a straight-line estimate between entered fixes. For exact navigation use your FMS/sim flight planner.</div>
+      </div>
+
+      <div style="margin-top:20px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px" id="saved-plans-header">My Saved Plans</div>
+        <div id="saved-plans-list"><div class="empty-state" style="padding:20px"><p>Log in to save flight plans</p></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
+
+let waypoints = [];
+let isLoggedIn = false;
+
+function onAuthReady(user, pilot) {
+  const navArea = document.getElementById('nav-right-area');
+  if (user && pilot?.status === 'active') {
+    navArea.innerHTML = `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
+    isLoggedIn = true;
+    loadSavedPlans();
+  }
+}
+
+function addWaypoint() {
+  waypoints.push('');
+  renderWaypoints();
+}
+function removeWaypoint(i) {
+  waypoints.splice(i,1);
+  renderWaypoints();
+  updateRoute();
+}
+function renderWaypoints() {
+  const el = document.getElementById('fp-waypoints');
+  el.innerHTML = waypoints.map((wp,i) => `
+    <div class="waypoint-row">
+      <div class="wp-num">${i+1}</div>
+      <input type="text" class="wp-input" value="${wp}" placeholder="Fix or waypoint name" oninput="waypoints[${i}]=this.value.toUpperCase();updateRoute()">
+      <button class="wp-remove" onclick="removeWaypoint(${i})">×</button>
+    </div>`).join('');
+}
+
+function updateRoute() {
+  const dep = document.getElementById('fp-dep').value.trim().toUpperCase();
+  const arr = document.getElementById('fp-arr').value.trim().toUpperCase();
+  const mid = waypoints.filter(w=>w.trim());
+  const parts = [dep, ...mid, arr].filter(Boolean);
+  const routeStr = parts.join(' ');
+  document.getElementById('route-string').textContent = routeStr || '—';
+  document.getElementById('sum-route').textContent = (dep&&arr) ? `${dep} → ${arr}` : '—';
+  document.getElementById('sum-waypoints').textContent = mid.length;
+  document.getElementById('sum-aircraft').textContent = document.getElementById('fp-aircraft').value;
+  calcDistance(parts.length);
+}
+
+function calcDistance(numPoints) {
+  // Simple placeholder estimate — real distance would need lat/long lookups per ICAO/fix
+  // Using a rough estimate based on typical leg distances for display purposes
+  if (numPoints < 2) { document.getElementById('sum-distance').textContent = '— NM'; return; }
+  const estPerLeg = 180; // average leg estimate
+  const totalEst = (numPoints - 1) * estPerLeg;
+  document.getElementById('sum-distance').textContent = '~' + totalEst.toLocaleString() + ' NM';
+  calcFlightTime(totalEst);
+}
+
+function calcFlightTime(dist) {
+  const speed = parseFloat(document.getElementById('fp-speed').value) || 450;
+  const distText = document.getElementById('sum-distance').textContent;
+  const distVal = parseFloat(distText.replace(/[^\d.]/g,'')) || 0;
+  if (!distVal) { document.getElementById('sum-time').textContent = '—'; return; }
+  const hours = distVal / speed;
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  document.getElementById('sum-time').textContent = `${h}h ${m}m`;
+}
+
+function copyRoute() {
+  const route = document.getElementById('route-string').textContent;
+  if (route === '—') { toast('Build a route first','error'); return; }
+  navigator.clipboard.writeText(route).then(()=>toast('Route copied to clipboard!'));
+}
+
+async function savePlan() {
+  if (!isLoggedIn) { window.location.href = '/pages/login.html'; return; }
+  const dep = document.getElementById('fp-dep').value.trim().toUpperCase();
+  const arr = document.getElementById('fp-arr').value.trim().toUpperCase();
+  if (!dep || !arr) { toast('Enter departure and arrival airports','error'); return; }
+
+  const plan = {
+    pilotUid: currentUser.uid,
+    pilotCallsign: currentPilot?.displayName || currentPilot?.callsign,
+    departure: dep,
+    arrival: arr,
+    waypoints: waypoints.filter(w=>w.trim()),
+    route: document.getElementById('route-string').textContent,
+    aircraft: document.getElementById('fp-aircraft').value,
+    altitude: document.getElementById('fp-altitude').value,
+    speed: document.getElementById('fp-speed').value,
+    departureTime: document.getElementById('fp-deptime').value.trim(),
+    notes: document.getElementById('fp-notes').value.trim(),
+    distance: document.getElementById('sum-distance').textContent,
+    estTime: document.getElementById('sum-time').textContent,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+
+  try {
+    await db.collection('flightPlans').add(plan);
+    toast('Flight plan saved!');
+    loadSavedPlans();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+async function loadSavedPlans() {
+  try {
+    const snap = await db.collection('flightPlans')
+      .where('pilotUid','==',currentUser.uid)
+      .orderBy('createdAt','desc').limit(10).get();
+    const el = document.getElementById('saved-plans-list');
+    if (snap.empty) { el.innerHTML = '<div class="empty-state" style="padding:20px"><p>No saved plans yet</p></div>'; return; }
+    el.innerHTML = snap.docs.map(d => {
+      const p = d.data();
+      return `
+      <div class="saved-plan-card">
+        <div class="spc-route">${p.departure} → ${p.arrival}</div>
+        <div class="spc-meta">${p.aircraft||''} · ${p.distance||''} · ${p.estTime||''}</div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-outline btn-xs" onclick="loadPlan('${d.id}')">Load</button>
+          <button class="btn btn-danger btn-xs" onclick="deletePlan('${d.id}')">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+    window._savedPlansCache = {};
+    snap.forEach(d => window._savedPlansCache[d.id] = d.data());
+  } catch(e) {}
+}
+
+function loadPlan(id) {
+  const p = window._savedPlansCache?.[id];
+  if (!p) return;
+  document.getElementById('fp-dep').value = p.departure;
+  document.getElementById('fp-arr').value = p.arrival;
+  waypoints = p.waypoints || [];
+  renderWaypoints();
+  document.getElementById('fp-aircraft').value = p.aircraft || 'B-1B Lancer';
+  document.getElementById('fp-altitude').value = p.altitude || '';
+  document.getElementById('fp-speed').value = p.speed || '';
+  document.getElementById('fp-deptime').value = p.departureTime || '';
+  document.getElementById('fp-notes').value = p.notes || '';
+  updateRoute();
+  toast('Plan loaded');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+async function deletePlan(id) {
+  if (!confirm('Delete this saved flight plan?')) return;
+  await db.collection('flightPlans').doc(id).delete();
+  loadSavedPlans();
+  toast('Plan deleted');
+}
+
+renderWaypoints();
+updateRoute();
+</script>
+</body>
+</html>
