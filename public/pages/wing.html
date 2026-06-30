@@ -66,6 +66,7 @@
 
   <!-- OVERVIEW -->
   <div id="tab-overview" class="tab-panel active">
+    <div id="commander-banner"></div>
     <div class="grid-3" style="margin-bottom:28px">
       <div class="stat-card"><div class="stat-val" id="ov-pilots">—</div><div class="stat-lbl">Pilots</div></div>
       <div class="stat-card"><div class="stat-val" id="ov-flights">—</div><div class="stat-lbl">Flights</div></div>
@@ -171,10 +172,44 @@ async function loadStatsAndRoster() {
     const fSnap = await db.collection('flights').where('wing','==',wingId).get();
     document.getElementById('ov-flights').textContent = fSnap.size;
 
+    renderCommanderBanner(pilots);
     renderRoster(pilots);
     window._wingPilots = pilots;
     renderSquadrons();
   } catch(e) {}
+}
+
+function renderCommanderBanner(pilots) {
+  const el = document.getElementById('commander-banner');
+  const commander = pilots.find(p => p.role === 'wing_commander');
+  const deputies  = pilots.filter(p => p.role === 'sq_commander');
+  if (!commander && !deputies.length) { el.innerHTML = ''; return; }
+  const color = wingData.color || '#c8a951';
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:24px;border-color:${color}55">
+      <div class="card-header" style="background:${color}15">
+        <div class="card-icon" style="background:${color}">⭐</div>
+        <div class="card-title">Wing Command Staff</div>
+      </div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
+        ${commander ? `
+          <div style="display:flex;align-items:center;gap:12px">
+            ${commander.avatarUrl?`<img src="${commander.avatarUrl}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid ${color}">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:18px">⭐</div>`}
+            <div>
+              <div style="font-size:15px;font-weight:700;color:var(--text)">${commander.displayName||commander.callsign}</div>
+              <div style="font-size:12px;color:${color}">Wing Commander · ${getRankName(commander.rank||'rec')}</div>
+            </div>
+          </div>` : ''}
+        ${deputies.map(d=>`
+          <div style="display:flex;align-items:center;gap:12px">
+            ${d.avatarUrl?`<img src="${d.avatarUrl}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border2)">`:`<div style="width:36px;height:36px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:14px">🎖</div>`}
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${d.displayName||d.callsign}</div>
+              <div style="font-size:11px;color:var(--text2)">Squadron Commander · ${getSqName(wingId,d.squadron)||''}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
 }
 
 function renderRoster(pilots) {

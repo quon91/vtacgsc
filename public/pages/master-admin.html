@@ -640,8 +640,43 @@ async function loadRosters(wingId) {
   const snap = await db.collection('pilots').where('wing','==',wingId).where('status','==','active').get();
   const pilots = snap.docs.map(d=>({uid:d.id,...d.data()}));
   const el   = document.getElementById('roster-content');
-  el.innerHTML = Object.entries(sqs).map(([sqId,sq]) => {
-    const sqPilots = pilots.filter(p=>p.squadron===sqId);
+
+  // Find the wing commander (role === wing_commander, assigned to this wing)
+  const commander = pilots.find(p => p.role === 'wing_commander');
+  const deputy     = pilots.filter(p => p.role === 'sq_commander');
+
+  const commanderHtml = `
+    <div class="card" style="margin-bottom:20px;border:1px solid var(--${wingId});background:rgba(200,169,81,.04)">
+      <div class="card-header" style="background:rgba(200,169,81,.08)">
+        <div class="card-icon" style="background:var(--${wingId})">⭐</div>
+        <div class="card-title">Wing Command Staff</div>
+        <button class="btn btn-outline btn-xs" style="margin-left:auto" onclick="openAssignCommanderModal('${wingId}')">Assign Commander</button>
+      </div>
+      <div class="card-body">
+        ${commander ? `
+          <div class="pilot-row" style="background:var(--card2);margin-bottom:${deputy.length?'10px':'0'}">
+            <div class="pilot-row-avatar">${commander.avatarUrl?`<img src="${commander.avatarUrl}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:'⭐'}</div>
+            <div class="pilot-row-info">
+              <div class="pilot-row-name">${commander.displayName||commander.callsign} <span class="badge badge-gold" style="margin-left:6px">WING COMMANDER</span></div>
+              <div class="pilot-row-meta">${getRankName(commander.rank||'rec')} · ${commander.email||''}</div>
+            </div>
+            <button class="btn btn-outline btn-xs" onclick="openRankModal('${commander.uid}')">Edit</button>
+          </div>` : `
+          <div style="font-size:13px;color:var(--text3);padding:8px 0">⚠ No Wing Commander assigned for this wing yet.</div>`}
+        ${deputy.length ? deputy.map(d=>`
+          <div class="pilot-row" style="background:var(--card2)">
+            <div class="pilot-row-avatar">${d.avatarUrl?`<img src="${d.avatarUrl}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:'🎖'}</div>
+            <div class="pilot-row-info">
+              <div class="pilot-row-name">${d.displayName||d.callsign} <span class="badge badge-blue" style="margin-left:6px">SQ COMMANDER · ${getSqName(wingId,d.squadron)||'—'}</span></div>
+              <div class="pilot-row-meta">${getRankName(d.rank||'rec')} · ${d.email||''}</div>
+            </div>
+            <button class="btn btn-outline btn-xs" onclick="openRankModal('${d.uid}')">Edit</button>
+          </div>`).join('') : ''}
+      </div>
+    </div>`;
+
+  const squadronsHtml = Object.entries(sqs).map(([sqId,sq]) => {
+    const sqPilots = pilots.filter(p=>p.squadron===sqId && p.role !== 'wing_commander');
     return `
       <div class="wing-banner w-${wingId}" style="margin-bottom:14px">
         <div class="wing-label" style="color:var(--${wingId})">${sq.name}</div>
@@ -665,6 +700,21 @@ async function loadRosters(wingId) {
         </table>
       </div>`;
   }).join('');
+
+  el.innerHTML = commanderHtml + squadronsHtml;
+}
+
+function openAssignCommanderModal(wingId) {
+  editingPilotUid = null;
+  document.getElementById('rank-modal-title') && (document.getElementById('rank-modal-title').textContent = 'Assign Wing Commander');
+  // Reuse the rank search to find and assign
+  showSec('ranks');
+  document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.remove('active'));
+  document.querySelector('[onclick*="ranks"]')?.classList.add('active');
+  document.getElementById('sec-ranks').classList.add('active');
+  document.getElementById('sec-rosters').classList.remove('active');
+  document.getElementById('rank-search').focus();
+  toast(`Search for a pilot, then set their Role to "Wing Commander" and Wing to ${WINGS[wingId]?.name}`, 'info');
 }
 function showRosterTab(wingId, btn) {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
