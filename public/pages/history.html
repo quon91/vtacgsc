@@ -27,7 +27,8 @@
     <div class="nav-links" id="nav-links">
       <a href="/index.html">Home</a>
       <div class="nav-dropdown">
-        <button class="nav-drop-btn" onclick="toggleDropdown(this)">Wings ▾</button>
+        <input type="checkbox" id="wings-toggle">
+        <label for="wings-toggle" class="nav-drop-btn">Wings ▾</label>
         <div class="nav-dropdown-menu">
           <a href="/pages/wing.html?id=7bw">7th Bomb Wing</a>
           <a href="/pages/wing.html?id=509bw">509th Bomb Wing</a>
@@ -84,8 +85,6 @@
 <script src="/js/firebase-config.js"></script>
 <script>
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
-function toggleDropdown(btn){const m=btn.nextElementSibling;const open=m.classList.contains('open');document.querySelectorAll('.nav-dropdown-menu.open').forEach(x=>x.classList.remove('open'));document.querySelectorAll('.nav-drop-btn.open').forEach(x=>x.classList.remove('open'));if(!open){m.classList.add('open');btn.classList.add('open');}event.stopPropagation();}
-document.addEventListener('click',()=>{document.querySelectorAll('.nav-dropdown-menu.open').forEach(x=>x.classList.remove('open'));document.querySelectorAll('.nav-drop-btn.open').forEach(x=>x.classList.remove('open'));});
 
 let entries = [], canEdit = false;
 
