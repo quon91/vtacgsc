@@ -6,6 +6,20 @@
 <title>Master Admin — VTAC GSC</title>
 <link rel="stylesheet" href="/css/main.css">
 <style>
+.role-color-swatch { width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .12s; }
+.role-color-swatch:hover { transform:scale(1.1); }
+.role-color-swatch.sel { border-color:#fff; box-shadow:0 0 0 2px var(--gold); }
+.perm-check { display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:var(--text2);cursor:pointer; }
+.perm-check input { accent-color:var(--gold); width:16px;height:16px;cursor:pointer; }
+.perm-check:hover { color:var(--text); }
+.role-card { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+.role-card-head { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.role-dot { width:14px;height:14px;border-radius:50%;flex-shrink:0; }
+.role-card-name { font-size:14px;font-weight:700;color:var(--text); }
+.role-card-level { font-size:11px;color:var(--text3); }
+.role-perm-tags { display:flex;flex-wrap:wrap;gap:5px;margin-top:6px; }
+.role-perm-tag { font-size:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:2px 8px;color:var(--text2); }
+.hidden-badge { font-size:10px;font-weight:700;background:rgba(155,89,182,.15);color:#c39bd3;border:1px solid rgba(155,89,182,.3);border-radius:10px;padding:2px 8px;margin-left:6px; }
 .admin-layout { display:flex; min-height:calc(100vh - 60px); }
 .admin-sidebar { width:230px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--border); padding:16px 0; position:sticky; top:60px; height:calc(100vh - 60px); overflow-y:auto; }
 .admin-main { flex:1; padding:28px 32px; overflow-x:hidden; }
@@ -60,7 +74,7 @@
       <div class="nav-pilot-info">
         <img class="nav-avatar" id="nav-avatar" src="" alt="" onerror="this.style.display='none'">
         <div class="nav-pilot-name" id="nav-name"></div>
-        <div class="nav-rank-badge" style="background:rgba(208,64,64,.15);color:var(--red2);border-color:rgba(208,64,64,.3)">MASTER ADMIN</div>
+        <div class="nav-rank-badge" id="nav-master-badge"></div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="auth.signOut().then(()=>window.location.href='/pages/login.html')">Logout</button>
     </div>
@@ -80,6 +94,7 @@
     <div class="sidebar-item" onclick="showSec('flights')"><span class="si-icon">✈️</span> Flight Logs</div>
     <div class="sidebar-item" onclick="showSec('training')"><span class="si-icon">🎓</span> Training Records</div>
     <div class="sidebar-label">Site</div>
+    <div class="sidebar-item" onclick="showSec('roles')"><span class="si-icon">🔐</span> Roles & Permissions</div>
     <div class="sidebar-item" onclick="showSec('customize')"><span class="si-icon">🎨</span> Customize Site</div>
     <div class="sidebar-item" onclick="showSec('slideshow')"><span class="si-icon">🖼</span> Slideshow</div>
     <div class="sidebar-item" onclick="showSec('news')"><span class="si-icon">📢</span> News / Announcements</div>
@@ -174,6 +189,52 @@
       <div class="sec-title">Training Records</div>
       <div class="sec-sub">View training progress and certifications for all pilots.</div>
       <div id="training-list"><div class="empty-state"><div class="icon">🎓</div><p>No training records yet</p></div></div>
+    </div>
+
+    <!-- ── ROLES & PERMISSIONS ── -->
+    <div id="sec-roles" class="sec">
+      <div class="sec-title">Roles &amp; Permissions</div>
+      <div class="sec-sub">Create custom roles, edit existing ones, and control exactly what each role can do — no coding needed.</div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-icon">➕</div><div class="card-title">Create a new role</div></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Role display name</label>
+              <input type="text" id="nr-name" placeholder="e.g. Training Officer">
+            </div>
+            <div class="form-group">
+              <label>Badge color</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+                <div class="role-color-swatch sel" style="background:#c8a951" onclick="pickRoleColor('#c8a951',this)"></div>
+                <div class="role-color-swatch" style="background:#4a90d9" onclick="pickRoleColor('#4a90d9',this)"></div>
+                <div class="role-color-swatch" style="background:#3dba6e" onclick="pickRoleColor('#3dba6e',this)"></div>
+                <div class="role-color-swatch" style="background:#d04040" onclick="pickRoleColor('#d04040',this)"></div>
+                <div class="role-color-swatch" style="background:#9b59b6" onclick="pickRoleColor('#9b59b6',this)"></div>
+                <div class="role-color-swatch" style="background:#e09030" onclick="pickRoleColor('#e09030',this)"></div>
+                <input type="color" id="nr-color" value="#c8a951" style="width:28px;height:28px;border-radius:50%;padding:0;border:none;cursor:pointer" onchange="pickRoleColor(this.value)">
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Authority level (0–17, higher = more senior; affects who can edit whom)</label>
+            <input type="number" id="nr-level" value="3" min="0" max="17" style="width:100px">
+          </div>
+          <div class="form-group">
+            <label>Permissions</label>
+            <div id="nr-permissions" style="margin-top:8px"></div>
+          </div>
+          <button class="btn btn-primary" onclick="createRole()">+ Create Role</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-icon blue">📋</div><div class="card-title">All roles</div></div>
+        <div class="card-body">
+          <div id="roles-list"></div>
+        </div>
+      </div>
     </div>
 
     <!-- ── CUSTOMIZE ── -->
@@ -338,6 +399,29 @@
   </div>
 </div>
 
+<!-- EDIT ROLE MODAL -->
+<div class="modal-overlay" id="role-edit-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title">Edit Role</div>
+    <div class="form-row">
+      <div class="form-group"><label>Role name</label><input type="text" id="er-name"></div>
+      <div class="form-group"><label>Authority level</label><input type="number" id="er-level" min="0" max="17"></div>
+    </div>
+    <div class="form-group">
+      <label>Badge color</label>
+      <input type="color" id="er-color" style="width:50px;height:32px;border-radius:6px;padding:0;border:none;cursor:pointer">
+    </div>
+    <div class="form-group">
+      <label>Permissions</label>
+      <div id="er-permissions" style="margin-top:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('role-edit-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRoleEdit()">Save Role</button>
+    </div>
+  </div>
+</div>
+
 <!-- EDIT RANK MODAL -->
 <div class="modal-overlay" id="rank-modal">
   <div class="modal">
@@ -400,6 +484,13 @@ function onAuthReady(user, pilot) {
   if (pilot?.role !== 'master_admin') { window.location.href = '/index.html'; return; }
   document.getElementById('nav-name').textContent = pilot.displayName || pilot.callsign;
   if (pilot.avatarUrl) document.getElementById('nav-avatar').src = pilot.avatarUrl;
+  const badge = document.getElementById('nav-master-badge');
+  const title = pilot.publicTitle || 'Wing Commander';
+  const color = pilot.publicColor || '#c8a951';
+  badge.textContent = title;
+  badge.style.background = color + '26';
+  badge.style.color = color;
+  badge.style.borderColor = color + '4d';
   loadAll();
 }
 
@@ -417,6 +508,7 @@ function showSec(id) {
   if (id==='news')         loadNews();
   if (id==='wings')        loadWingSettings();
   if (id==='customize')    loadCustomizeSettings();
+  if (id==='roles')        loadRolesManager();
 }
 
 let allPilots = [], pendingApps = [];
@@ -929,6 +1021,119 @@ function pickColor(hex, el) {
   document.getElementById('custom-color').value = hex;
   db.collection('settings').doc('site').set({accentColor:hex},{merge:true});
   toast('Color saved! Reload pages to see it.');
+}
+
+// ── ROLES & PERMISSIONS MANAGER ──────────────────────────────
+let selectedRoleColor = '#c8a951';
+let liveRoles = {};
+
+async function loadRolesManager() {
+  // Pull whatever is currently active (already merged with defaults by firebase-config.js)
+  liveRoles = JSON.parse(JSON.stringify(ROLES));
+  renderPermissionCheckboxes();
+  renderRolesList();
+}
+
+function renderPermissionCheckboxes() {
+  const el = document.getElementById('nr-permissions');
+  el.innerHTML = ALL_PERMISSIONS.map(p => `
+    <label class="perm-check">
+      <input type="checkbox" value="${p.id}" class="new-role-perm">
+      ${p.label}
+    </label>`).join('');
+}
+
+function pickRoleColor(hex, el) {
+  document.querySelectorAll('.role-color-swatch').forEach(s=>s.classList.remove('sel'));
+  if (el) el.classList.add('sel');
+  selectedRoleColor = hex;
+  document.getElementById('nr-color').value = hex;
+}
+
+async function createRole() {
+  const name = document.getElementById('nr-name').value.trim();
+  if (!name) { toast('Enter a role name', 'error'); return; }
+  const level = parseInt(document.getElementById('nr-level').value) || 1;
+  const permissions = [...document.querySelectorAll('.new-role-perm:checked')].map(c => c.value);
+  const roleId = 'role_' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') + '_' + Date.now().toString(36);
+
+  liveRoles[roleId] = { name, level, color: selectedRoleColor, permissions };
+
+  try {
+    await db.collection('settings').doc('roles').set({ roles: liveRoles }, { merge: true });
+    ROLES = liveRoles;
+    document.getElementById('nr-name').value = '';
+    document.querySelectorAll('.new-role-perm').forEach(c => c.checked = false);
+    renderRolesList();
+    toast('Role created!');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+function renderRolesList() {
+  const el = document.getElementById('roles-list');
+  const entries = Object.entries(liveRoles).sort((a,b) => (b[1].level||0) - (a[1].level||0));
+  el.innerHTML = entries.map(([roleId, role]) => {
+    const isBuiltIn = ['master_admin','wing_commander','sq_commander','instructor','pilot','trainee','pending'].includes(roleId);
+    const permTags = (role.permissions||[]).map(pid => {
+      const p = ALL_PERMISSIONS.find(x => x.id === pid);
+      return p ? `<span class="role-perm-tag">${p.label}</span>` : '';
+    }).join('');
+    return `
+      <div class="role-card">
+        <div class="role-card-head">
+          <div class="role-dot" style="background:${role.color||'#888'}"></div>
+          <div style="flex:1">
+            <div class="role-card-name">${role.name}${role.isMasterAdmin?'<span class="hidden-badge">Hidden identity</span>':''}</div>
+            <div class="role-card-level">Authority level ${role.level||0}${isBuiltIn?' · built-in role':''}</div>
+          </div>
+          <button class="btn btn-outline btn-xs" onclick="openEditRoleModal('${roleId}')">Edit</button>
+          ${!isBuiltIn ? `<button class="btn btn-danger btn-xs" onclick="deleteRole('${roleId}')">Delete</button>` : ''}
+        </div>
+        ${role.isMasterAdmin ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">This role silently has ALL permissions. Its name is never shown publicly — pilots with this role choose their own public title in their profile.</div>' : ''}
+        ${permTags ? `<div class="role-perm-tags">${permTags}</div>` : (!role.isMasterAdmin ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">No special permissions</div>' : '')}
+      </div>`;
+  }).join('');
+}
+
+let editingRoleId = null;
+function openEditRoleModal(roleId) {
+  editingRoleId = roleId;
+  const role = liveRoles[roleId];
+  document.getElementById('er-name').value  = role.name;
+  document.getElementById('er-level').value = role.level || 1;
+  document.getElementById('er-color').value = role.color || '#c8a951';
+  document.getElementById('er-permissions').innerHTML = ALL_PERMISSIONS.map(p => `
+    <label class="perm-check">
+      <input type="checkbox" value="${p.id}" class="edit-role-perm" ${(role.permissions||[]).includes(p.id)?'checked':''}>
+      ${p.label}
+    </label>`).join('');
+  document.getElementById('role-edit-modal').classList.add('open');
+}
+async function saveRoleEdit() {
+  const role = liveRoles[editingRoleId];
+  role.name  = document.getElementById('er-name').value.trim() || role.name;
+  role.level = parseInt(document.getElementById('er-level').value) || role.level;
+  role.color = document.getElementById('er-color').value;
+  if (!role.isMasterAdmin) {
+    role.permissions = [...document.querySelectorAll('.edit-role-perm:checked')].map(c => c.value);
+  }
+  try {
+    await db.collection('settings').doc('roles').set({ roles: liveRoles }, { merge: true });
+    ROLES = liveRoles;
+    closeModal('role-edit-modal');
+    renderRolesList();
+    toast('Role updated!');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+async function deleteRole(roleId) {
+  if (!confirm(`Delete the "${liveRoles[roleId].name}" role? Pilots currently assigned this role will need to be reassigned.`)) return;
+  delete liveRoles[roleId];
+  try {
+    await db.collection('settings').doc('roles').set({ roles: liveRoles });
+    ROLES = liveRoles;
+    renderRolesList();
+    toast('Role deleted');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
 
 // ── WING SETTINGS ─────────────────────────────────────────────

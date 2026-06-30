@@ -107,6 +107,21 @@
 
   <!-- EDIT PROFILE -->
   <div id="tab-edit" class="tab-content active">
+    <div class="edit-section" id="public-title-section" style="display:none">
+      <div class="edit-section-title">🎭 Public Display Title</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Your admin permissions stay private. Choose what title and color show instead of "Master Admin" everywhere on the site — nav bar, roster, profile.</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Displayed title</label>
+          <input type="text" id="e-public-title" placeholder="e.g. Wing Commander, Founder, Commanding Officer" maxlength="30">
+        </div>
+        <div class="form-group">
+          <label>Badge color</label>
+          <input type="color" id="e-public-color" value="#c8a951" style="width:50px;height:38px;border-radius:6px;padding:0;border:none;cursor:pointer">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="savePublicTitle()">Save display title</button>
+    </div>
     <div class="edit-section">
       <div class="edit-section-title">👤 Basic info</div>
       <div class="form-row">
@@ -296,13 +311,20 @@ function populateProfile(p) {
   if (!p) return;
   // Hero
   document.getElementById('disp-callsign').textContent = p.displayName || p.callsign || 'Pilot';
-  document.getElementById('disp-rank').textContent     = getRankName(p.rank||'rec') + ' · ' + (ROLES[p.role]?.name||'Pilot');
+  document.getElementById('disp-rank').textContent     = getRankName(p.rank||'rec') + ' · ' + getDisplayRole(p).name;
   document.getElementById('disp-wing').textContent     = getWingName(p.wing) + (p.squadron ? ' · ' + getSqName(p.wing, p.squadron) : '');
   document.getElementById('disp-flights').textContent  = p.totalFlights || 0;
   document.getElementById('disp-hours').textContent    = Math.round(p.flightHours || 0) + 'h';
   document.getElementById('disp-joined').textContent   = formatDate(p.appliedAt);
   if (p.avatarUrl)     document.getElementById('profile-avatar').src = p.avatarUrl;
   if (p.pilotWingsUrl) { document.getElementById('disp-wings').src = p.pilotWingsUrl; document.getElementById('disp-wings').style.display = 'block'; }
+
+  // Public title (only for hidden master_admin role)
+  if (ROLES[p.role]?.isMasterAdmin) {
+    document.getElementById('public-title-section').style.display = 'block';
+    document.getElementById('e-public-title').value = p.publicTitle || 'Wing Commander';
+    document.getElementById('e-public-color').value = p.publicColor || '#c8a951';
+  }
 
   // Edit tab
   document.getElementById('e-callsign').value = p.displayName || p.callsign || '';
@@ -393,6 +415,21 @@ async function saveCallsignPrefs() {
   const pref = document.getElementById('cs-display-pref').value;
   await db.collection('pilots').doc(currentUser.uid).update({ callsignDisplayPref: pref });
   toast('Preferences saved!');
+}
+
+// ── PUBLIC TITLE (hides master_admin identity) ─────────────────
+async function savePublicTitle() {
+  const title = document.getElementById('e-public-title').value.trim();
+  const color = document.getElementById('e-public-color').value;
+  if (!title) { toast('Enter a display title','error'); return; }
+  try {
+    await db.collection('pilots').doc(currentUser.uid).update({
+      publicTitle: title,
+      publicColor: color,
+    });
+    document.getElementById('disp-rank').textContent = getRankName(pilotData.rank||'rec') + ' · ' + title;
+    toast('Display title saved!');
+  } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
 // ── SAVE PROFILE ─────────────────────────────────────────────
