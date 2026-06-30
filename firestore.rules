@@ -41,6 +41,12 @@ service cloud.firestore {
       allow delete: if isMasterAdmin() || isInstructor();
     }
 
+    // ── Flight Plans (personal — only the owning pilot can access) ──
+    match /flightPlans/{planId} {
+      allow read, update, delete: if isActive() && resource.data.pilotUid == request.auth.uid;
+      allow create: if isActive() && request.resource.data.pilotUid == request.auth.uid;
+    }
+
     // ── Settings (site customization) ─────────────────────────
     match /settings/{settingId} {
       // Public can read site settings (colors, names, slideshow)
