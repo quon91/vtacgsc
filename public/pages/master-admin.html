@@ -758,23 +758,93 @@ async function loadCustomizeSettings() {
       if (d.footer)   document.getElementById('cust-footer').value   = d.footer;
     }
   } catch(e) {}
-  // Build wing name editor
+  await buildWingNameEditor();
+}
+
+let liveWingsData = {};
+async function buildWingNameEditor() {
+  // Load real wing data (merging defaults with any Firestore overrides)
+  liveWingsData = JSON.parse(JSON.stringify(WINGS));
+  try {
+    const snap = await db.collection('wings').get();
+    snap.forEach(d => {
+      liveWingsData[d.id] = {...(liveWingsData[d.id]||{}), ...d.data(), id: d.id};
+    });
+  } catch(e) {}
+
   const el = document.getElementById('wing-name-editor');
-  el.innerHTML = Object.entries(WINGS).map(([wingId,wing])=>`
-    <div style="margin-bottom:16px;padding:14px;background:var(--card2);border-radius:8px;border-left:3px solid var(--${wingId})">
+  el.innerHTML = Object.entries(liveWingsData).map(([wingId,wing])=>`
+    <div style="margin-bottom:16px;padding:14px;background:var(--card2);border-radius:8px;border-left:3px solid var(--${wingId},#c8a951)">
       <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">${wing.name}</div>
-      ${Object.entries(wing.squadrons).map(([sqId,sq])=>`
-        <div class="form-row" style="margin-bottom:8px">
-          <div class="form-group" style="margin:0">
-            <label style="font-size:10px">Squadron name</label>
-            <input type="text" id="sq-name-${sqId}" value="${sq.name}" placeholder="${sq.name}">
+      ${Object.entries(wing.squadrons||{}).map(([sqId,sq])=>`
+        <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+          <div class="form-row" style="margin-bottom:8px">
+            <div class="form-group" style="margin:0">
+              <label style="font-size:10px">Squadron name</label>
+              <input type="text" id="sq-name-${sqId}" value="${sq.name||''}" placeholder="${sq.name||''}">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label style="font-size:10px">Squadron callsign prefix</label>
+              <input type="text" id="sq-call-${sqId}" value="${sq.callsign||''}" placeholder="e.g. BONE">
+            </div>
           </div>
-          <div class="form-group" style="margin:0">
-            <label style="font-size:10px">Callsign</label>
-            <input type="text" id="sq-call-${sqId}" value="${sq.callsign||''}" placeholder="e.g. BONE">
+          <label style="font-size:10px">Flight callsign pool (e.g. BONE 01, BONE 02, BONE 03)</label>
+          <div id="pool-list-${sqId}" style="margin:6px 0"></div>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="pool-new-${sqId}" placeholder="e.g. ${sq.callsign||'BONE'} 0${(sq.callsignPool||[]).length+1}" style="flex:1;font-size:13px" maxlength="20">
+            <button type="button" class="btn btn-outline btn-sm" onclick="addCallsignToPool('${wingId}','${sqId}')">+ Add</button>
           </div>
         </div>`).join('')}
     </div>`).join('');
+
+  // Render each squadron's pool list
+  Object.entries(liveWingsData).forEach(([wingId,wing])=>{
+    Object.entries(wing.squadrons||{}).forEach(([sqId,sq])=>{
+      renderCallsignPool(wingId, sqId);
+    });
+  });
+}
+
+function renderCallsignPool(wingId, sqId) {
+  const pool = liveWingsData[wingId]?.squadrons?.[sqId]?.callsignPool || [];
+  const el = document.getElementById(`pool-list-${sqId}`);
+  if (!el) return;
+  if (!pool.length) { el.innerHTML = '<div style="font-size:11px;color:var(--text3)">No flight callsigns yet</div>'; return; }
+  el.innerHTML = pool.map((c,i)=>`
+    <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(74,144,217,.12);border:1px solid rgba(74,144,217,.3);color:var(--blue2);border-radius:14px;padding:3px 10px;font-size:11px;font-weight:700;font-family:var(--mono);margin:3px 4px 3px 0">
+      ${c}
+      <button type="button" onclick="removeCallsignFromPool('${wingId}','${sqId}',${i})" style="background:none;border:none;color:var(--red2);cursor:pointer;font-size:13px;padding:0;line-height:1">×</button>
+    </span>`).join('');
+}
+
+async function addCallsignToPool(wingId, sqId) {
+  const input = document.getElementById(`pool-new-${sqId}`);
+  const val = input.value.trim().toUpperCase();
+  if (!val) return;
+  const pool = liveWingsData[wingId].squadrons[sqId].callsignPool || [];
+  pool.push(val);
+  liveWingsData[wingId].squadrons[sqId].callsignPool = pool;
+  try {
+    await db.collection('wings').doc(wingId).set({
+      squadrons: { [sqId]: { callsignPool: pool } }
+    }, {merge:true});
+    input.value = '';
+    renderCallsignPool(wingId, sqId);
+    toast('Callsign added!');
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+async function removeCallsignFromPool(wingId, sqId, idx) {
+  const pool = liveWingsData[wingId].squadrons[sqId].callsignPool || [];
+  pool.splice(idx,1);
+  liveWingsData[wingId].squadrons[sqId].callsignPool = pool;
+  try {
+    await db.collection('wings').doc(wingId).set({
+      squadrons: { [sqId]: { callsignPool: pool } }
+    }, {merge:true});
+    renderCallsignPool(wingId, sqId);
+    toast('Removed');
+  } catch(e) { toast('Error: '+e.message,'error'); }
 }
 async function saveSiteSettings() {
   await db.collection('settings').doc('site').set({
@@ -788,15 +858,19 @@ async function saveSiteSettings() {
 }
 async function saveWingSettings() {
   const updates = {};
-  Object.entries(WINGS).forEach(([wingId,wing])=>{
-    Object.entries(wing.squadrons).forEach(([sqId])=>{
+  for (const [wingId,wing] of Object.entries(liveWingsData)) {
+    const sqUpdates = {};
+    for (const sqId of Object.keys(wing.squadrons||{})) {
       const nameEl = document.getElementById(`sq-name-${sqId}`);
       const callEl = document.getElementById(`sq-call-${sqId}`);
-      if (nameEl) updates[`${wingId}.${sqId}.name`]     = nameEl.value;
-      if (callEl) updates[`${wingId}.${sqId}.callsign`] = callEl.value;
-    });
-  });
-  await db.collection('settings').doc('wings').set(updates, {merge:true});
+      sqUpdates[sqId] = {
+        name:     nameEl ? nameEl.value : wing.squadrons[sqId].name,
+        callsign: callEl ? callEl.value.toUpperCase() : wing.squadrons[sqId].callsign,
+        callsignPool: wing.squadrons[sqId].callsignPool || [],
+      };
+    }
+    await db.collection('wings').doc(wingId).set({ squadrons: sqUpdates }, {merge:true});
+  }
   toast('Wing settings saved!');
 }
 function pickColor(hex, el) {

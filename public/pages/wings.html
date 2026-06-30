@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wings — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.wings-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.wing-cards { display: grid; grid-template-columns: repeat(auto-fill,minmax(300px,1fr)); gap: 18px; }
+.wing-card  {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 24px; text-decoration: none; color: inherit;
+  transition: border-color .15s, transform .15s; display: block;
+}
+.wing-card:hover { transform: translateY(-3px); }
+.wing-card.w-7bw   { border-top: 3px solid var(--gold); }
+.wing-card.w-509bw { border-top: 3px solid var(--blue); }
+.wing-card.w-2bw   { border-top: 3px solid var(--green); }
+.wing-card:hover.w-7bw   { border-color: var(--gold); }
+.wing-card:hover.w-509bw { border-color: var(--blue); }
+.wing-card:hover.w-2bw   { border-color: var(--green); }
+.wc-label { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 6px; }
+.wc-name  { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
+.wc-base  { font-size: 13px; color: var(--text2); margin-bottom: 14px; }
+.wc-squads { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.wc-squad  { font-size: 12px; color: var(--text2); }
+.wc-aircraft { font-size: 12px; font-weight: 600; }
+.wc-link { font-size: 12px; font-weight: 600; margin-top: 8px; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a>
+      <a href="/pages/wings.html" class="active">Wings</a>
+      <a href="/pages/history.html">History</a>
+      <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html">Training</a>
+      <a href="/pages/flights.html">Flight Log</a>
+    </div>
+    <div class="nav-right" id="nav-right-area"><a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a></div>
+    <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+  </div>
+</nav>
+
+<div class="wings-hero">
+  <div class="hero-eyebrow">Order of Battle</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Our <span>Wings</span></h1>
+  <p class="hero-sub" style="font-size:14px">Three wings. Six squadrons. One command.</p>
+</div>
+
+<div class="container page-body">
+  <div class="wing-cards" id="wing-cards">
+    <a href="/pages/wing.html?id=7bw" class="wing-card w-7bw">
+      <div class="wc-label" style="color:var(--gold)">7th Bomb Wing</div>
+      <div class="wc-name" style="color:var(--gold)">7 BW</div>
+      <div class="wc-base">📍 Dyess AFB (KDYS) — Abilene, TX</div>
+      <div class="wc-squads">
+        <div class="wc-squad">⬥ 28th Bomb Squadron "Mohawks"</div>
+        <div class="wc-squad">⬥ 9th Bomb Squadron "Tigers"</div>
+      </div>
+      <div class="wc-aircraft" style="color:var(--gold)">B-1B Lancer</div>
+      <div class="wc-link" style="color:var(--gold)">View Wing →</div>
+    </a>
+    <a href="/pages/wing.html?id=509bw" class="wing-card w-509bw">
+      <div class="wc-label" style="color:var(--blue)">509th Bomb Wing</div>
+      <div class="wc-name" style="color:var(--blue)">509 BW</div>
+      <div class="wc-base">📍 Whiteman AFB (KSZL) — Knob Noster, MO</div>
+      <div class="wc-squads">
+        <div class="wc-squad">⬥ 13th Bomb Squadron "Devil's Advocates"</div>
+      </div>
+      <div class="wc-aircraft" style="color:var(--blue)">B-2 Spirit</div>
+      <div class="wc-link" style="color:var(--blue)">View Wing →</div>
+    </a>
+    <a href="/pages/wing.html?id=2bw" class="wing-card w-2bw">
+      <div class="wc-label" style="color:var(--green)">2nd Bomb Wing</div>
+      <div class="wc-name" style="color:var(--green)">2 BW</div>
+      <div class="wc-base">📍 Barksdale AFB (KBAD) — Bossier City, LA</div>
+      <div class="wc-squads">
+        <div class="wc-squad">⬥ 96th Bomb Squadron</div>
+        <div class="wc-squad">⬥ 343rd Bomb Squadron</div>
+        <div class="wc-squad">⬥ 11th Bomb Squadron</div>
+      </div>
+      <div class="wc-aircraft" style="color:var(--green)">B-52H Stratofortress</div>
+      <div class="wc-link" style="color:var(--green)">View Wing →</div>
+    </a>
+  </div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
+
+function onAuthReady(user, pilot) {
+  const navArea = document.getElementById('nav-right-area');
+  if (user && pilot?.status === 'active') {
+    navArea.innerHTML = `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
+  }
+}
+</script>
+</body>
+</html>

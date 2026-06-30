@@ -26,15 +26,7 @@
     <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
     <div class="nav-links" id="nav-links">
       <a href="/index.html">Home</a>
-      <div class="nav-dropdown">
-        <input type="checkbox" id="wings-toggle">
-        <label for="wings-toggle" class="nav-drop-btn">Wings ▾</label>
-        <div class="nav-dropdown-menu">
-          <a href="/pages/wing.html?id=7bw">7th Bomb Wing</a>
-          <a href="/pages/wing.html?id=509bw">509th Bomb Wing</a>
-          <a href="/pages/wing.html?id=2bw">2nd Bomb Wing</a>
-        </div>
-      </div>
+      <a href="/pages/wings.html">Wings</a>
       <a href="/pages/history.html" class="active">History</a>
       <a href="/pages/bases.html">Bases</a>
       <a href="/pages/training/index.html">Training</a>
@@ -165,37 +157,6 @@ async function removeEntry(id) {
 }
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 
-// Position the fixed-position Wings dropdown under its button
-(function() {
-  const toggle = document.getElementById('wings-toggle');
-  const label  = document.querySelector('label[for="wings-toggle"]');
-  const menu   = document.querySelector('.nav-dropdown-menu');
-  if (!toggle || !label || !menu) return;
-  function positionMenu() {
-    const r = label.getBoundingClientRect();
-    // If label has no real size (hidden/collapsed nav), fall back to a safe position
-    if (r.width === 0 && r.height === 0) {
-      menu.style.top  = '60px';
-      menu.style.left = '16px';
-      return;
-    }
-    menu.style.top  = r.bottom + 'px';
-    menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
-  }
-  toggle.addEventListener('change', () => {
-    if (toggle.checked) { requestAnimationFrame(positionMenu); }
-  });
-  window.addEventListener('resize', () => { if (toggle.checked) positionMenu(); });
-  window.addEventListener('scroll', () => { if (toggle.checked) positionMenu(); }, {passive:true});
-  document.addEventListener('click', (e) => {
-    if (toggle.checked && !e.target.closest('.nav-dropdown')) toggle.checked = false;
-  });
-  // Close mobile nav drawer when a wing link is clicked
-  menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
-    toggle.checked = false;
-    document.getElementById('nav-links')?.classList.remove('open');
-  }));
-})();
 
 </script>
 </body>
