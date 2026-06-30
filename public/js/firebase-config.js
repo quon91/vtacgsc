@@ -245,6 +245,385 @@ const ALL_PERMISSIONS = [
   { id: 'manage_training',   label: 'Edit training modules' },
   { id: 'award_medals',      label: 'Award medals, ribbons & pilot wings' },
 ];
+// ═══════════════════════════════════════════════════════════════
+//  VTAC GSC — TRAINING CERTIFICATIONS CATALOG
+//  Add this block to firebase-config.js after the WINGS_BADGES section.
+//  Based on real USAF AFMAN 11-2B-1V1, AFMAN 11-2B-2V1, AFMAN 11-2B-52V1
+//  qualification frameworks and the B-1 MQT Handbook (Dyess AFB).
+// ═══════════════════════════════════════════════════════════════
+
+// ── TRAINING QUALIFICATION STATUS LEVELS ────────────────────────
+// These mirror the real USAF bomber aircrew qualification framework.
+// IQT → BMC → CMR is the standard progression path.
+const QUAL_STATUS = [
+  {
+    id:    'iqt',
+    name:  'Initial Qualification Training',
+    abbr:  'IQT',
+    color: '#9aa0b8',
+    desc:  'Currently in Initial Qualification Training. Under full IP supervision. Not authorized for unsupervised flight.',
+  },
+  {
+    id:    'bmc',
+    name:  'Basic Mission Capable',
+    abbr:  'BMC',
+    color: '#4a90d9',
+    desc:  'Completed IQT and MQT. Qualified in some aspects of the unit mission. Must be able to attain CMR within 30 days of tasking.',
+  },
+  {
+    id:    'cmr',
+    name:  'Combat Mission Ready',
+    abbr:  'CMR',
+    color: '#3dba6e',
+    desc:  'Fully mission qualified. Current and proficient in all assigned mission areas. Primary designation for combat-coded positions.',
+  },
+  {
+    id:    'ncmr',
+    name:  'Non-Combat Mission Ready',
+    abbr:  'N-CMR',
+    color: '#e09030',
+    desc:  'Was CMR; has regressed due to time/currency. Must complete re-qualification program before returning to CMR status.',
+  },
+  {
+    id:    'ip',
+    name:  'Instructor Pilot',
+    abbr:  'IP',
+    color: '#c8a951',
+    desc:  'Certified to instruct student pilots. Requires additional upgrade training and Sq/CC certification beyond CMR.',
+  },
+];
+
+// ── TRAINING CERTIFICATIONS CATALOG ─────────────────────────────
+// Aircraft-specific certifications awarded by IPs and Wing Commanders.
+// Organized by aircraft MDS and phase, matching the real AFMAN training
+// framework for AFGSC bomber crews.
+const TRAINING_CERTS = [
+
+  // ══════════════════════════════════════════════════
+  //  B-1B LANCER — 7th Bomb Wing / KDYS
+  //  Based on AFMAN 11-2B-1V1 and B-1 MQT Handbook
+  // ══════════════════════════════════════════════════
+  {
+    id:       'b1b_module100',
+    aircraft: 'B-1B',
+    wing:     '7bw',
+    phase:    'Module 100',
+    name:     'Local Area Orientation & Aircraft Familiarization',
+    abbr:     'LAO/BMC',
+    color:    '#c8a951',
+    desc:     'Completion of Module 100. Local Area Orientation / Instrument element mandatory. Awards Basic Mission Capable (BMC) status and authorizes operation of the B-1B in the local area under instructor supervision.',
+    awardsQual: 'bmc',
+  },
+  {
+    id:       'b1b_instruments',
+    aircraft: 'B-1B',
+    wing:     '7bw',
+    phase:    'Phase 1',
+    name:     'Instrument Qualification',
+    abbr:     'INST QUAL',
+    color:    '#c8a951',
+    desc:     'IFR proficiency, instrument departure, holding procedures, precision ILS approach (CAT I), and non-precision RNAV/VOR approach to published minimums at KDYS.',
+    awardsQual: null,
+  },
+  {
+    id:       'b1b_ils_cert',
+    aircraft: 'B-1B',
+    wing:     '7bw',
+    phase:    'Phase 1',
+    name:     'ILS Approach Certification',
+    abbr:     'ILS CERT',
+    color:    '#c8a951',
+    desc:     'Demonstrated proficiency in precision ILS approach at KDYS. Covers FMS NAV page setup, PFD softkey selection, APR mode sequence (LOC → G/S capture), ATH management below 2,500 ft AGL, and decision height procedure.',
+    awardsQual: null,
+  },
+  {
+    id:       'b1b_rnav_cert',
+    aircraft: 'B-1B',
+    wing:     '7bw',
+    phase:    'Phase 1',
+    name:     'RNAV/GPS Approach Certification',
+    abbr:     'RNAV CERT',
+    color:    '#c8a951',
+    desc:     'Demonstrated proficiency in GPS/RNAV approach. Covers NAV HOLD (not APR), GPS PFD softkey, FPLN loading, manual V/S descent management from FAF, and MDA level-off.',
+    awardsQual: null,
+  },
+  {
+    id:       'b1b_night',
+    aircraft: 'B-1B',
+    wing:     '7bw',
+    phase:    'Phase 2',
+    name:     'Night Currency Qualification',
+    abbr:     'NIGHT QUAL',
+    color:    '#c8a951',
+    desc:     'Night VFR departure, night traffic pattern, night instrument approach, and night full-stop landing. Lighting configuration and night-currency proficiency demonstrated.',
+    awardsQual: null,
+  },
+  {
+    id:       'b1b_ar',
+    aircraft: 'B-1B',
+    wing:     '7bw',
+    phase:    'Phase 2',
+    name:     'Air Refueling Qualification',
+    abbr:     'AR QUAL',
+    color:    '#c8a951',
+    desc:     'Tanker rejoin (point-parallel or enroute), precontact, contact, simulated onload, and breakaway procedures. Demonstrated proficiency in stabilized contact and crew coordination.',
+    awardsQual: null,
+  },
+  {
+    id:       'b1b_lowlevel',
+    aircraft: 'B-1B',
+    wing:     '7bw',
+    phase:    'Phase 2',
+    name:     'Low-Level Navigation Qualification',
+    abbr:     'LL QUAL',
+    color:    '#c8a951',
+    desc:     'Low-level navigation route at 500–1,000 ft AGL. Route study, MSA awareness, terrain clearance planning, and abort criteria briefed and demonstrated.',
+    awardsQual: null,
+  },
+  {
+    id:       'b1b_sat',
+    aircraft: 'B-1B',
+    wing:     '7bw',
+    phase:    'Phase 3',
+    name:     'Surface Attack Certification',
+    abbr:     'SAT CERT',
+    color:    '#c8a951',
+    desc:     'Simulated surface attack with Time-on-Target (TOT ±30 sec) control. IP-to-target run, weapons release, and safe escape maneuver demonstrated to grade 3 standard.',
+    awardsQual: null,
+  },
+  {
+    id:       'b1b_cmr',
+    aircraft: 'B-1B',
+    wing:     '7bw',
+    phase:    'CMR',
+    name:     'Combat Mission Ready — B-1B',
+    abbr:     'B-1B CMR',
+    color:    '#c8a951',
+    desc:     'Full Combat Mission Ready qualification on the B-1B Lancer. All Phase 1, 2, and 3 training complete. Current and proficient in instruments, night, air refueling, low-level navigation, and surface attack.',
+    awardsQual: 'cmr',
+  },
+  {
+    id:       'b1b_ip',
+    aircraft: 'B-1B',
+    wing:     '7bw',
+    phase:    'IP',
+    name:     'Instructor Pilot Qualification — B-1B',
+    abbr:     'B-1B IP',
+    color:    '#f0cc72',
+    desc:     'Certified Instructor Pilot on the B-1B Lancer. Authorized to instruct and evaluate student pilots in all phases of MQT. Requires Sq/CC certification.',
+    awardsQual: 'ip',
+  },
+
+  // ══════════════════════════════════════════════════
+  //  B-2 SPIRIT — 509th Bomb Wing / KSZL
+  //  Based on AFMAN 11-2B-2V1 framework
+  // ══════════════════════════════════════════════════
+  {
+    id:       'b2_iqt',
+    aircraft: 'B-2',
+    wing:     '509bw',
+    phase:    'IQT',
+    name:     'B-2 Initial Qualification Training',
+    abbr:     'B-2 IQT',
+    color:    '#4a90d9',
+    desc:     'Initial qualification on the B-2 Spirit. Covers cockpit familiarization, MFD system (8 displays), FMS/CDU keypad operation, autopilot modes, stealth mode procedures, and basic airwork. Currently under full IP supervision.',
+    awardsQual: 'iqt',
+  },
+  {
+    id:       'b2_cockpit_cert',
+    aircraft: 'B-2',
+    wing:     '509bw',
+    phase:    'Phase 1',
+    name:     'Cockpit Systems Certification',
+    abbr:     'SYS CERT',
+    color:    '#4a90d9',
+    desc:     'Demonstrated knowledge of all 8 MFD sub-pages (HUD, NAV, GPS, ECS, FUEL, FCH, ENG, STATS), FMS COMM/NAV/PRFM/FPLN pages, stealth mode procedures, and cargo door/crew hatch operations.',
+    awardsQual: null,
+  },
+  {
+    id:       'b2_ils_cert',
+    aircraft: 'B-2',
+    wing:     '509bw',
+    phase:    'Phase 1',
+    name:     'ILS Approach Certification — B-2',
+    abbr:     'ILS CERT',
+    color:    '#4a90d9',
+    desc:     'Precision ILS approach on the B-2. FMS NAV MODE = NAV required for APP mode. CRS SEL, APP capture, and full autopilot sequence demonstrated to IP standard.',
+    awardsQual: null,
+  },
+  {
+    id:       'b2_weapons_cert',
+    aircraft: 'B-2',
+    wing:     '509bw',
+    phase:    'Phase 2',
+    name:     'Weapon Delivery Certification',
+    abbr:     'WPN CERT',
+    color:    '#4a90d9',
+    desc:     'Simulated weapons delivery. Release criteria met (>20,000 ft AGL, >230 KIAS, wings level), STATS page READY FOR RELEASE confirmed, cargo door sequence, and bomb bay door closure after release.',
+    awardsQual: null,
+  },
+  {
+    id:       'b2_bmc',
+    aircraft: 'B-2',
+    wing:     '509bw',
+    phase:    'BMC',
+    name:     'Basic Mission Capable — B-2',
+    abbr:     'B-2 BMC',
+    color:    '#4a90d9',
+    desc:     'Basic Mission Capable on the B-2 Spirit. IQT and MQT Phase 1 complete. Qualified in basic flight operations, systems, and instrument procedures.',
+    awardsQual: 'bmc',
+  },
+  {
+    id:       'b2_cmr',
+    aircraft: 'B-2',
+    wing:     '509bw',
+    phase:    'CMR',
+    name:     'Combat Mission Ready — B-2',
+    abbr:     'B-2 CMR',
+    color:    '#7ab8ff',
+    desc:     'Full Combat Mission Ready qualification on the B-2 Spirit. All phases complete including instruments, weapons delivery, and night operations.',
+    awardsQual: 'cmr',
+  },
+  {
+    id:       'b2_ip',
+    aircraft: 'B-2',
+    wing:     '509bw',
+    phase:    'IP',
+    name:     'Instructor Pilot Qualification — B-2',
+    abbr:     'B-2 IP',
+    color:    '#f0cc72',
+    desc:     'Certified Instructor Pilot on the B-2 Spirit. Authorized to instruct and evaluate student pilots in all phases of B-2 MQT.',
+    awardsQual: 'ip',
+  },
+
+  // ══════════════════════════════════════════════════
+  //  B-52H STRATOFORTRESS — 2nd Bomb Wing / KBAD
+  //  Based on AFMAN 11-2B-52V1
+  // ══════════════════════════════════════════════════
+  {
+    id:       'b52_module100',
+    aircraft: 'B-52H',
+    wing:     '2bw',
+    phase:    'Phase 1',
+    name:     'Transition & Aircraft Familiarization',
+    abbr:     'TRANS CERT',
+    color:    '#3dba6e',
+    desc:     'Normal ground operations, engine start, taxi (max 25 kts/10 kts turns), takeoff, VFR pattern work, closed patterns, go-around, and full-stop landing. TOLD speeds and checklist discipline demonstrated.',
+    awardsQual: null,
+  },
+  {
+    id:       'b52_instruments',
+    aircraft: 'B-52H',
+    wing:     '2bw',
+    phase:    'Phase 2',
+    name:     'Instrument Qualification — B-52H',
+    abbr:     'INST QUAL',
+    color:    '#3dba6e',
+    desc:     'Instrument departure, enroute IFR navigation, holding procedures, ILS approach to DA, missed approach execution, and instrument full-stop landing demonstrated.',
+    awardsQual: null,
+  },
+  {
+    id:       'b52_ar',
+    aircraft: 'B-52H',
+    wing:     '2bw',
+    phase:    'Phase 2',
+    name:     'Air Refueling Qualification — B-52H',
+    abbr:     'AR QUAL',
+    color:    '#3dba6e',
+    desc:     'Tanker rejoin at 270–290 KIAS, precontact stabilization, contact, simulated onload with continuous CG monitoring, and breakaway procedures. Mass/inertia management demonstrated.',
+    awardsQual: null,
+  },
+  {
+    id:       'b52_lowlevel',
+    aircraft: 'B-52H',
+    wing:     '2bw',
+    phase:    'Phase 3',
+    name:     'Low-Level Navigation Qualification — B-52H',
+    abbr:     'LL QUAL',
+    color:    '#3dba6e',
+    desc:     'Low-level navigation route at 500–1,000 ft AGL, 300–360 KCAS. Route study, MSA, terrain clearance, and abort criteria. Altitude and route discipline demonstrated.',
+    awardsQual: null,
+  },
+  {
+    id:       'b52_tot',
+    aircraft: 'B-52H',
+    wing:     '2bw',
+    phase:    'Phase 3',
+    name:     'Surface Attack / TOT Certification — B-52H',
+    abbr:     'SAT/TOT',
+    color:    '#3dba6e',
+    desc:     'Simulated surface attack with Time-on-Target control (±30 sec window). IP-to-target run, simulated weapons release, and safe escape maneuver demonstrated to grade 3 standard.',
+    awardsQual: null,
+  },
+  {
+    id:       'b52_night',
+    aircraft: 'B-52H',
+    wing:     '2bw',
+    phase:    'Phase 3',
+    name:     'Night Currency Qualification — B-52H',
+    abbr:     'NIGHT QUAL',
+    color:    '#3dba6e',
+    desc:     'Night exterior/interior lighting configuration, night VFR departure, night instrument approach, and night full-stop landing. Night currency requirements demonstrated.',
+    awardsQual: null,
+  },
+  {
+    id:       'b52_bmc',
+    aircraft: 'B-52H',
+    wing:     '2bw',
+    phase:    'BMC',
+    name:     'Basic Mission Capable — B-52H',
+    abbr:     'B-52 BMC',
+    color:    '#3dba6e',
+    desc:     'Basic Mission Capable on the B-52H Stratofortress. Phase 1 and 2 complete. Qualified in aircraft handling, instruments, and air refueling.',
+    awardsQual: 'bmc',
+  },
+  {
+    id:       'b52_cmr',
+    aircraft: 'B-52H',
+    wing:     '2bw',
+    phase:    'CMR',
+    name:     'Combat Mission Ready — B-52H',
+    abbr:     'B-52 CMR',
+    color:    '#6ddea0',
+    desc:     'Full Combat Mission Ready qualification on the B-52H Stratofortress. All three phases complete: instruments, AR, low-level navigation, surface attack/TOT, and night operations.',
+    awardsQual: 'cmr',
+  },
+  {
+    id:       'b52_ip',
+    aircraft: 'B-52H',
+    wing:     '2bw',
+    phase:    'IP',
+    name:     'Instructor Pilot Qualification — B-52H',
+    abbr:     'B-52 IP',
+    color:    '#f0cc72',
+    desc:     'Certified Instructor Pilot on the B-52H Stratofortress. Authorized to instruct and evaluate student pilots in all phases of B-52H MQT.',
+    awardsQual: 'ip',
+  },
+];
+
+// Helper: get all certs for a specific aircraft
+function getCertsForAircraft(aircraft) {
+  return TRAINING_CERTS.filter(c => c.aircraft === aircraft);
+}
+
+// Helper: get all certs for a specific wing
+function getCertsForWing(wingId) {
+  return TRAINING_CERTS.filter(c => c.wing === wingId);
+}
+
+// Helper: render a cert badge inline (small colored pill)
+function renderCertBadge(certId) {
+  const cert = TRAINING_CERTS.find(c => c.id === certId);
+  if (!cert) return '';
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:${cert.color}22;color:${cert.color};border:1px solid ${cert.color}55;white-space:nowrap">${cert.abbr}</span>`;
+}
+
+// Helper: render qual status badge
+function renderQualBadge(qualId) {
+  const qual = QUAL_STATUS.find(q => q.id === qualId);
+  if (!qual) return '';
+  return `<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:800;background:${qual.color}22;color:${qual.color};border:1px solid ${qual.color}55">${qual.abbr}</span>`;
+}
 
 // ── ROLES — defaults used until Firestore overrides are loaded ─────────
 // isMasterAdmin / isHidden are special: master_admin grants ALL permissions
