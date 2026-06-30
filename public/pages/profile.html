@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Profile — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.profile-hero{background:linear-gradient(160deg,#050710,var(--bg));border-bottom:1px solid var(--border);padding:40px 24px;position:relative;overflow:hidden}
+.profile-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% -20%,rgba(200,169,81,.08),transparent 65%);pointer-events:none}
+.profile-top{display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap}
+.avatar-wrap{position:relative;flex-shrink:0}
+.profile-avatar{width:110px;height:110px;border-radius:50%;object-fit:cover;border:4px solid var(--gold);box-shadow:0 0 24px rgba(200,169,81,.3);display:block}
+.avatar-edit-btn{position:absolute;bottom:4px;right:4px;width:30px;height:30px;border-radius:50%;background:var(--gold);border:none;color:#000;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.profile-info{flex:1}
+.profile-callsign{font-size:32px;font-weight:900;color:var(--text);line-height:1.1}
+.profile-rank{font-size:14px;color:var(--gold);font-weight:600;margin-top:4px}
+.profile-wing{font-size:13px;color:var(--text2);margin-top:2px}
+.profile-stats{display:flex;gap:24px;margin-top:16px;flex-wrap:wrap}
+.ps{text-align:center}
+.ps .val{font-size:22px;font-weight:800;color:var(--gold);line-height:1}
+.ps .lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.pilot-wings-img{width:80px;height:auto;object-fit:contain;margin-top:12px}
+
+.edit-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.edit-section-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+.callsign-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.callsign-item{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.cs-type{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);width:80px;flex-shrink:0}
+.cs-value{font-size:14px;font-weight:600;color:var(--text);flex:1;font-family:var(--mono)}
+.cs-edit{background:none;border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-size:11px;padding:3px 8px;cursor:pointer;font-family:var(--sans);transition:all .12s}
+.cs-edit:hover{color:var(--gold);border-color:var(--gold)}
+.cs-remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;transition:color .12s}
+.cs-remove:hover{color:var(--red2)}
+.add-cs-row{display:flex;gap:8px;flex-wrap:wrap}
+
+.wings-upload{border:2px dashed var(--border2);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .15s}
+.wings-upload:hover{border-color:var(--gold);background:rgba(200,169,81,.04)}
+.wings-upload input{display:none}
+.wings-preview{width:120px;height:auto;margin:0 auto 8px;display:block}
+
+.color-accent-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.accent-swatch{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .12s}
+.accent-swatch:hover{transform:scale(1.1)}
+.accent-swatch.sel{border-color:#fff;box-shadow:0 0 0 2px var(--gold)}
+
+.bio-area{width:100%;padding:10px 12px;border-radius:8px;background:#0a0c14;border:1px solid var(--border2);color:var(--text);font-size:13px;font-family:var(--sans);outline:none;resize:vertical;min-height:80px}
+.bio-area:focus{border-color:var(--gold)}
+
+.tab-content{display:none}.tab-content.active{display:block}
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html">
+      <div class="nav-emblem" id="nav-emblem">GSC</div>
+      <div class="nav-brand-text"><div class="org">Virtual</div><div class="name" id="nav-org-name">Global Strike Command</div></div>
+    </a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a>
+      <a href="/pages/dashboard.html">Dashboard</a>
+      <a href="/pages/profile.html" class="active">My Profile</a>
+      <a href="/pages/log-flight.html">Log Flight</a>
+    </div>
+    <div class="nav-right">
+      <button class="btn btn-outline btn-sm" onclick="auth.signOut().then(()=>window.location.href='/pages/login.html')">Logout</button>
+      <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+    </div>
+  </div>
+</nav>
+
+<!-- PROFILE HERO -->
+<div class="profile-hero">
+  <div class="container">
+    <div class="profile-top">
+      <div class="avatar-wrap">
+        <img class="profile-avatar" id="profile-avatar" src="/images/default-avatar.png" alt="Avatar" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22110%22 height=%22110%22><rect width=%22110%22 height=%22110%22 rx=%2255%22 fill=%22%231a1e2b%22/><text x=%2255%22 y=%2270%22 text-anchor=%22middle%22 font-size=%2248%22>✈</text></svg>'">
+        <button class="avatar-edit-btn" onclick="document.getElementById('avatar-file').click()" title="Change avatar">📷</button>
+        <input type="file" id="avatar-file" accept="image/*" onchange="uploadAvatar(this)">
+      </div>
+      <div class="profile-info">
+        <div class="profile-callsign" id="disp-callsign">Loading...</div>
+        <div class="profile-rank" id="disp-rank"></div>
+        <div class="profile-wing" id="disp-wing"></div>
+        <div class="profile-stats">
+          <div class="ps"><div class="val" id="disp-flights">0</div><div class="lbl">Flights</div></div>
+          <div class="ps"><div class="val" id="disp-hours">0</div><div class="lbl">Hours</div></div>
+          <div class="ps"><div class="val" id="disp-joined">—</div><div class="lbl">Joined</div></div>
+        </div>
+        <img id="disp-wings" class="pilot-wings-img" src="" alt="Pilot wings" style="display:none">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="container page-body">
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="showTab('edit',this)">✏️ Edit Profile</button>
+    <button class="tab-btn" onclick="showTab('callsigns',this)">📻 Callsigns</button>
+    <button class="tab-btn" onclick="showTab('wings-tab',this)">🎖 Pilot Wings</button>
+    <button class="tab-btn" onclick="showTab('appearance',this)">🎨 Appearance</button>
+  </div>
+
+  <!-- EDIT PROFILE -->
+  <div id="tab-edit" class="tab-content active">
+    <div class="edit-section">
+      <div class="edit-section-title">👤 Basic info</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Display callsign</label>
+          <input type="text" id="e-callsign" placeholder="Your callsign" maxlength="20">
+          <div class="form-hint">This is your primary name shown across the site</div>
+        </div>
+        <div class="form-group">
+          <label>Discord username</label>
+          <input type="text" id="e-discord" placeholder="username">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Bio / About me</label>
+        <textarea class="bio-area" id="e-bio" placeholder="Tell the squadron about yourself — real world aviation experience, favorite aircraft, etc."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Simulator</label>
+          <select id="e-sim">
+            <option value="msfs2024">MSFS 2024</option>
+            <option value="msfs2020">MSFS 2020</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Timezone</label>
+          <select id="e-timezone">
+            <option value="ET">Eastern (ET)</option>
+            <option value="CT">Central (CT)</option>
+            <option value="MT">Mountain (MT)</option>
+            <option value="PT">Pacific (PT)</option>
+            <option value="UTC">UTC</option>
+            <option value="GMT">GMT</option>
+            <option value="CET">Central Europe (CET)</option>
+            <option value="AEST">Australia East (AEST)</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="saveProfile()">Save profile</button>
+    </div>
+  </div>
+
+  <!-- CALLSIGNS -->
+  <div id="tab-callsigns" class="tab-content">
+    <div class="edit-section">
+      <div class="edit-section-title">📻 Your callsigns</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Add as many callsigns as you use — primary callsign, radio callsign, squadron callsign, etc. Your wing commander can also assign callsigns to you.</div>
+      <div class="callsign-list" id="callsign-list"></div>
+      <div class="add-cs-row">
+        <select id="new-cs-type" style="width:auto">
+          <option value="Primary">Primary</option>
+          <option value="Radio">Radio</option>
+          <option value="Squadron">Squadron</option>
+          <option value="Mission">Mission</option>
+          <option value="Nickname">Nickname</option>
+          <option value="Custom">Custom</option>
+        </select>
+        <input type="text" id="new-cs-value" placeholder="e.g. BONE 01, Ghost, Viper" style="flex:1;min-width:120px" maxlength="20">
+        <button class="btn btn-primary btn-sm" onclick="addCallsign()">Add</button>
+      </div>
+      <div class="form-hint" style="margin-top:8px">Radio callsigns combine your squadron prefix with your number e.g. BONE 01. Mission callsigns are for specific ops.</div>
+    </div>
+
+    <div class="edit-section">
+      <div class="edit-section-title">⚙️ Primary callsign settings</div>
+      <div class="form-group">
+        <label>Show callsign on roster as</label>
+        <select id="cs-display-pref">
+          <option value="callsign">Callsign only (e.g. Ghost)</option>
+          <option value="radio">Radio callsign (e.g. BONE 01)</option>
+          <option value="both">Both (e.g. Ghost / BONE 01)</option>
+          <option value="rankFirst">Rank + callsign (e.g. Capt Ghost)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="saveCallsignPrefs()">Save preferences</button>
+    </div>
+  </div>
+
+  <!-- PILOT WINGS -->
+  <div id="tab-wings-tab" class="tab-content">
+    <div class="edit-section">
+      <div class="edit-section-title">🎖 Pilot wings image</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Upload your pilot wings badge. This appears on your profile and the roster. PNG with transparent background works best.</div>
+      <div class="wings-upload" onclick="document.getElementById('wings-file').click()" id="wings-drop">
+        <img id="wings-preview" class="wings-preview" src="" alt="" style="display:none">
+        <div id="wings-placeholder">
+          <div style="font-size:36px;margin-bottom:8px;opacity:.4">🎖</div>
+          <div style="font-size:13px;color:var(--text3)">Click to upload pilot wings image</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">PNG, JPG, SVG · Transparent background recommended</div>
+        </div>
+        <input type="file" id="wings-file" accept="image/*" onchange="uploadWings(this)" style="display:none">
+      </div>
+      <div id="wings-status" style="font-size:12px;color:var(--text3);margin-top:8px"></div>
+      <button id="remove-wings-btn" class="btn btn-danger btn-sm" style="margin-top:10px;display:none" onclick="removeWings()">Remove wings image</button>
+    </div>
+
+    <div class="edit-section">
+      <div class="edit-section-title">📋 Wing certifications</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Certifications and qualifications tracked by your instructors.</div>
+      <div id="certs-list"><div class="empty-state" style="padding:20px"><p>No certifications yet. Complete training events to earn certifications.</p></div></div>
+    </div>
+  </div>
+
+  <!-- APPEARANCE -->
+  <div id="tab-appearance" class="tab-content">
+    <div class="edit-section">
+      <div class="edit-section-title">🎨 Profile accent color</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:10px">Choose a personal accent color for your profile card on rosters.</div>
+      <div class="color-accent-row" id="accent-swatches">
+        <div class="accent-swatch sel" style="background:#c8a951" onclick="pickAccent('#c8a951',this)"></div>
+        <div class="accent-swatch" style="background:#4a90d9" onclick="pickAccent('#4a90d9',this)"></div>
+        <div class="accent-swatch" style="background:#3dba6e" onclick="pickAccent('#3dba6e',this)"></div>
+        <div class="accent-swatch" style="background:#d04040" onclick="pickAccent('#d04040',this)"></div>
+        <div class="accent-swatch" style="background:#9b59b6" onclick="pickAccent('#9b59b6',this)"></div>
+        <div class="accent-swatch" style="background:#e09030" onclick="pickAccent('#e09030',this)"></div>
+        <div class="accent-swatch" style="background:#1abc9c" onclick="pickAccent('#1abc9c',this)"></div>
+        <div class="accent-swatch" style="background:#e74c3c" onclick="pickAccent('#e74c3c',this)"></div>
+        <input type="color" id="custom-accent" value="#c8a951" style="width:30px;height:30px;border-radius:50%;padding:0;border:none;cursor:pointer" onchange="pickAccent(this.value)">
+      </div>
+      <input type="hidden" id="selected-accent" value="#c8a951">
+      <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="saveAppearance()">Save color</button>
+    </div>
+
+    <div class="edit-section">
+      <div class="edit-section-title">🔒 Privacy settings</div>
+      <div class="form-group">
+        <label>Who can see my profile</label>
+        <select id="priv-profile">
+          <option value="squadron">My squadron only</option>
+          <option value="wing">My wing</option>
+          <option value="all">All GSC members</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Show my flight hours publicly</label>
+        <select id="priv-hours">
+          <option value="yes">Yes — show on roster</option>
+          <option value="no">No — keep private</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Show my Discord username on profile</label>
+        <select id="priv-discord">
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="savePrivacy()">Save privacy settings</button>
+    </div>
+  </div>
+
+</div>
+
+<footer class="site-footer">
+  <p>Virtual Global Strike Command · vtacgsc.com</p>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+let pilotData = null;
+let callsigns = [];
+let selectedAccent = '#c8a951';
+
+function toggleMobileNav() { document.getElementById('nav-links').classList.toggle('open'); }
+
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function onAuthReady(user, pilot) {
+  if (!user) { window.location.href = '/pages/login.html'; return; }
+  pilotData = pilot;
+  populateProfile(pilot);
+}
+
+function populateProfile(p) {
+  if (!p) return;
+  // Hero
+  document.getElementById('disp-callsign').textContent = p.displayName || p.callsign || 'Pilot';
+  document.getElementById('disp-rank').textContent     = getRankName(p.rank||'rec') + ' · ' + (ROLES[p.role]?.name||'Pilot');
+  document.getElementById('disp-wing').textContent     = getWingName(p.wing) + (p.squadron ? ' · ' + getSqName(p.wing, p.squadron) : '');
+  document.getElementById('disp-flights').textContent  = p.totalFlights || 0;
+  document.getElementById('disp-hours').textContent    = Math.round(p.flightHours || 0) + 'h';
+  document.getElementById('disp-joined').textContent   = formatDate(p.appliedAt);
+  if (p.avatarUrl)     document.getElementById('profile-avatar').src = p.avatarUrl;
+  if (p.pilotWingsUrl) { document.getElementById('disp-wings').src = p.pilotWingsUrl; document.getElementById('disp-wings').style.display = 'block'; }
+
+  // Edit tab
+  document.getElementById('e-callsign').value = p.displayName || p.callsign || '';
+  document.getElementById('e-discord').value  = p.discord || '';
+  document.getElementById('e-bio').value      = p.bio || '';
+  if (p.simulator) document.getElementById('e-sim').value = p.simulator;
+  if (p.timezone)  document.getElementById('e-timezone').value = p.timezone;
+
+  // Callsigns
+  callsigns = p.callsigns || [];
+  if (callsigns.length === 0 && p.displayName) callsigns = [{ type:'Primary', value: p.displayName }];
+  renderCallsigns();
+  if (p.callsignDisplayPref) document.getElementById('cs-display-pref').value = p.callsignDisplayPref;
+
+  // Wings
+  if (p.pilotWingsUrl) {
+    document.getElementById('wings-preview').src     = p.pilotWingsUrl;
+    document.getElementById('wings-preview').style.display = 'block';
+    document.getElementById('wings-placeholder').style.display = 'none';
+    document.getElementById('remove-wings-btn').style.display = 'block';
+  }
+
+  // Appearance
+  if (p.accentColor) {
+    selectedAccent = p.accentColor;
+    document.getElementById('custom-accent').value = p.accentColor;
+  }
+
+  // Certs
+  loadCerts();
+
+  // Privacy
+  if (p.privacy) {
+    if (p.privacy.profile) document.getElementById('priv-profile').value = p.privacy.profile;
+    if (p.privacy.hours)   document.getElementById('priv-hours').value   = p.privacy.hours;
+    if (p.privacy.discord) document.getElementById('priv-discord').value = p.privacy.discord;
+  }
+}
+
+// ── CALLSIGNS ────────────────────────────────────────────────
+const typeColors = {
+  Primary:'badge-gold', Radio:'badge-blue', Squadron:'badge-green',
+  Mission:'badge-amber', Nickname:'badge-gray', Custom:'badge-gray'
+};
+
+function renderCallsigns() {
+  const el = document.getElementById('callsign-list');
+  if (!callsigns.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:8px 0">No callsigns yet — add one below</div>';
+    return;
+  }
+  el.innerHTML = callsigns.map((cs, i) => `
+    <div class="callsign-item">
+      <span class="badge ${typeColors[cs.type]||'badge-gray'} cs-type">${cs.type}</span>
+      <span class="cs-value">${cs.value}</span>
+      ${i === 0 ? '<span style="font-size:10px;color:var(--gold);font-weight:600">PRIMARY</span>' : ''}
+      <button class="cs-edit" onclick="moveCallsignUp(${i})" ${i===0?'disabled style="opacity:.3"':''} title="Move up">↑</button>
+      <button class="cs-remove" onclick="removeCallsign(${i})" title="Remove">×</button>
+    </div>`).join('');
+}
+
+function addCallsign() {
+  const type  = document.getElementById('new-cs-type').value;
+  const value = document.getElementById('new-cs-value').value.trim();
+  if (!value) { toast('Enter a callsign value','error'); return; }
+  callsigns.push({ type, value });
+  document.getElementById('new-cs-value').value = '';
+  renderCallsigns();
+  saveCallsigns();
+  toast('Callsign added!');
+}
+function removeCallsign(i) {
+  callsigns.splice(i, 1);
+  renderCallsigns();
+  saveCallsigns();
+}
+function moveCallsignUp(i) {
+  if (i === 0) return;
+  [callsigns[i-1], callsigns[i]] = [callsigns[i], callsigns[i-1]];
+  renderCallsigns();
+  saveCallsigns();
+}
+async function saveCallsigns() {
+  if (!currentUser) return;
+  await db.collection('pilots').doc(currentUser.uid).update({ callsigns });
+}
+async function saveCallsignPrefs() {
+  const pref = document.getElementById('cs-display-pref').value;
+  await db.collection('pilots').doc(currentUser.uid).update({ callsignDisplayPref: pref });
+  toast('Preferences saved!');
+}
+
+// ── SAVE PROFILE ─────────────────────────────────────────────
+async function saveProfile() {
+  if (!currentUser) return;
+  const callsign = document.getElementById('e-callsign').value.trim();
+  if (!callsign) { toast('Callsign cannot be empty','error'); return; }
+  try {
+    await db.collection('pilots').doc(currentUser.uid).update({
+      displayName: callsign,
+      callsign:    callsign.toLowerCase(),
+      discord:     document.getElementById('e-discord').value.trim(),
+      bio:         document.getElementById('e-bio').value.trim(),
+      simulator:   document.getElementById('e-sim').value,
+      timezone:    document.getElementById('e-timezone').value,
+    });
+    document.getElementById('disp-callsign').textContent = callsign;
+    // Update primary callsign in list
+    if (callsigns.length > 0 && callsigns[0].type === 'Primary') {
+      callsigns[0].value = callsign;
+      renderCallsigns();
+      saveCallsigns();
+    }
+    toast('Profile saved!');
+  } catch(e) { toast('Error: '+e.message, 'error'); }
+}
+
+// ── AVATAR UPLOAD ─────────────────────────────────────────────
+async function uploadAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2*1024*1024) { toast('Image must be under 2MB','error'); return; }
+  toast('Uploading avatar...','info');
+  try {
+    const ref  = storage.ref(`avatars/${currentUser.uid}`);
+    await ref.put(file);
+    const url  = await ref.getDownloadURL();
+    await db.collection('pilots').doc(currentUser.uid).update({ avatarUrl: url });
+    document.getElementById('profile-avatar').src = url;
+    toast('Avatar updated!');
+  } catch(e) { toast('Upload failed: '+e.message,'error'); }
+}
+
+// ── PILOT WINGS ────────────────────────────────────────────────
+async function uploadWings(input) {
+  const file = input.files[0];
+  if (!file) return;
+  toast('Uploading pilot wings...','info');
+  try {
+    const ref = storage.ref(`wings/${currentUser.uid}`);
+    await ref.put(file);
+    const url = await ref.getDownloadURL();
+    await db.collection('pilots').doc(currentUser.uid).update({ pilotWingsUrl: url });
+    document.getElementById('wings-preview').src = url;
+    document.getElementById('wings-preview').style.display = 'block';
+    document.getElementById('wings-placeholder').style.display = 'none';
+    document.getElementById('remove-wings-btn').style.display = 'block';
+    document.getElementById('disp-wings').src = url;
+    document.getElementById('disp-wings').style.display = 'block';
+    document.getElementById('wings-status').textContent = 'Wings uploaded successfully';
+    toast('Pilot wings updated!');
+  } catch(e) { toast('Upload failed: '+e.message,'error'); }
+}
+async function removeWings() {
+  if (!confirm('Remove your pilot wings image?')) return;
+  await db.collection('pilots').doc(currentUser.uid).update({ pilotWingsUrl: null });
+  document.getElementById('wings-preview').style.display = 'none';
+  document.getElementById('wings-placeholder').style.display = 'block';
+  document.getElementById('remove-wings-btn').style.display = 'none';
+  document.getElementById('disp-wings').style.display = 'none';
+  toast('Wings removed');
+}
+
+// ── APPEARANCE ────────────────────────────────────────────────
+function pickAccent(hex, el) {
+  document.querySelectorAll('.accent-swatch').forEach(s => s.classList.remove('sel'));
+  if (el) el.classList.add('sel');
+  selectedAccent = hex;
+  document.getElementById('selected-accent').value = hex;
+}
+async function saveAppearance() {
+  await db.collection('pilots').doc(currentUser.uid).update({ accentColor: selectedAccent });
+  toast('Color saved!');
+}
+
+// ── PRIVACY ────────────────────────────────────────────────────
+async function savePrivacy() {
+  await db.collection('pilots').doc(currentUser.uid).update({
+    privacy: {
+      profile: document.getElementById('priv-profile').value,
+      hours:   document.getElementById('priv-hours').value,
+      discord: document.getElementById('priv-discord').value,
+    }
+  });
+  toast('Privacy settings saved!');
+}
+
+// ── CERTS ────────────────────────────────────────────────────
+async function loadCerts() {
+  try {
+    const snap = await db.collection('training')
+      .where('pilotUid','==',currentUser.uid)
+      .where('passed','==',true).get();
+    const el = document.getElementById('certs-list');
+    if (snap.empty) return;
+    el.innerHTML = snap.docs.map(d => {
+      const t = d.data();
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border)">
+        <span style="font-size:18px">✅</span>
+        <div><div style="font-size:13px;font-weight:600;color:var(--text)">${t.eventName||'Training event'}</div>
+        <div style="font-size:11px;color:var(--text3)">${formatDate(t.completedAt)}</div></div>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+</script>
+</body>
+</html>
