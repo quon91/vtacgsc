@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Virtual Global Strike Command — Elite virtual bomber squadron for MSFS 2020/2024">
-<title>vTAC Global Strike Command</title>
+<title>VTAC Global Strike Command</title>
 <link rel="stylesheet" href="/css/main.css">
 <style>
 .wing-cards { display: grid; grid-template-columns: repeat(auto-fill,minmax(300px,1fr)); gap: 18px; }
@@ -69,7 +69,8 @@
     <div class="nav-links" id="nav-links">
       <a href="/index.html" class="active">Home</a>
       <div class="nav-dropdown">
-        <button class="nav-drop-btn" onclick="toggleDropdown(this)">Wings ▾</button>
+        <input type="checkbox" id="wings-toggle">
+        <label for="wings-toggle" class="nav-drop-btn">Wings ▾</label>
         <div class="nav-dropdown-menu">
           <a href="/pages/wing.html?id=7bw">7th Bomb Wing</a>
           <a href="/pages/wing.html?id=509bw">509th Bomb Wing</a>
@@ -184,7 +185,7 @@
       <div id="news-list">
         <div class="news-item">
           <div class="news-date">Founding</div>
-          <div class="news-title">vTAC Global Strike Command Established</div>
+          <div class="news-title">VTAC Global Strike Command Established</div>
           <div class="news-body">Virtual Global Strike Command is now operational. Three wings activated. Pilot applications now open. Join the premier virtual bomber community for MSFS 2020 and 2024.</div>
         </div>
       </div>
@@ -201,7 +202,7 @@
 
 <!-- ── FOOTER ── -->
 <footer class="site-footer">
-  <p id="footer-text">Virtual Global Strike Command · vTAC GSC · MSFS 2020 / 2024 · vTACgsc.com</p>
+  <p id="footer-text">Virtual Global Strike Command · VTAC GSC · MSFS 2020 / 2024 · vtacgsc.com</p>
   <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
 </footer>
 
@@ -275,7 +276,7 @@ async function loadSlideshow() {
 function renderSlideshow() {
   const wrap = document.getElementById('slideshow-wrap');
   if (!ssSlides.length) {
-    wrap.innerHTML = `<div class="no-slides"><div class="no-slides-inner"><div style="font-size:40px;opacity:.3">✈</div><div style="color:var(--text3);font-size:14px;margin-top:8px">vTAC Global Strike Command</div></div></div>`;
+    wrap.innerHTML = `<div class="no-slides"><div class="no-slides-inner"><div style="font-size:40px;opacity:.3">✈</div><div style="color:var(--text3);font-size:14px;margin-top:8px">VTAC Global Strike Command</div></div></div>`;
     return;
   }
   wrap.innerHTML = `
