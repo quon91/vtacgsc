@@ -632,7 +632,7 @@ const DEFAULT_ROLES = {
   master_admin:   { name: 'Wing Commander', level: 99, color: '#c8a951', isMasterAdmin: true, permissions: [] },
   wing_commander: { name: 'Wing Commander',      level: 10, color: '#c8a951', permissions: ['edit_ranks','edit_own_wing','manage_training'] },
   sq_commander:   { name: 'Squadron Commander',  level: 8,  color: '#f0cc72', permissions: ['edit_own_wing'] },
-  instructor:     { name: 'Instructor',          level: 5,  color: '#4a90d9', permissions: ['manage_training'] },
+  instructor:     { name: 'Instructor',          level: 5,  color: '#4a90d9', permissions: ['manage_training', 'award_medals'] },
   pilot:          { name: 'Pilot',               level: 2,  color: '#3dba6e', permissions: [] },
   trainee:        { name: 'Trainee',             level: 1,  color: '#9aa0b8', permissions: [] },
   pending:        { name: 'Pending Approval',    level: 0,  color: '#e09030', permissions: [] },
@@ -828,5 +828,103 @@ function showLoading(msg='Loading...') {
 }
 function hideLoading() {
   const o = document.getElementById('loading-overlay');
+
+
+
+    // ═══════════════════════════════════════════════════════════════
+//  AUTH TIMING BUG FIX
+//  The problem: your training pages (and likely others) call
+//  requireAuth() or requireRole() SYNCHRONOUSLY at page load,
+//  but Firebase auth state is ASYNCHRONOUS. When the page loads,
+//  currentUser is still null for ~200-500ms while Firebase restores
+//  the session from IndexedDB. The sync check sees null → redirects
+//  to home → logs the user out visually.
+//
+//  The fix: NEVER call requireAuth() at the top level. Instead,
+//  put ALL auth-gated logic inside onAuthReady(), which only fires
+//  AFTER Firebase has confirmed the auth state.
+//
+//  WRONG (what causes the bug):
+//  ┌─────────────────────────────────────────┐
+//  │  requireAuth();          ← fires NOW    │
+//  │  // currentUser is null  ← too early    │
+//  │  // → redirect to /index.html           │
+//  └─────────────────────────────────────────┘
+//
+//  RIGHT (the fix):
+//  ┌─────────────────────────────────────────┐
+//  │  function onAuthReady(user, pilot) {    │
+//  │    if (!user) {                         │
+//  │      window.location.href = '/pages/login.html'; │
+//  │      return;                            │
+//  │    }                                    │
+//  │    // safe — Firebase confirmed auth    │
+//  │    loadPageContent(pilot);              │
+//  │  }                                      │
+//  └─────────────────────────────────────────┘
+//
+//  Also add requiresLogin: true as a data attribute on the body
+//  tag for pages that need auth, so a lightweight pre-check can
+//  show a loading spinner instead of a blank flash.
+// ═══════════════════════════════════════════════════════════════
+
+// ── REPLACE these functions in firebase-config.js ─────────────
+
+// Old requireAuth (BROKEN — synchronous):
+// function requireAuth() {
+//   if (!currentUser) window.location.href = '/pages/login.html';
+// }
+
+// New pattern — call this INSIDE onAuthReady() on each page:
+function guardAuth(user, redirectTo) {
+  redirectTo = redirectTo || '/pages/login.html';
+  if (!user) {
+    window.location.href = redirectTo;
+    return false;
+  }
+  return true;
+}
+
+// Guard for minimum role level — call INSIDE onAuthReady():
+function guardRole(pilot, minLevel, redirectTo) {
+  redirectTo = redirectTo || '/index.html';
+  if (!pilot) { window.location.href = redirectTo; return false; }
+  const roleIds = getPilotRoleIds(pilot);
+  const maxLevel = Math.max(0, ...roleIds.map(rid => ROLES[rid]?.level || 0));
+  if (maxLevel < minLevel) { window.location.href = redirectTo; return false; }
+  return true;
+}
+
+// Guard for specific permission — call INSIDE onAuthReady():
+function guardPermission(pilot, permId, redirectTo) {
+  redirectTo = redirectTo || '/index.html';
+  if (!hasPermission(pilot, permId)) { window.location.href = redirectTo; return false; }
+  return true;
+}
+
+// ── LOADING STATE HELPER ──────────────────────────────────────
+// Call showAuthLoading() at the TOP of every page that needs auth.
+// It shows a spinner immediately so there's no blank flash.
+// onAuthReady() calls hideAuthLoading() once Firebase responds.
+function showAuthLoading() {
+  const el = document.createElement('div');
+  el.id = 'auth-loading';
+  el.style.cssText = `
+    position:fixed;inset:0;background:var(--bg,#080a0f);
+    display:flex;align-items:center;justify-content:center;
+    flex-direction:column;gap:14px;z-index:9999
+  `;
+  el.innerHTML = `
+    <div style="width:36px;height:36px;border:3px solid #1e2440;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite"></div>
+    <div style="color:#404860;font-size:13px;font-family:sans-serif">Authenticating…</div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+  `;
+  document.body.appendChild(el);
+}
+function hideAuthLoading() {
+  const el = document.getElementById('auth-loading');
+  if (el) el.remove();
+}
+
   if (o) o.remove();
 }
