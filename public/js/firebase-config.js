@@ -144,20 +144,40 @@ function renderRibbonSVG(medalId, w, h) {
   </svg>`;
 }
 
-// Renders a pilot wings badge — shield + spread wings, with star tiers for Senior/Command
+// Renders a pilot wings badge — centered shield, single feathered wing each side,
+// star above for Senior, star-in-wreath for Command. Original artwork inspired by
+// general USAF pilot badge conventions (not traced from any specific reference image).
 function renderWingsBadgeSVG(badgeId, size) {
   size = size || 32;
   const tier = WINGS_BADGES.find(w => w.id === badgeId)?.tier || 1;
-  const starHtml = tier >= 2 ? `<circle cx="32" cy="16" r="3.2" fill="#1a1a1a"/>
-    <path d="M32 13.2l.7 2.1h2.2l-1.8 1.3.7 2.1-1.8-1.3-1.8 1.3.7-2.1-1.8-1.3h2.2z" fill="#c9a04a"/>` : '';
-  const wreathHtml = tier >= 3 ? `<path d="M22 16a10 10 0 0 1 20 0" fill="none" stroke="#c9a04a" stroke-width="1.2" stroke-dasharray="1.5,1.2"/>` : '';
+  const gold = '#c9a04a';
+
+  // Each wing is layered feather strokes fanning from the shield outward,
+  // tapering toward the wingtip — one broad primary mass per side,
+  // matching real USAF wing proportions more closely than stacked mirrored blobs.
+  const rightWing = `
+    <path d="M32 17 C40 11, 50 9, 60 13 C51 15, 44 16, 38 18.5 Z" fill="${gold}"/>
+    <path d="M32 19 C41 16, 51 15, 60 17 C50 19, 42 20.5, 35 21.5 Z" fill="${gold}" opacity="0.92"/>
+    <path d="M32 21.5 C40 20, 48 20.5, 56 22.5 C47 24, 40 24.5, 33.5 24.5 Z" fill="${gold}" opacity="0.85"/>
+    <path d="M32 24 C38.5 24, 45 25, 51 27.5 C43 28.3, 37 28, 32.5 27 Z" fill="${gold}" opacity="0.78"/>`;
+  const leftWing = `
+    <path d="M32 17 C24 11, 14 9, 4 13 C13 15, 20 16, 26 18.5 Z" fill="${gold}"/>
+    <path d="M32 19 C23 16, 13 15, 4 17 C14 19, 22 20.5, 29 21.5 Z" fill="${gold}" opacity="0.92"/>
+    <path d="M32 21.5 C24 20, 16 20.5, 8 22.5 C17 24, 24 24.5, 30.5 24.5 Z" fill="${gold}" opacity="0.85"/>
+    <path d="M32 24 C25.5 24, 19 25, 13 27.5 C21 28.3, 27 28, 31.5 27 Z" fill="${gold}" opacity="0.78"/>`;
+
+  const starHtml = tier >= 2 ? `
+    <path d="M32 5.5 l1.05 3.15 3.3 0 -2.67 1.95 1.02 3.18 -2.7-1.97 -2.7 1.97 1.02-3.18 -2.67-1.95 3.3 0z" fill="${gold}" stroke="#1a1a1a" stroke-width="0.4"/>` : '';
+  const wreathHtml = tier >= 3 ? `
+    <path d="M24.5 8.5a8 9 0 0 1 15 0" fill="none" stroke="${gold}" stroke-width="1" stroke-dasharray="1.3,1.1"/>
+    <path d="M24 9a8.5 9.5 0 0 0 0 1" fill="none" stroke="${gold}" stroke-width="0.6"/>` : '';
+
   return `<svg width="${size}" height="${size*0.5}" viewBox="0 0 64 32" xmlns="http://www.w3.org/2000/svg" style="display:block">
-    <!-- left wing -->
-    <path d="M30 16 C22 10, 10 9, 2 14 C10 17, 18 17, 24 19 C18 19, 10 21, 4 24 C12 26, 22 25, 28 21 Z" fill="#c9a04a" opacity="0.92"/>
-    <!-- right wing (mirrored) -->
-    <path d="M34 16 C42 10, 54 9, 62 14 C54 17, 46 17, 40 19 C46 19, 54 21, 60 24 C52 26, 42 25, 36 21 Z" fill="#c9a04a" opacity="0.92"/>
+    ${leftWing}
+    ${rightWing}
     <!-- center shield -->
-    <path d="M32 9 L37 11 L37 19 C37 23 35 26 32 28 C29 26 27 23 27 19 L27 11 Z" fill="#1a1a1a" stroke="#c9a04a" stroke-width="1"/>
+    <path d="M32 14 L36.5 15.6 L36.5 22 C36.5 25.3 34.8 27.6 32 29 C29.2 27.6 27.5 25.3 27.5 22 L27.5 15.6 Z" fill="#1a1a1a" stroke="${gold}" stroke-width="1"/>
+    <path d="M32 16 L34.5 17 L34.5 21.8 C34.5 23.9 33.4 25.5 32 26.4 C30.6 25.5 29.5 23.9 29.5 21.8 L29.5 17 Z" fill="none" stroke="${gold}" stroke-width="0.5" opacity="0.6"/>
     ${wreathHtml}
     ${starHtml}
   </svg>`;
