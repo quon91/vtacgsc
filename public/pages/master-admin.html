@@ -1271,7 +1271,7 @@ function renderCurrentMedals() {
 async function awardMedal(medalId, medalName) {
   const medals = medalTargetPilot.medals || [];
   if (medals.some(m=>m.id===medalId)) return;
-  medals.push({ id: medalId, name: medalName, awardedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  medals.push({ id: medalId, name: medalName, awardedAt: new Date() });
   try {
     await db.collection('pilots').doc(medalTargetPilot.uid).update({ medals });
     medalTargetPilot.medals = medals;
@@ -1292,7 +1292,7 @@ async function revokeMedal(medalId) {
 async function awardWingsBadge(wingId, wingName) {
   const wings = medalTargetPilot.wingsBadges || [];
   if (wings.some(w=>w.id===wingId)) return;
-  wings.push({ id: wingId, name: wingName, awardedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  wings.push({ id: wingId, name: wingName, awardedAt: new Date() });
   try {
     await db.collection('pilots').doc(medalTargetPilot.uid).update({ wingsBadges: wings });
     medalTargetPilot.wingsBadges = wings;
