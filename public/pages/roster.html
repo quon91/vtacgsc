@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roster — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.roster-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.roster-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.rf-btn{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--card);color:var(--text3);font-family:var(--sans);transition:all .12s}
+.rf-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(200,169,81,.08)}
+.roster-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.roster-avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border2);flex-shrink:0;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:20px}
+.roster-info{flex:1;min-width:180px}
+.roster-name{font-size:16px;font-weight:700;color:var(--text)}
+.roster-meta{font-size:12px;color:var(--text2);margin-top:2px}
+.roster-roles{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.roster-stats{display:flex;gap:20px;flex-shrink:0}
+.rs-item{text-align:center}
+.rs-val{font-size:16px;font-weight:800;color:var(--gold)}
+.rs-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.ribbon-row{display:flex;flex-wrap:wrap;gap:3px;margin-top:8px;width:100%}
+.ribbon{
+  width:26px;height:9px;border-radius:1px;
+  background:linear-gradient(180deg,var(--rc1,#888),var(--rc2,#666));
+  border:1px solid rgba(0,0,0,.3);
+  cursor:default;position:relative;
+}
+.wings-badge-icon{
+  font-size:10px;font-weight:700;background:rgba(200,169,81,.15);color:var(--gold2);
+  border:1px solid rgba(200,169,81,.3);border-radius:10px;padding:2px 8px;
+}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a>
+      <a href="/pages/wings.html">Wings</a>
+      <a href="/pages/roster.html" class="active">Roster</a>
+      <a href="/pages/history.html">History</a>
+      <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html">Training</a>
+      <a href="/pages/flights.html">Flight Log</a>
+    </div>
+    <div class="nav-right" id="nav-right-area"><a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a></div>
+    <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+  </div>
+</nav>
+
+<div class="roster-hero">
+  <div class="hero-eyebrow">Order of Battle</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Command <span>Roster</span></h1>
+  <p class="hero-sub" style="font-size:14px">Every active pilot across Virtual Global Strike Command.</p>
+</div>
+
+<div class="container page-body">
+  <div class="roster-filters" id="roster-filters">
+    <button class="rf-btn active" onclick="filterRoster(null,this)">All Wings</button>
+    <button class="rf-btn" onclick="filterRoster('7bw',this)">7th BW</button>
+    <button class="rf-btn" onclick="filterRoster('509bw',this)">509th BW</button>
+    <button class="rf-btn" onclick="filterRoster('2bw',this)">2nd BW</button>
+  </div>
+  <input type="text" id="roster-search" placeholder="Search by callsign..." style="width:100%;max-width:320px;margin-bottom:20px" oninput="renderRosterList()">
+  <div id="roster-list"><div class="empty-state"><p>Loading roster...</p></div></div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
+
+let rosterPilots = [], activeWingFilter = null;
+
+function onAuthReady(user, pilot) {
+  const navArea = document.getElementById('nav-right-area');
+  if (user && pilot?.status === 'active') {
+    navArea.innerHTML = `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
+  }
+  loadRoster();
+}
+
+async function loadRoster() {
+  try {
+    const snap = await db.collection('pilots').where('status','==','active').get();
+    rosterPilots = snap.docs.map(d => ({uid:d.id, ...d.data()}));
+    // Sort by highest role authority level, then by rank
+    rosterPilots.sort((a,b) => {
+      const aLevel = Math.max(0, ...getPilotRoleIds(a).map(r => ROLES[r]?.level || 0));
+      const bLevel = Math.max(0, ...getPilotRoleIds(b).map(r => ROLES[r]?.level || 0));
+      if (bLevel !== aLevel) return bLevel - aLevel;
+      const aRank = RANKS.find(r=>r.id===a.rank)?.level || 0;
+      const bRank = RANKS.find(r=>r.id===b.rank)?.level || 0;
+      return bRank - aRank;
+    });
+  } catch(e) { rosterPilots = []; }
+  renderRosterList();
+}
+
+function filterRoster(wingId, btn) {
+  activeWingFilter = wingId;
+  document.querySelectorAll('#roster-filters .rf-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRosterList();
+}
+
+// Simple ribbon color mapping so each decoration shows a distinct stripe pattern
+const ribbonColors = {
+  'Personal Decoration': ['#c8a951','#7a5c1a'],
+  'Unit Award':          ['#4a90d9','#1e4a7a'],
+  'Service Award':       ['#3dba6e','#1e6038'],
+  'Campaign / Service':  ['#9b59b6','#5a2e6b'],
+};
+
+function renderRosterList() {
+  const q = document.getElementById('roster-search').value.toLowerCase();
+  const el = document.getElementById('roster-list');
+  const filtered = rosterPilots.filter(p =>
+    (!activeWingFilter || p.wing === activeWingFilter) &&
+    (!q || (p.displayName||p.callsign||'').toLowerCase().includes(q))
+  );
+  if (!filtered.length) { el.innerHTML = '<div class="empty-state"><div class="icon">👨‍✈️</div><p>No pilots match this filter</p></div>'; return; }
+
+  el.innerHTML = filtered.map(p => {
+    const roles = getAllDisplayRoles(p);
+    const medals = p.medals || [];
+    const wingsBadges = p.wingsBadges || [];
+    return `
+    <div class="roster-card">
+      <div class="roster-avatar">${p.avatarUrl?`<img src="${p.avatarUrl}" style="width:52px;height:52px;border-radius:50%;object-fit:cover">`:'✈'}</div>
+      <div class="roster-info">
+        <div class="roster-name">${p.displayName||p.callsign}</div>
+        <div class="roster-meta">${getRankName(p.rank||'rec')} · ${getWingName(p.wing)||'Unassigned'}${p.squadron?' · '+getSqName(p.wing,p.squadron):''}</div>
+        <div class="roster-roles">
+          ${roles.map(r=>`<span class="badge" style="background:${r.color}22;color:${r.color};border:1px solid ${r.color}55">${r.name}</span>`).join('')}
+          ${wingsBadges.map(w=>`<span class="wings-badge-icon">🎖 ${w.name}</span>`).join('')}
+        </div>
+        ${medals.length ? `<div class="ribbon-row">${medals.map(m=>{
+          const cat = MEDALS_CATALOG.find(x=>x.id===m.id)?.category || 'Service Award';
+          const colors = ribbonColors[cat] || ['#888','#555'];
+          return `<div class="ribbon" style="--rc1:${colors[0]};--rc2:${colors[1]}" title="${m.name}"></div>`;
+        }).join('')}</div>` : ''}
+      </div>
+      <div class="roster-stats">
+        <div class="rs-item"><div class="rs-val">${p.totalFlights||0}</div><div class="rs-lbl">Flights</div></div>
+        <div class="rs-item"><div class="rs-val">${Math.round(p.flightHours||0)}h</div><div class="rs-lbl">Hours</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>

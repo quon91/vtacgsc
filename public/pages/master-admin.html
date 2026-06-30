@@ -93,6 +93,8 @@
     <div class="sidebar-label">Operations</div>
     <div class="sidebar-item" onclick="showSec('flights')"><span class="si-icon">✈️</span> Flight Logs</div>
     <div class="sidebar-item" onclick="showSec('training')"><span class="si-icon">🎓</span> Training Records</div>
+    <div class="sidebar-label">Personnel</div>
+    <div class="sidebar-item" onclick="showSec('medals')"><span class="si-icon">🎖️</span> Medals &amp; Awards</div>
     <div class="sidebar-label">Site</div>
     <div class="sidebar-item" onclick="showSec('roles')"><span class="si-icon">🔐</span> Roles & Permissions</div>
     <div class="sidebar-item" onclick="showSec('customize')"><span class="si-icon">🎨</span> Customize Site</div>
@@ -189,6 +191,43 @@
       <div class="sec-title">Training Records</div>
       <div class="sec-sub">View training progress and certifications for all pilots.</div>
       <div id="training-list"><div class="empty-state"><div class="icon">🎓</div><p>No training records yet</p></div></div>
+    </div>
+
+    <!-- ── MEDALS & AWARDS ── -->
+    <div id="sec-medals" class="sec">
+      <div class="sec-title">Medals &amp; Awards</div>
+      <div class="sec-sub">Award USAF decorations and pilot wings to any pilot. Awards appear on their profile and the GSC roster.</div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-icon">🔍</div><div class="card-title">Find a pilot to award</div></div>
+        <div class="card-body">
+          <input type="text" id="medal-pilot-search" placeholder="Search pilot callsign..." oninput="searchPilotForMedal()">
+          <div id="medal-pilot-results" style="margin-top:10px"></div>
+        </div>
+      </div>
+
+      <div class="card" id="medal-award-panel" style="display:none">
+        <div class="card-header"><div class="card-icon blue">🎖️</div><div class="card-title" id="medal-award-pilot-name">Award decoration</div></div>
+        <div class="card-body">
+          <div class="tab-nav">
+            <button class="tab-btn active" onclick="showMedalTab('decorations',this)">Decorations &amp; Ribbons</button>
+            <button class="tab-btn" onclick="showMedalTab('wings',this)">Pilot Wings</button>
+            <button class="tab-btn" onclick="showMedalTab('current',this)">Currently Held</button>
+          </div>
+
+          <div id="medal-tab-decorations" class="tab-panel active" style="padding-top:16px">
+            <div id="medals-catalog-list"></div>
+          </div>
+
+          <div id="medal-tab-wings" class="tab-panel" style="padding-top:16px">
+            <div id="wings-badges-list"></div>
+          </div>
+
+          <div id="medal-tab-current" class="tab-panel" style="padding-top:16px">
+            <div id="current-medals-list"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ── ROLES & PERMISSIONS ── -->
@@ -434,15 +473,8 @@
       </select>
     </div>
     <div class="form-group">
-      <label>Role</label>
-      <select id="rank-modal-role">
-        <option value="trainee">Trainee</option>
-        <option value="pilot">Pilot</option>
-        <option value="instructor">Instructor</option>
-        <option value="sq_commander">Squadron Commander</option>
-        <option value="wing_commander">Wing Commander</option>
-        <option value="master_admin">Master Admin</option>
-      </select>
+      <label>Roles (select one or more — a pilot can hold multiple roles)</label>
+      <div id="rank-modal-roles" style="margin-top:8px"></div>
     </div>
     <div class="form-group">
       <label>Wing</label>
@@ -481,7 +513,7 @@
 // ── AUTH GUARD ────────────────────────────────────────────────
 function onAuthReady(user, pilot) {
   if (!user) { window.location.href = '/pages/login.html'; return; }
-  if (pilot?.role !== 'master_admin') { window.location.href = '/index.html'; return; }
+  if (!isMasterAdminPilot(pilot)) { window.location.href = '/index.html'; return; }
   document.getElementById('nav-name').textContent = pilot.displayName || pilot.callsign;
   if (pilot.avatarUrl) document.getElementById('nav-avatar').src = pilot.avatarUrl;
   const badge = document.getElementById('nav-master-badge');
@@ -509,6 +541,7 @@ function showSec(id) {
   if (id==='wings')        loadWingSettings();
   if (id==='customize')    loadCustomizeSettings();
   if (id==='roles')        loadRolesManager();
+  if (id==='medals')       { if (!allPilots.length) loadAllPilots(); }
 }
 
 let allPilots = [], pendingApps = [];
@@ -681,11 +714,23 @@ function openRankModal(uid) {
   document.getElementById('rank-modal-name').textContent = p.displayName||p.callsign;
   const rankSel = document.getElementById('rank-modal-rank');
   rankSel.innerHTML = RANKS.map(r=>`<option value="${r.id}" ${r.id===p.rank?'selected':''}>${r.name}</option>`).join('');
-  document.getElementById('rank-modal-role').value   = p.role||'pilot';
+  renderRankModalRoles(getPilotRoleIds(p));
   document.getElementById('rank-modal-wing').value   = p.wing||'';
   document.getElementById('rank-modal-status').value = p.status||'active';
   updateRankSqOptions(p.squadron);
   document.getElementById('rank-modal').classList.add('open');
+}
+function renderRankModalRoles(selectedRoleIds) {
+  const el = document.getElementById('rank-modal-roles');
+  const entries = Object.entries(ROLES).filter(([id]) => id !== 'pending').sort((a,b)=>(b[1].level||0)-(a[1].level||0));
+  el.innerHTML = entries.map(([roleId, role]) => `
+    <label class="perm-check">
+      <input type="checkbox" value="${roleId}" class="rank-modal-role-cb" ${selectedRoleIds.includes(roleId)?'checked':''}>
+      <span style="display:inline-flex;align-items:center;gap:6px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${role.color||'#888'};display:inline-block"></span>
+        ${role.isMasterAdmin ? 'Master Admin (hidden — shows pilot\'s own public title)' : role.name}
+      </span>
+    </label>`).join('');
 }
 function updateRankSqOptions(selectedSq) {
   const wing = document.getElementById('rank-modal-wing').value;
@@ -695,10 +740,13 @@ function updateRankSqOptions(selectedSq) {
 }
 async function saveRankChange() {
   if (!editingPilotUid) return;
+  const selectedRoles = [...document.querySelectorAll('.rank-modal-role-cb:checked')].map(c => c.value);
+  if (!selectedRoles.length) { toast('Select at least one role','error'); return; }
   try {
     await db.collection('pilots').doc(editingPilotUid).update({
       rank:     document.getElementById('rank-modal-rank').value,
-      role:     document.getElementById('rank-modal-role').value,
+      role:     selectedRoles[0],   // legacy field kept in sync for backward compatibility
+      roles:    selectedRoles,      // new multi-role field
       wing:     document.getElementById('rank-modal-wing').value||null,
       squadron: document.getElementById('rank-modal-sq').value||null,
       status:   document.getElementById('rank-modal-status').value,
@@ -734,8 +782,8 @@ async function loadRosters(wingId) {
   const el   = document.getElementById('roster-content');
 
   // Find the wing commander (role === wing_commander, assigned to this wing)
-  const commander = pilots.find(p => p.role === 'wing_commander');
-  const deputy     = pilots.filter(p => p.role === 'sq_commander');
+  const commander = pilots.find(p => getPilotRoleIds(p).includes('wing_commander'));
+  const deputy     = pilots.filter(p => getPilotRoleIds(p).includes('sq_commander'));
 
   const commanderHtml = `
     <div class="card" style="margin-bottom:20px;border:1px solid var(--${wingId});background:rgba(200,169,81,.04)">
@@ -782,7 +830,7 @@ async function loadRosters(wingId) {
               <tr>
                 <td><strong>${p.displayName||p.callsign}</strong></td>
                 <td>${getRankName(p.rank||'rec')}</td>
-                <td><span class="badge badge-gray">${p.role||'pilot'}</span></td>
+                <td>${getAllDisplayRoles(p).map(r=>`<span class="badge" style="background:${r.color}26;color:${r.color};border:1px solid ${r.color}55;margin-right:3px">${r.name}</span>`).join('')}</td>
                 <td>${p.totalFlights||0}</td>
                 <td>${Math.round((p.flightHours||0))}h</td>
                 <td><button class="btn btn-outline btn-xs" onclick="openRankModal('${p.uid}')">Edit</button></td>
@@ -1134,6 +1182,133 @@ async function deleteRole(roleId) {
     renderRolesList();
     toast('Role deleted');
   } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// ── MEDALS & AWARDS MANAGER ──────────────────────────────────
+let medalTargetPilot = null;
+
+function searchPilotForMedal() {
+  const q = document.getElementById('medal-pilot-search').value.toLowerCase();
+  const el = document.getElementById('medal-pilot-results');
+  if (!q) { el.innerHTML = ''; return; }
+  const found = allPilots.filter(p => (p.displayName||p.callsign||'').toLowerCase().includes(q));
+  el.innerHTML = found.slice(0,8).map(p => `
+    <div class="pilot-row">
+      <div class="pilot-row-avatar">${p.avatarUrl?`<img src="${p.avatarUrl}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:'✈'}</div>
+      <div class="pilot-row-info">
+        <div class="pilot-row-name">${p.displayName||p.callsign}</div>
+        <div class="pilot-row-meta">${getRankName(p.rank||'rec')} · ${getWingName(p.wing)||'Unassigned'}</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="selectMedalPilot('${p.uid}')">Select</button>
+    </div>`).join('') || '<div style="font-size:13px;color:var(--text3)">No pilots found</div>';
+}
+
+function selectMedalPilot(uid) {
+  medalTargetPilot = allPilots.find(p => p.uid === uid);
+  if (!medalTargetPilot) return;
+  document.getElementById('medal-award-pilot-name').textContent = 'Award decoration — ' + (medalTargetPilot.displayName || medalTargetPilot.callsign);
+  document.getElementById('medal-award-panel').style.display = 'block';
+  document.getElementById('medal-pilot-results').innerHTML = '';
+  document.getElementById('medal-pilot-search').value = '';
+  renderMedalsCatalog();
+  renderWingsBadges();
+  renderCurrentMedals();
+}
+
+function showMedalTab(id, btn) {
+  document.querySelectorAll('#medal-award-panel .tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('#medal-award-panel .tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('medal-tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function renderMedalsCatalog() {
+  const held = (medalTargetPilot.medals || []).map(m => m.id);
+  const categories = [...new Set(MEDALS_CATALOG.map(m => m.category))];
+  const el = document.getElementById('medals-catalog-list');
+  el.innerHTML = categories.map(cat => `
+    <div style="margin-bottom:18px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin-bottom:8px">${cat}</div>
+      ${MEDALS_CATALOG.filter(m=>m.category===cat).map(m => `
+        <div class="pilot-row" style="background:var(--card2)">
+          <div class="pilot-row-info">
+            <div class="pilot-row-name">${m.name}</div>
+          </div>
+          ${held.includes(m.id)
+            ? `<span class="badge badge-green">Awarded</span><button class="btn btn-danger btn-xs" onclick="revokeMedal('${m.id}')">Revoke</button>`
+            : `<button class="btn btn-primary btn-xs" onclick="awardMedal('${m.id}','${m.name}')">Award</button>`}
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function renderWingsBadges() {
+  const held = (medalTargetPilot.wingsBadges || []).map(w => w.id);
+  const el = document.getElementById('wings-badges-list');
+  el.innerHTML = WINGS_BADGES.map(w => `
+    <div class="pilot-row" style="background:var(--card2)">
+      <div class="pilot-row-info">
+        <div class="pilot-row-name">${w.name}</div>
+        <div class="pilot-row-meta">${w.desc}</div>
+      </div>
+      ${held.includes(w.id)
+        ? `<span class="badge badge-green">Awarded</span><button class="btn btn-danger btn-xs" onclick="revokeWingsBadge('${w.id}')">Revoke</button>`
+        : `<button class="btn btn-primary btn-xs" onclick="awardWingsBadge('${w.id}','${w.name}')">Award</button>`}
+    </div>`).join('');
+}
+
+function renderCurrentMedals() {
+  const medals = medalTargetPilot.medals || [];
+  const wings  = medalTargetPilot.wingsBadges || [];
+  const el = document.getElementById('current-medals-list');
+  if (!medals.length && !wings.length) { el.innerHTML = '<div class="empty-state"><p>No medals or wings awarded yet</p></div>'; return; }
+  el.innerHTML =
+    (wings.length ? `<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Pilot Wings</div>` +
+      wings.map(w=>`<div class="pilot-row" style="background:var(--card2)"><div class="pilot-row-info"><div class="pilot-row-name">${w.name}</div><div class="pilot-row-meta">Awarded ${formatDate(w.awardedAt)}</div></div></div>`).join('') : '') +
+    (medals.length ? `<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">Decorations</div>` +
+      medals.map(m=>`<div class="pilot-row" style="background:var(--card2)"><div class="pilot-row-info"><div class="pilot-row-name">${m.name}</div><div class="pilot-row-meta">Awarded ${formatDate(m.awardedAt)}</div></div></div>`).join('') : '');
+}
+
+async function awardMedal(medalId, medalName) {
+  const medals = medalTargetPilot.medals || [];
+  if (medals.some(m=>m.id===medalId)) return;
+  medals.push({ id: medalId, name: medalName, awardedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  try {
+    await db.collection('pilots').doc(medalTargetPilot.uid).update({ medals });
+    medalTargetPilot.medals = medals;
+    renderMedalsCatalog();
+    toast(`${medalName} awarded!`);
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+async function revokeMedal(medalId) {
+  if (!confirm('Revoke this decoration?')) return;
+  const medals = (medalTargetPilot.medals||[]).filter(m=>m.id!==medalId);
+  try {
+    await db.collection('pilots').doc(medalTargetPilot.uid).update({ medals });
+    medalTargetPilot.medals = medals;
+    renderMedalsCatalog();
+    toast('Decoration revoked');
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+async function awardWingsBadge(wingId, wingName) {
+  const wings = medalTargetPilot.wingsBadges || [];
+  if (wings.some(w=>w.id===wingId)) return;
+  wings.push({ id: wingId, name: wingName, awardedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  try {
+    await db.collection('pilots').doc(medalTargetPilot.uid).update({ wingsBadges: wings });
+    medalTargetPilot.wingsBadges = wings;
+    renderWingsBadges();
+    toast(`${wingName} awarded!`);
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+async function revokeWingsBadge(wingId) {
+  if (!confirm('Revoke these wings?')) return;
+  const wings = (medalTargetPilot.wingsBadges||[]).filter(w=>w.id!==wingId);
+  try {
+    await db.collection('pilots').doc(medalTargetPilot.uid).update({ wingsBadges: wings });
+    medalTargetPilot.wingsBadges = wings;
+    renderWingsBadges();
+    toast('Wings revoked');
+  } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
 // ── WING SETTINGS ─────────────────────────────────────────────

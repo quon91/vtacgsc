@@ -222,6 +222,18 @@
     </div>
 
     <div class="edit-section">
+      <div class="edit-section-title">🎖 Official Pilot Wings Rating</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Awarded by command staff based on flight experience. Cannot be self-assigned.</div>
+      <div id="earned-wings-badges"><div class="empty-state" style="padding:20px"><p>No pilot wings rating awarded yet</p></div></div>
+    </div>
+
+    <div class="edit-section">
+      <div class="edit-section-title">🏅 Decorations &amp; Ribbons</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Medals and ribbons awarded by command staff for achievements and service.</div>
+      <div id="earned-medals-list"><div class="empty-state" style="padding:20px"><p>No decorations awarded yet</p></div></div>
+    </div>
+
+    <div class="edit-section">
       <div class="edit-section-title">📋 Wing certifications</div>
       <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Certifications and qualifications tracked by your instructors.</div>
       <div id="certs-list"><div class="empty-state" style="padding:20px"><p>No certifications yet. Complete training events to earn certifications.</p></div></div>
@@ -355,6 +367,8 @@ function populateProfile(p) {
 
   // Certs
   loadCerts();
+  renderEarnedWingsBadges(p);
+  renderEarnedMedals(p);
 
   // Privacy
   if (p.privacy) {
@@ -544,6 +558,36 @@ async function loadCerts() {
       </div>`;
     }).join('');
   } catch(e) {}
+}
+
+// ── EARNED PILOT WINGS RATING ────────────────────────────────
+function renderEarnedWingsBadges(p) {
+  const el = document.getElementById('earned-wings-badges');
+  const badges = p.wingsBadges || [];
+  if (!badges.length) return;
+  el.innerHTML = badges.map(b => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--border)">
+      <span style="font-size:22px">🎖</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold)">${b.name}</div>
+        <div style="font-size:11px;color:var(--text3)">Awarded ${formatDate(b.awardedAt)}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── EARNED DECORATIONS & RIBBONS ─────────────────────────────
+function renderEarnedMedals(p) {
+  const el = document.getElementById('earned-medals-list');
+  const medals = p.medals || [];
+  if (!medals.length) return;
+  el.innerHTML = medals.map(m => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--border)">
+      <span style="font-size:20px">🏅</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${m.name}</div>
+        <div style="font-size:11px;color:var(--text3)">Awarded ${formatDate(m.awardedAt)}</div>
+      </div>
+    </div>`).join('');
 }
 </script>
 </body>
