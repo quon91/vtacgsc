@@ -1,0 +1,59 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // ── AVATARS ────────────────────────────────────────────────
+    // Path: avatars/{uid}.jpg
+    // Any signed-in pilot can read any avatar (public profile pics).
+    // A pilot can only write their OWN avatar file.
+    match /avatars/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() &&
+        fileName.matches(request.auth.uid + '\\..*') &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // ── PILOT WINGS BADGES ─────────────────────────────────────
+    // Path: wings/{uid}.png
+    match /wings/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() &&
+        fileName.matches(request.auth.uid + '\\..*') &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // ── SITE / WING LOGOS ──────────────────────────────────────
+    // Path: logos/site.png, logos/wing-7bw.png, logos/wing-509bw.png, etc.
+    // Anyone can read (public site assets). Writes are validated by
+    // Firestore rules on the settings/wings docs that store the URL —
+    // Storage itself just checks the uploader is signed in and the
+    // file is a reasonably-sized image. Actual permission (master
+    // admin / wing commander / squadron commander) is enforced in
+    // the UI and by the Firestore write that follows the upload.
+    match /logos/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() &&
+        request.resource.size < 3 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // ── SLIDESHOW IMAGES ───────────────────────────────────────
+    match /slideshow/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() &&
+        request.resource.size < 8 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // Deny everything else by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
