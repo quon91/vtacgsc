@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Webhook Manager — VTAC GSC Admin</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.wh-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden}
+.wh-card-head{display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--card2);border-bottom:1px solid var(--border)}
+.wh-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.wh-status.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.wh-status.off{background:var(--text3)}
+.wh-card-body{padding:16px 18px}
+.wh-events{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.wh-event-pill{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--card2);color:var(--text3);border:1px solid var(--border);font-family:var(--mono)}
+.wh-input-row{display:flex;gap:8px;align-items:center;margin-top:10px}
+.wh-url-input{flex:1;padding:9px 12px;background:#0a0c14;border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;font-family:var(--mono);outline:none}
+.wh-url-input:focus{border-color:var(--blue)}
+.wh-url-input::placeholder{color:var(--text3)}
+.test-btn{padding:6px 12px;background:rgba(74,144,217,.15);color:var(--blue2);border:1px solid rgba(74,144,217,.3);border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--sans);white-space:nowrap}
+.test-btn:hover{background:rgba(74,144,217,.25)}
+.audit-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px}
+.audit-row:last-child{border-bottom:none}
+.audit-time{color:var(--text3);white-space:nowrap;font-family:var(--mono);flex-shrink:0;width:90px}
+.audit-actor{color:var(--gold);font-weight:600;flex-shrink:0;width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.audit-event{font-size:10px;padding:1px 7px;border-radius:8px;background:var(--card2);border:1px solid var(--border);font-family:var(--mono);flex-shrink:0}
+.audit-detail{color:var(--text2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.audit-page{color:var(--text3);font-size:10px;flex-shrink:0}
+.section-divider{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a>
+      <a href="/pages/flights.html">Flight Log</a><a href="/pages/training/index.html">Training</a>
+    </div>
+    <div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div>
+  </div>
+</nav>
+
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow">Admin Panel</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">Webhooks &amp; <span>Audit Log</span></h1>
+  <p class="hero-sub" style="font-size:15px">Configure Discord webhooks per event channel. View the full site audit trail below.</p>
+</section>
+
+<div class="container page-body">
+
+  <!-- ACCESS GATE -->
+  <div id="access-denied" style="display:none" class="empty-state">
+    <div class="icon">🔒</div><p>Wing Commander or Master Admin access required.</p>
+  </div>
+
+  <div id="main-content" style="display:none">
+
+    <!-- WEBHOOK MANAGER -->
+    <div class="section">
+      <div class="section-label">Discord Webhook Configuration</div>
+      <div class="alert alert-info" style="margin-bottom:18px">
+        <strong>How to create a webhook:</strong> Discord → Channel Settings → Integrations → Webhooks → New Webhook → Copy URL.<br>
+        Paste the URL into the field for each channel below. Leave blank to disable that channel.
+      </div>
+      <div id="webhook-cards"></div>
+      <button class="btn btn-primary" onclick="saveAllWebhooks()">💾 Save All Webhooks</button>
+    </div>
+
+    <!-- AUDIT LOG -->
+    <div class="section">
+      <div class="section-label">Site Audit Log</div>
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <select id="audit-event-filter" onchange="loadAuditLog()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--sans)">
+          <option value="">All events</option>
+          <option value="flight_logged">Flights Logged</option>
+          <option value="flight_deleted">Flights Deleted</option>
+          <option value="flight_plan_saved">Flight Plans Saved</option>
+          <option value="pilot_approved">Pilots Approved</option>
+          <option value="pilot_denied">Pilots Denied</option>
+          <option value="pilot_rank_changed">Rank Changes</option>
+          <option value="pilot_role_changed">Role Changes</option>
+          <option value="cert_awarded">Certs Awarded</option>
+          <option value="cert_revoked">Certs Revoked</option>
+          <option value="news_posted">News Posted</option>
+          <option value="training_edited">Training Edited</option>
+          <option value="webhook_added">Webhooks Added</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="loadAuditLog()">🔄 Refresh</button>
+        <span id="audit-count" style="font-size:13px;color:var(--text2);align-self:center"></span>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div id="audit-log-list" style="padding:16px">
+            <div class="empty-state" style="padding:20px"><p>Loading audit log…</p></div>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-outline btn-sm" id="audit-load-more" style="margin-top:10px;display:none" onclick="loadMoreAudit()">Load more</button>
+    </div>
+
+  </div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
+
+// Copy of WEBHOOK_CHANNELS from audit-log-addon.js (duplicated here for self-contained page)
+const WEBHOOK_CHANNELS = {
+  flights_7bw:     { label:'7th BW Flight Log',        group:'Wing Flights',  events:['flight_logged','flight_deleted'] },
+  flights_509bw:   { label:'509th BW Flight Log',       group:'Wing Flights',  events:['flight_logged','flight_deleted'] },
+  flights_2bw:     { label:'2nd BW Flight Log',         group:'Wing Flights',  events:['flight_logged','flight_deleted'] },
+  flight_plans:    { label:'Flight Plans',              group:'Wing Flights',  events:['flight_plan_saved'] },
+  admin_pilots:    { label:'Admin — Pilot Actions',     group:'Admin',         events:['pilot_approved','pilot_denied','pilot_rank_changed','pilot_role_changed','pilot_deleted'] },
+  admin_training:  { label:'Admin — Training & Certs',  group:'Admin',         events:['cert_awarded','cert_revoked','qual_updated','training_edited'] },
+  admin_site:      { label:'Admin — Site Changes',      group:'Admin',         events:['news_posted','news_deleted','role_edited','wing_edited','webhook_added','webhook_deleted'] },
+  admin_all:       { label:'Admin — All Events (audit)', group:'Admin',        events:['*'] },
+};
+
+let currentWebhookConfig = {};
+let auditLastDoc = null;
+const AUDIT_PAGE_SIZE = 50;
+
+// ── AUTH ──────────────────────────────────────────────────────
+function onAuthReady(user, pilot) {
+  hideAuthLoading();
+  if (!user || !pilot) { window.location.href='/pages/login.html'; return; }
+  const canAccess = isMasterAdminPilot(pilot) || hasPermission(pilot,'manage_roles') || hasPermission(pilot,'edit_any_wing');
+  if (!canAccess) { document.getElementById('access-denied').style.display='block'; return; }
+  document.getElementById('main-content').style.display='block';
+  loadWebhookConfig();
+  loadAuditLog();
+}
+showAuthLoading();
+
+// ── WEBHOOK MANAGER ───────────────────────────────────────────
+async function loadWebhookConfig() {
+  try {
+    const snap = await db.collection('settings').doc('webhooks').get();
+    currentWebhookConfig = snap.exists ? (snap.data().channels || {}) : {};
+  } catch(e) { currentWebhookConfig = {}; }
+  renderWebhookCards();
+}
+
+function renderWebhookCards() {
+  const container = document.getElementById('webhook-cards');
+  const groups = {};
+  Object.entries(WEBHOOK_CHANNELS).forEach(([key, ch]) => {
+    if (!groups[ch.group]) groups[ch.group] = [];
+    groups[ch.group].push([key, ch]);
+  });
+
+  container.innerHTML = Object.entries(groups).map(([group, channels]) => `
+    <div class="section-divider">${group}</div>
+    ${channels.map(([key, ch]) => {
+      const cfg     = currentWebhookConfig[key] || {};
+      const hasUrl  = !!cfg.url;
+      const evList  = ch.events[0] === '*' ? 'All events' : ch.events.join(', ');
+      return `
+      <div class="wh-card">
+        <div class="wh-card-head">
+          <div class="wh-status ${hasUrl?'on':'off'}"></div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${ch.label}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">Channel key: <code>${key}</code></div>
+          </div>
+          <div style="font-size:11px;color:${hasUrl?'var(--green2)':'var(--text3)'}">${hasUrl?'● Active':'○ Not configured'}</div>
+        </div>
+        <div class="wh-card-body">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Fires on: <span style="color:var(--text2)">${evList}</span></div>
+          <div class="wh-input-row">
+            <input class="wh-url-input" id="wh-${key}" type="text" placeholder="https://discord.com/api/webhooks/..." value="${cfg.url||''}">
+            <button class="test-btn" onclick="testWebhook('${key}')">Test</button>
+            ${hasUrl ? `<button class="test-btn" style="color:var(--red2);border-color:rgba(208,64,64,.3)" onclick="clearWebhook('${key}')">Clear</button>` : ''}
+          </div>
+          ${cfg.lastUsed ? `<div style="font-size:10px;color:var(--text3);margin-top:6px">Last fired: ${formatDateTime(cfg.lastUsed)}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('')}
+  `).join('');
+}
+
+async function saveAllWebhooks() {
+  const updated = {};
+  Object.keys(WEBHOOK_CHANNELS).forEach(key => {
+    const input = document.getElementById('wh-'+key);
+    const url = input?.value.trim() || '';
+    if (url) updated[key] = { url, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+  });
+
+  try {
+    await db.collection('settings').doc('webhooks').set({ channels: updated }, { merge: true });
+    currentWebhookConfig = updated;
+    clearWebhookCache?.();
+    toast('Webhooks saved ✓');
+    // Audit log
+    logAudit(AUDIT.WEBHOOK_ADDED, { channelCount: Object.keys(updated).length, channelName: 'Multiple channels updated' });
+    loadWebhookConfig();
+  } catch(e) { toast('Error saving: '+e.message,'error'); }
+}
+
+function clearWebhook(key) {
+  if (!confirm(`Clear the webhook for "${WEBHOOK_CHANNELS[key]?.label}"?`)) return;
+  const input = document.getElementById('wh-'+key);
+  if (input) input.value = '';
+  toast(`Webhook cleared — click Save to apply`,'warn');
+}
+
+async function testWebhook(key) {
+  const url = document.getElementById('wh-'+key)?.value.trim();
+  if (!url) { toast('Enter a webhook URL first','error'); return; }
+
+  const payload = {
+    embeds: [{
+      color: 0xc8a951,
+      title: '🔔 VTAC GSC Webhook Test',
+      description: `This is a test from the **${WEBHOOK_CHANNELS[key]?.label}** channel.\nIf you see this, the webhook is working correctly.`,
+      fields: [
+        { name: 'Channel', value: WEBHOOK_CHANNELS[key]?.label || key, inline: true },
+        { name: 'Events', value: (WEBHOOK_CHANNELS[key]?.events||[]).join(', ') || '*', inline: false },
+      ],
+      footer: { text: 'VTAC Global Strike Command — Webhook Manager' },
+      timestamp: new Date().toISOString(),
+    }]
+  };
+
+  try {
+    const resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    if (resp.ok || resp.status === 204) toast(`Test sent to ${WEBHOOK_CHANNELS[key]?.label} ✓`);
+    else toast(`Discord returned ${resp.status} — check the URL`,'error');
+  } catch(e) { toast('Test failed: '+e.message,'error'); }
+}
+
+// ── AUDIT LOG ─────────────────────────────────────────────────
+async function loadAuditLog() {
+  auditLastDoc = null;
+  document.getElementById('audit-log-list').innerHTML = '<div class="empty-state" style="padding:20px"><p>Loading…</p></div>';
+  await fetchAuditPage(true);
+}
+
+async function loadMoreAudit() { await fetchAuditPage(false); }
+
+async function fetchAuditPage(reset) {
+  const eventFilter = document.getElementById('audit-event-filter').value;
+  try {
+    let query = db.collection('auditLog').orderBy('timestamp','desc').limit(AUDIT_PAGE_SIZE);
+    if (eventFilter) query = query.where('eventType','==',eventFilter);
+    if (!reset && auditLastDoc) query = query.startAfter(auditLastDoc);
+
+    const snap = await query.get();
+    auditLastDoc = snap.docs[snap.docs.length - 1] || null;
+    document.getElementById('audit-load-more').style.display = snap.docs.length === AUDIT_PAGE_SIZE ? 'block' : 'none';
+
+    const entries = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    document.getElementById('audit-count').textContent = `${entries.length}${snap.docs.length===AUDIT_PAGE_SIZE?'+':''} entries`;
+
+    if (!entries.length && reset) {
+      document.getElementById('audit-log-list').innerHTML = '<div class="empty-state" style="padding:20px"><p>No audit entries yet. Actions taken on the site will appear here.</p></div>';
+      return;
+    }
+
+    const html = entries.map(e => {
+      const ts   = e.timestamp?.toDate?.() ? e.timestamp.toDate() : new Date();
+      const time = ts.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      const d    = e.details || {};
+      let detail = '';
+      if (d.departure && d.arrival) detail = `${d.departure}→${d.arrival}`;
+      else if (d.pilotCallsign)     detail = d.pilotCallsign;
+      else if (d.certName)          detail = d.certName;
+      else if (d.newsTitle)         detail = d.newsTitle;
+      else if (d.channelName)       detail = d.channelName;
+      if (d.aircraft && detail)     detail += ` · ${d.aircraft}`;
+      const page = e.page ? e.page.replace('/pages/','').replace('.html','') : '';
+      return `
+      <div class="audit-row">
+        <div class="audit-time">${time}</div>
+        <div class="audit-actor">${e.actor?.callsign||'—'}</div>
+        <div class="audit-event">${e.eventType||'—'}</div>
+        <div class="audit-detail">${detail||'—'}</div>
+        <div class="audit-page">${page}</div>
+      </div>`;
+    }).join('');
+
+    if (reset) {
+      document.getElementById('audit-log-list').innerHTML = html;
+    } else {
+      document.getElementById('audit-log-list').insertAdjacentHTML('beforeend', html);
+    }
+  } catch(e) {
+    document.getElementById('audit-log-list').innerHTML =
+      `<div class="alert alert-error">Error loading audit log: ${e.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>
