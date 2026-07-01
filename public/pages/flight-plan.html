@@ -24,26 +24,34 @@
 .saved-plan-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
 .spc-route{font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono)}
 .spc-meta{font-size:11px;color:var(--text3);margin-top:3px}
-
-/* SimBrief panel */
+/* Squadron routes */
+.sq-route-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+@media(max-width:500px){.sq-route-grid{grid-template-columns:1fr}}
+.sq-route-btn{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;text-align:left;transition:border-color .12s;font-family:var(--sans)}
+.sq-route-btn:hover{border-color:var(--gold)}
+.sq-route-btn .airports{font-size:13px;font-weight:700;color:var(--text);font-family:var(--mono)}
+.sq-route-btn .desc{font-size:10px;color:var(--text3);margin-top:2px}
+.sq-route-btn .dist{font-size:11px;color:var(--gold2);font-weight:600;margin-top:4px}
+/* ICAO search */
+.icao-wrap{position:relative}
+.icao-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border2);border-radius:8px;z-index:100;max-height:200px;overflow-y:auto;display:none}
+.icao-option{padding:8px 12px;font-size:13px;cursor:pointer;font-family:var(--mono);border-bottom:.5px solid var(--border)}
+.icao-option:hover{background:var(--card2);color:var(--gold)}
+.icao-option .icao-name{font-size:11px;color:var(--text3);font-family:var(--sans)}
+/* SB panel */
 .sb-section{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:14px}
-.sb-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:6px}
 .sb-route{font-family:var(--mono);font-size:12px;color:var(--blue2);word-break:break-all;line-height:1.7}
 .sb-data-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .sb-data-item{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px}
 .sb-data-val{font-size:15px;font-weight:800;color:var(--gold);font-family:var(--mono)}
 .sb-data-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
-.sb-alt-item{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
-.sb-alt-item:last-child{border-bottom:none}
-.loading-spin{display:inline-block;width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-right:6px}
+.loading-spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* Export buttons */
 .export-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-
-/* discord config */
-.discord-cfg{background:rgba(88,101,242,.08);border:1px solid rgba(88,101,242,.3);border-radius:8px;padding:12px;margin-top:12px}
-.discord-cfg label{color:#b5bdf8}
+.tab-row{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px}
+.tab-btn2{padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;background:none;border:none;color:var(--text3);font-family:var(--sans);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .12s}
+.tab-btn2.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab-panel2{display:none}.tab-panel2.active{display:block}
 </style>
 </head>
 <body>
@@ -63,74 +71,86 @@
 <div class="fp-hero">
   <div class="hero-eyebrow">Mission Planning</div>
   <h1 class="hero-title" style="font-size:clamp(26px,5vw,40px)">Flight <span>Planner</span></h1>
-  <p class="hero-sub" style="font-size:14px">Real IRL routes via SimBrief · Export direct to MSFS 2020/2024 · Save to squadron log.</p>
+  <p class="hero-sub" style="font-size:14px">Squadron routes · Custom IFR planning · SimBrief integration · MSFS 2020/2024 export</p>
 </div>
 
 <div class="container page-body">
   <div class="fp-layout">
     <div>
 
-      <!-- SIMBRIEF FETCH -->
+      <!-- ROUTE SOURCE TABS -->
       <div class="fp-card">
-        <div class="fp-card-title">🛰 SimBrief Route Fetch</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Your SimBrief Username or Pilot ID</label>
-            <input type="text" id="sb-username" placeholder="e.g. johndoe or 123456" style="text-transform:none">
-            <div class="form-hint">Find your Pilot ID at simbrief.com → Account Settings</div>
-          </div>
-          <div class="form-group" style="display:flex;align-items:flex-end">
-            <button class="btn btn-blue" onclick="fetchSimBrief()" style="width:100%">Fetch Latest OFP</button>
-          </div>
+        <div class="tab-row">
+          <button class="tab-btn2 active" onclick="switchTab('squad',this)">🦅 Squadron Routes</button>
+          <button class="tab-btn2" onclick="switchTab('custom',this)">✏️ Custom Route</button>
+          <button class="tab-btn2" onclick="switchTab('simbrief',this)">🛰 SimBrief OFP</button>
         </div>
-        <div id="sb-result" style="display:none">
-          <div class="sb-section">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-              <div style="font-size:14px;font-weight:800;color:var(--text)" id="sb-route-title"></div>
-              <div style="font-size:11px;color:var(--text3)" id="sb-ofp-date"></div>
-            </div>
-            <div class="sb-label">Full route</div>
-            <div class="sb-route" id="sb-full-route"></div>
-            <div class="sb-data-grid">
-              <div class="sb-data-item"><div class="sb-data-val" id="sb-dist"></div><div class="sb-data-lbl">Distance (NM)</div></div>
-              <div class="sb-data-item"><div class="sb-data-val" id="sb-time"></div><div class="sb-data-lbl">Est. block time</div></div>
-              <div class="sb-data-item"><div class="sb-data-val" id="sb-fuel"></div><div class="sb-data-lbl">Fuel (lbs)</div></div>
-              <div class="sb-data-item"><div class="sb-data-val" id="sb-alt"></div><div class="sb-data-lbl">Cruise alt (ft)</div></div>
-            </div>
-            <div style="margin-top:14px">
-              <div class="sb-label">Alternate airports</div>
-              <div id="sb-alts"></div>
-            </div>
-            <div style="margin-top:14px">
-              <button class="btn btn-primary btn-sm" onclick="loadSimBriefIntoPlanner()">⬇ Load into Route Builder</button>
-            </div>
-          </div>
-        </div>
-        <div id="sb-loading" style="display:none;padding:10px 0;font-size:13px;color:var(--text2)">
-          <span class="loading-spin"></span>Fetching your latest SimBrief OFP…
-        </div>
-        <div id="sb-error" style="display:none"></div>
-      </div>
 
-      <!-- ROUTE BUILDER -->
-      <div class="fp-card">
-        <div class="fp-card-title">✈ Route Builder</div>
-        <div class="waypoint-row">
-          <div class="wp-num dep">DEP</div>
-          <input type="text" class="wp-input" id="fp-dep" placeholder="KDYS" maxlength="4" oninput="updateRoute()">
-          <span style="font-size:11px;color:var(--text3);white-space:nowrap">ICAO</span>
+        <!-- SQUADRON ROUTES TAB -->
+        <div id="tab-squad" class="tab-panel2 active">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Pre-built routes between VTAC GSC bases and common training areas. Click any route to load it.</div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin-bottom:8px">7th BW — B-1B Routes (KDYS)</div>
+          <div class="sq-route-grid" id="rg-7bw"></div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--blue);margin:14px 0 8px">509th BW — B-2 Routes (KSZL)</div>
+          <div class="sq-route-grid" id="rg-509bw"></div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--green);margin:14px 0 8px">2nd BW — B-52H Routes (KBAD)</div>
+          <div class="sq-route-grid" id="rg-2bw"></div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin:14px 0 8px">Cross-Wing Training Routes</div>
+          <div class="sq-route-grid" id="rg-cross"></div>
         </div>
-        <div id="fp-waypoints"></div>
-        <button type="button" class="btn btn-outline btn-sm" onclick="addWaypoint()" style="margin:8px 0">+ Add Waypoint</button>
-        <div class="waypoint-row">
-          <div class="wp-num arr">ARR</div>
-          <input type="text" class="wp-input" id="fp-arr" placeholder="KTIK" maxlength="4" oninput="updateRoute()">
-          <span style="font-size:11px;color:var(--text3);white-space:nowrap">ICAO</span>
+
+        <!-- CUSTOM ROUTE TAB -->
+        <div id="tab-custom" class="tab-panel2">
+          <div class="waypoint-row">
+            <div class="wp-num dep">DEP</div>
+            <input type="text" class="wp-input" id="fp-dep" placeholder="KDYS" maxlength="6" oninput="updateRoute()">
+            <span style="font-size:11px;color:var(--text3)">ICAO</span>
+          </div>
+          <div id="fp-waypoints"></div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="addWaypoint()" style="margin:8px 0">+ Add Waypoint / Airway</button>
+          <div class="waypoint-row">
+            <div class="wp-num arr">ARR</div>
+            <input type="text" class="wp-input" id="fp-arr" placeholder="KTIK" maxlength="6" oninput="updateRoute()">
+            <span style="font-size:11px;color:var(--text3)">ICAO</span>
+          </div>
+          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:14px;margin-bottom:6px">Route String</div>
+          <div class="route-line" id="route-string">—</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-outline btn-sm" onclick="copyRoute()">📋 Copy</button>
+          </div>
         </div>
-        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:14px;margin-bottom:6px">Route String</div>
-        <div class="route-line" id="route-string">—</div>
-        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-          <button type="button" class="btn btn-outline btn-sm" onclick="copyRoute()">📋 Copy Route</button>
+
+        <!-- SIMBRIEF TAB -->
+        <div id="tab-simbrief" class="tab-panel2">
+          <div class="form-row">
+            <div class="form-group">
+              <label>SimBrief Username or Pilot ID</label>
+              <input type="text" id="sb-username" placeholder="e.g. johndoe or 123456" style="text-transform:none">
+              <div class="form-hint">Find your Pilot ID at simbrief.com → Account Settings</div>
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end">
+              <button class="btn btn-blue" onclick="fetchSimBrief()" style="width:100%">Fetch Latest OFP</button>
+            </div>
+          </div>
+          <div id="sb-loading" style="display:none;padding:10px 0;font-size:13px;color:var(--text2)"><span class="loading-spin"></span>Fetching OFP…</div>
+          <div id="sb-error" style="display:none"></div>
+          <div id="sb-result" style="display:none">
+            <div class="sb-section">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div style="font-size:14px;font-weight:800;color:var(--text)" id="sb-route-title"></div>
+                <div style="font-size:11px;color:var(--text3)" id="sb-ofp-date"></div>
+              </div>
+              <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Full route</div>
+              <div class="sb-route" id="sb-full-route"></div>
+              <div class="sb-data-grid">
+                <div class="sb-data-item"><div class="sb-data-val" id="sb-dist"></div><div class="sb-data-lbl">Distance NM</div></div>
+                <div class="sb-data-item"><div class="sb-data-val" id="sb-time"></div><div class="sb-data-lbl">Block time</div></div>
+                <div class="sb-data-item"><div class="sb-data-val" id="sb-fuel"></div><div class="sb-data-lbl">Fuel lbs</div></div>
+                <div class="sb-data-item"><div class="sb-data-val" id="sb-alt"></div><div class="sb-data-lbl">Cruise alt</div></div>
+              </div>
+              <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="loadSimBriefIntoPlanner()">⬇ Load into Planner</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -153,22 +173,18 @@
           <div class="form-group"><label>Cruise speed (KTAS)</label>
             <input type="number" id="fp-speed" placeholder="450" oninput="updateRoute()">
           </div>
-          <div class="form-group"><label>Planned departure (Zulu)</label>
-            <input type="text" id="fp-deptime" placeholder="e.g. 1400Z">
+          <div class="form-group"><label>Departure time (Zulu)</label>
+            <input type="text" id="fp-deptime" placeholder="1400Z">
           </div>
         </div>
         <div class="form-group"><label>Mission notes</label>
-          <textarea id="fp-notes" placeholder="Mission type, weapons load, special instructions..."></textarea>
+          <textarea id="fp-notes" placeholder="Mission type, weapons load, special instructions…"></textarea>
         </div>
-
-        <!-- EXPORT BUTTONS -->
-        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Export &amp; Save</div>
         <div class="export-btns">
           <button class="btn btn-primary" onclick="savePlan()">💾 Save to Squadron</button>
-          <button class="btn btn-outline" onclick="exportMSFS()" title="Download .pln file for MSFS 2020/2024">🎮 Export to MSFS</button>
+          <button class="btn btn-outline" onclick="exportMSFS()" title="Download .pln for MSFS 2020/2024">🎮 Export to MSFS</button>
         </div>
       </div>
-
     </div>
 
     <!-- SIDEBAR -->
@@ -179,17 +195,14 @@
         <div class="fp-stat-row"><span class="fp-stat-lbl">Aircraft</span><span class="fp-stat-val" id="sum-aircraft">—</span></div>
         <div class="fp-stat-row"><span class="fp-stat-lbl">Cruise alt</span><span class="fp-stat-val" id="sum-alt">—</span></div>
         <div class="fp-stat-row"><span class="fp-stat-lbl">Waypoints</span><span class="fp-stat-val" id="sum-waypoints">0</span></div>
-        <div class="fp-stat-row"><span class="fp-stat-lbl">Est. distance</span><span class="fp-stat-val" id="sum-distance">—</span></div>
-        <div class="fp-stat-row"><span class="fp-stat-lbl">Est. flight time</span><span class="fp-stat-val" id="sum-time">—</span></div>
-        <div class="alert alert-info" style="margin-top:14px;font-size:11px">Use SimBrief Fetch above for real IRL distances and routing. Straight-line estimate shown otherwise.</div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Distance</span><span class="fp-stat-val" id="sum-distance">—</span></div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Est. time</span><span class="fp-stat-val" id="sum-time">—</span></div>
       </div>
-
       <div style="margin-top:20px">
         <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">My Saved Plans</div>
         <div id="saved-plans-list"><div class="empty-state" style="padding:20px"><p>Log in to save plans</p></div></div>
       </div>
     </div>
-
   </div>
 </div>
 
@@ -201,18 +214,99 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
 <script>
-// ── CONFIG ────────────────────────────────────────────────────
-// Paste your Discord webhook URL here (or set it in Firestore settings)
-// Go to Discord → Channel Settings → Integrations → Webhooks → New Webhook → Copy URL
-const DISCORD_WEBHOOK_URL = ''; // ← paste your webhook URL between the quotes
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
 
-// ── SIMBRIEF DATA ─────────────────────────────────────────────
-let sbData = null; // stores the latest fetched SimBrief OFP
+// ── SQUADRON ROUTES DATABASE ──────────────────────────────────
+// Real IFR routes between VTAC GSC bases and training areas
+// Format: dep, arr, route (airway string), dist (NM), alt, aircraft, desc
+const SQUADRON_ROUTES = {
+  '7bw': [
+    { dep:'KDYS', arr:'KTIK', route:'KDYS FIDEN5 CRIED HAYYY BWD J146 CHOKE TIK3 KTIK', dist:155, alt:35000, desc:'Dyess → Tinker AFB', acft:'B-1B Lancer' },
+    { dep:'KDYS', arr:'KBAD', route:'KDYS TXO J86 MLU KBAD', dist:318, alt:37000, desc:'Dyess → Barksdale', acft:'B-1B Lancer' },
+    { dep:'KDYS', arr:'KEND', route:'KDYS ABI J110 INK J86 END', dist:405, alt:39000, desc:'Dyess → Vance AFB', acft:'B-1B Lancer' },
+    { dep:'KDYS', arr:'KSZL', route:'KDYS ABI J110 OKC J4 SGF KSZL', dist:626, alt:39000, desc:'Dyess → Whiteman', acft:'B-1B Lancer' },
+    { dep:'KDYS', arr:'KOKC', route:'KDYS FIDEN5 CRIED OKC', dist:230, alt:35000, desc:'Dyess → Oklahoma City (training)', acft:'B-1B Lancer' },
+    { dep:'KDYS', arr:'KDYS', route:'KDYS ABI ABI KDYS', dist:0, alt:8000, desc:'Local area orientation (LAO)', acft:'B-1B Lancer' },
+  ],
+  '509bw': [
+    { dep:'KSZL', arr:'KDYS', route:'KSZL SGF J4 OKC J110 ABI KDYS', dist:626, alt:40000, desc:'Whiteman → Dyess', acft:'B-2 Spirit' },
+    { dep:'KSZL', arr:'KBAD', route:'KSZL SGF J86 MLU KBAD', dist:540, alt:40000, desc:'Whiteman → Barksdale', acft:'B-2 Spirit' },
+    { dep:'KSZL', arr:'KOKC', route:'KSZL SGF J4 OKC', dist:280, alt:40000, desc:'Whiteman → Oklahoma City', acft:'B-2 Spirit' },
+    { dep:'KSZL', arr:'KSTL', route:'KSZL STL', dist:108, alt:35000, desc:'Whiteman → St. Louis (local training)', acft:'B-2 Spirit' },
+    { dep:'KSZL', arr:'KOFK', route:'KSZL STL J146 OFK', dist:410, alt:40000, desc:'Whiteman → Norfolk NE (long range)', acft:'B-2 Spirit' },
+    { dep:'KSZL', arr:'KICT', route:'KSZL ICT', dist:183, alt:37000, desc:'Whiteman → Wichita (medium range)', acft:'B-2 Spirit' },
+  ],
+  '2bw': [
+    { dep:'KBAD', arr:'KDYS', route:'KBAD MLU J86 TXO KDYS', dist:318, alt:37000, desc:'Barksdale → Dyess', acft:'B-52H Stratofortress' },
+    { dep:'KBAD', arr:'KSZL', route:'KBAD MLU J86 SGF KSZL', dist:540, alt:35000, desc:'Barksdale → Whiteman', acft:'B-52H Stratofortress' },
+    { dep:'KBAD', arr:'KNEW', route:'KBAD MLU MSY KNEW', dist:195, alt:33000, desc:'Barksdale → New Orleans', acft:'B-52H Stratofortress' },
+    { dep:'KBAD', arr:'KMSY', route:'KBAD SHV J86 MSY', dist:180, alt:33000, desc:'Barksdale → New Orleans Intl', acft:'B-52H Stratofortress' },
+    { dep:'KBAD', arr:'KDFW', route:'KBAD SHV J4 TXO DFW', dist:290, alt:35000, desc:'Barksdale → Dallas/Fort Worth', acft:'B-52H Stratofortress' },
+    { dep:'KBAD', arr:'KTUL', route:'KBAD SHV J86 FSM TUL', dist:336, alt:35000, desc:'Barksdale → Tulsa (AR track)', acft:'B-52H Stratofortress' },
+  ],
+  'cross': [
+    { dep:'KDYS', arr:'KBAD', route:'KDYS TXO J86 MLU KBAD', dist:318, alt:37000, desc:'7BW → 2BW transit', acft:'B-1B Lancer' },
+    { dep:'KBAD', arr:'KSZL', route:'KBAD MLU J86 SGF KSZL', dist:540, alt:35000, desc:'2BW → 509BW transit', acft:'B-52H Stratofortress' },
+    { dep:'KSZL', arr:'KDYS', route:'KSZL SGF J4 OKC J110 ABI KDYS', dist:626, alt:40000, desc:'509BW → 7BW transit', acft:'B-2 Spirit' },
+    { dep:'KDYS', arr:'KEND', route:'KDYS ABI J110 END', dist:390, alt:37000, desc:'Dyess → Vance (AR training)', acft:'B-1B Lancer' },
+  ]
+};
+
+function buildSquadronRoutes() {
+  Object.entries(SQUADRON_ROUTES).forEach(([wing, routes]) => {
+    const el = document.getElementById('rg-' + wing);
+    if (!el) return;
+    el.innerHTML = routes.map((r, i) => `
+      <button class="sq-route-btn" onclick="loadSquadronRoute(${JSON.stringify(wing)},${i})">
+        <div class="airports">${r.dep} → ${r.arr}</div>
+        <div class="desc">${r.desc}</div>
+        <div class="dist">${r.dist ? r.dist + ' NM · FL' + Math.round(r.alt/100) : 'Local area'} · ${r.acft}</div>
+      </button>`).join('');
+  });
+}
+
+function loadSquadronRoute(wing, idx) {
+  const r = SQUADRON_ROUTES[wing][idx];
+  if (!r) return;
+  sbData = null;
+  // Parse the route string into dep + waypoints + arr
+  const parts = r.route.trim().split(/\s+/);
+  const dep = parts[0];
+  const arr = parts[parts.length - 1];
+  const mid = parts.slice(1, -1);
+  document.getElementById('fp-dep').value = dep;
+  document.getElementById('fp-arr').value = arr;
+  document.getElementById('fp-aircraft').value = r.acft;
+  document.getElementById('fp-altitude').value = r.alt;
+  waypoints = mid;
+  renderWaypoints();
+  updateRoute();
+  // Override summary with real data
+  document.getElementById('sum-distance').textContent = r.dist ? r.dist + ' NM' : 'Local';
+  document.getElementById('sum-route').textContent = dep + ' → ' + arr;
+  const speed = ACFT_SPEEDS[r.acft] || 450;
+  if (r.dist) {
+    const h = Math.floor(r.dist/speed), m = Math.round((r.dist/speed - Math.floor(r.dist/speed))*60);
+    document.getElementById('sum-time').textContent = h + 'h ' + m + 'm';
+  }
+  // Switch to custom tab to show the loaded route
+  switchTab('custom', document.querySelector('[onclick*="custom"]'));
+  toast('Route loaded: ' + r.desc);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+const ACFT_SPEEDS = { 'B-1B Lancer': 650, 'B-2 Spirit': 480, 'B-52H Stratofortress': 400 };
+
+// ── TABS ──────────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel2').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn2').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
 
 // ── STATE ─────────────────────────────────────────────────────
-let waypoints = [], isLoggedIn = false;
-
-function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
+let waypoints = [], isLoggedIn = false, sbData = null;
 
 function onAuthReady(user, pilot) {
   if (user && pilot?.status === 'active') {
@@ -220,152 +314,124 @@ function onAuthReady(user, pilot) {
       `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
     isLoggedIn = true;
     loadSavedPlans();
-    // Pre-fill SimBrief username from pilot profile if stored
-    if (pilot.simBriefUsername) {
-      document.getElementById('sb-username').value = pilot.simBriefUsername;
-    }
+    if (pilot.simBriefUsername) document.getElementById('sb-username').value = pilot.simBriefUsername;
   }
 }
 
-// ── SIMBRIEF FETCH ────────────────────────────────────────────
+// ── SIMBRIEF ──────────────────────────────────────────────────
 async function fetchSimBrief() {
   const username = document.getElementById('sb-username').value.trim();
-  if (!username) { toast('Enter your SimBrief username or Pilot ID','error'); return; }
-
+  if (!username) { toast('Enter your SimBrief username','error'); return; }
   document.getElementById('sb-result').style.display = 'none';
   document.getElementById('sb-error').style.display = 'none';
   document.getElementById('sb-loading').style.display = 'block';
-
   try {
-    // SimBrief's public API — no key required
-    const isNumeric = /^\d+$/.test(username);
-    const apiUrl = isNumeric
+    const isNum = /^\d+$/.test(username);
+    const api = isNum
       ? `https://www.simbrief.com/api/xml.fetcher.php?userid=${username}&json=1`
       : `https://www.simbrief.com/api/xml.fetcher.php?username=${username}&json=1`;
-
-    // Use a CORS proxy since SimBrief doesn't send CORS headers for browser requests
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
-    const resp = await fetch(proxyUrl);
-    if (!resp.ok) throw new Error('Network error — check your SimBrief username');
+    const resp = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(api)}`);
     const wrapper = await resp.json();
     const data = JSON.parse(wrapper.contents);
-
-    if (data.fetch?.status === 'Error') throw new Error(data.fetch.statusMessage || 'SimBrief returned an error');
-
+    if (data.fetch?.status === 'Error') throw new Error(data.fetch.statusMessage || 'SimBrief error');
     sbData = data;
-    renderSimBriefResult(data);
-
-    // Save username to Firestore pilot profile for next time
-    if (isLoggedIn && currentUser) {
-      db.collection('pilots').doc(currentUser.uid).update({ simBriefUsername: username }).catch(()=>{});
-    }
-
+    const orig = data.origin?.icao_code || '?', dest = data.destination?.icao_code || '?';
+    const route = data.general?.route || '';
+    const dist = data.general?.route_distance || '—';
+    const bt = data.times?.est_block || '';
+    const fuel = parseInt(data.fuel?.plan_ramp) || 0;
+    const ca = parseInt(data.general?.initial_altitude) || 0;
+    document.getElementById('sb-route-title').textContent = orig + ' → ' + dest;
+    document.getElementById('sb-ofp-date').textContent = data.params?.date_utc
+      ? new Date(data.params.date_utc * 1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    document.getElementById('sb-full-route').textContent = orig + ' ' + route + ' ' + dest;
+    document.getElementById('sb-dist').textContent = dist;
+    document.getElementById('sb-time').textContent = bt ? Math.floor(parseInt(bt)/60)+'h '+parseInt(bt)%60+'m' : '—';
+    document.getElementById('sb-fuel').textContent = fuel ? fuel.toLocaleString() : '—';
+    document.getElementById('sb-alt').textContent = ca ? 'FL'+Math.round(ca/100) : '—';
+    document.getElementById('sb-result').style.display = 'block';
+    if (isLoggedIn && currentUser) db.collection('pilots').doc(currentUser.uid).update({simBriefUsername:username}).catch(()=>{});
   } catch(e) {
     document.getElementById('sb-error').style.display = 'block';
-    document.getElementById('sb-error').innerHTML =
-      `<div class="alert alert-error">${e.message || 'Could not fetch SimBrief OFP. Check your username.'}</div>`;
-  } finally {
-    document.getElementById('sb-loading').style.display = 'none';
-  }
-}
-
-function renderSimBriefResult(d) {
-  const orig = d.origin?.icao_code || '????';
-  const dest = d.destination?.icao_code || '????';
-  const alt  = d.alternate?.icao_code || '—';
-  const route = d.general?.route || '';
-  const dist  = d.general?.route_distance || '—';
-  const blockTime = d.times?.est_block || '';
-  const fuelLbs = parseInt(d.fuel?.plan_ramp) || 0;
-  const cruiseAlt = parseInt(d.general?.initial_altitude) || 0;
-
-  document.getElementById('sb-route-title').textContent = `${orig} → ${dest}`;
-  document.getElementById('sb-ofp-date').textContent =
-    d.params?.date_utc ? new Date(d.params.date_utc * 1000).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '';
-  document.getElementById('sb-full-route').textContent = `${orig} ${route} ${dest}`;
-  document.getElementById('sb-dist').textContent = dist;
-  document.getElementById('sb-time').textContent = blockTime
-    ? `${Math.floor(parseInt(blockTime)/60)}h ${parseInt(blockTime)%60}m` : '—';
-  document.getElementById('sb-fuel').textContent = fuelLbs ? fuelLbs.toLocaleString() : '—';
-  document.getElementById('sb-alt').textContent = cruiseAlt ? `FL${Math.round(cruiseAlt/100)}` : '—';
-
-  // Alternates
-  const alts = Array.isArray(d.alternate) ? d.alternate : (d.alternate ? [d.alternate] : []);
-  document.getElementById('sb-alts').innerHTML = alts.length
-    ? alts.map(a => `<div class="sb-alt-item"><span style="color:var(--text);font-weight:600;font-family:var(--mono)">${a.icao_code||'—'}</span><span style="color:var(--text3)">${a.name||''}</span></div>`).join('')
-    : '<div style="color:var(--text3);font-size:12px">None filed</div>';
-
-  document.getElementById('sb-result').style.display = 'block';
+    document.getElementById('sb-error').innerHTML = `<div class="alert alert-error">${e.message || 'Could not fetch OFP'}</div>`;
+  } finally { document.getElementById('sb-loading').style.display = 'none'; }
 }
 
 function loadSimBriefIntoPlanner() {
   if (!sbData) return;
-  const orig  = sbData.origin?.icao_code || '';
-  const dest  = sbData.destination?.icao_code || '';
-  const route = (sbData.general?.route || '').trim();
-  const dist  = sbData.general?.route_distance || '';
-  const blockTime = sbData.times?.est_block || '';
-  const cruiseAlt = sbData.general?.initial_altitude || '';
-  const speed = sbData.general?.cruise_tas || '';
-
+  const orig = sbData.origin?.icao_code||'', dest = sbData.destination?.icao_code||'';
+  const route = (sbData.general?.route||'').trim();
   document.getElementById('fp-dep').value = orig;
   document.getElementById('fp-arr').value = dest;
-  document.getElementById('fp-altitude').value = cruiseAlt;
-  document.getElementById('fp-speed').value = speed;
-
-  // Parse SimBrief route string into waypoints
+  document.getElementById('fp-altitude').value = sbData.general?.initial_altitude||'';
+  document.getElementById('fp-speed').value = sbData.general?.cruise_tas||'';
   waypoints = route.split(/\s+/).filter(Boolean);
   renderWaypoints();
-
-  // Update summary with real SimBrief data
-  document.getElementById('sum-route').textContent = `${orig} → ${dest}`;
-  document.getElementById('sum-distance').textContent = dist ? `${dist} NM` : '—';
-  document.getElementById('sum-time').textContent = blockTime
-    ? `${Math.floor(parseInt(blockTime)/60)}h ${parseInt(blockTime)%60}m` : '—';
-  document.getElementById('sum-alt').textContent = cruiseAlt ? `FL${Math.round(cruiseAlt/100)}` : '—';
+  document.getElementById('sum-route').textContent = orig+' → '+dest;
+  document.getElementById('sum-distance').textContent = (sbData.general?.route_distance||'—')+' NM';
+  const bt = sbData.times?.est_block||'';
+  document.getElementById('sum-time').textContent = bt ? Math.floor(parseInt(bt)/60)+'h '+parseInt(bt)%60+'m' : '—';
+  document.getElementById('sum-alt').textContent = sbData.general?.initial_altitude ? 'FL'+Math.round(parseInt(sbData.general.initial_altitude)/100) : '—';
   document.getElementById('sum-waypoints').textContent = waypoints.length;
-  document.getElementById('route-string').textContent = `${orig} ${route} ${dest}`;
-
-  toast('SimBrief OFP loaded into planner ✓');
-  window.scrollTo({top:0, behavior:'smooth'});
+  document.getElementById('route-string').textContent = orig+' '+route+' '+dest;
+  switchTab('custom', document.querySelector('[onclick*="custom"]'));
+  toast('SimBrief OFP loaded ✓');
 }
 
-// ── MSFS PLN EXPORT ───────────────────────────────────────────
+// ── ROUTE BUILDER ─────────────────────────────────────────────
+function addWaypoint() { waypoints.push(''); renderWaypoints(); }
+function removeWaypoint(i) { waypoints.splice(i,1); renderWaypoints(); updateRoute(); }
+function renderWaypoints() {
+  document.getElementById('fp-waypoints').innerHTML = waypoints.map((wp,i) => `
+    <div class="waypoint-row">
+      <div class="wp-num">${i+1}</div>
+      <input type="text" class="wp-input" value="${wp}" placeholder="Fix / VOR / airway"
+        oninput="waypoints[${i}]=this.value.toUpperCase();updateRoute()">
+      <button class="wp-remove" onclick="removeWaypoint(${i})">×</button>
+    </div>`).join('');
+}
+
+function updateRoute() {
+  const dep = (document.getElementById('fp-dep').value||'').trim().toUpperCase();
+  const arr = (document.getElementById('fp-arr').value||'').trim().toUpperCase();
+  const mid = waypoints.filter(w=>w.trim());
+  const parts = [dep,...mid,arr].filter(Boolean);
+  document.getElementById('route-string').textContent = parts.join(' ') || '—';
+  document.getElementById('sum-route').textContent = (dep&&arr) ? dep+' → '+arr : '—';
+  document.getElementById('sum-waypoints').textContent = mid.length;
+  document.getElementById('sum-aircraft').textContent = document.getElementById('fp-aircraft').value;
+  const alt = document.getElementById('fp-altitude').value;
+  document.getElementById('sum-alt').textContent = alt ? 'FL'+Math.round(parseInt(alt)/100) : '—';
+  if (!sbData && parts.length >= 2) {
+    const est = (parts.length-1)*180;
+    document.getElementById('sum-distance').textContent = '~'+est.toLocaleString()+' NM (est.)';
+    const speed = parseFloat(document.getElementById('fp-speed').value)||450;
+    const h = Math.floor(est/speed), m = Math.round((est/speed-Math.floor(est/speed))*60);
+    document.getElementById('sum-time').textContent = '~'+h+'h '+m+'m (est.)';
+  }
+}
+
+function copyRoute() {
+  const r = document.getElementById('route-string').textContent;
+  if (r==='—') { toast('Build a route first','error'); return; }
+  navigator.clipboard.writeText(r).then(()=>toast('Copied!'));
+}
+
+// ── MSFS EXPORT ───────────────────────────────────────────────
 function exportMSFS() {
-  const dep = document.getElementById('fp-dep').value.trim().toUpperCase();
-  const arr = document.getElementById('fp-arr').value.trim().toUpperCase();
-  if (!dep || !arr) { toast('Enter departure and arrival first','error'); return; }
-
+  const dep = (document.getElementById('fp-dep').value||'').trim().toUpperCase();
+  const arr = (document.getElementById('fp-arr').value||'').trim().toUpperCase();
+  if (!dep||!arr) { toast('Enter departure and arrival first','error'); return; }
   const aircraft = document.getElementById('fp-aircraft').value;
-  const altitude = parseInt(document.getElementById('fp-altitude').value) || 36000;
-  const mid = waypoints.filter(w => w.trim());
-
-  // Build waypoint list for PLN — DEP + intermediate + ARR
-  const allWaypoints = [dep, ...mid, arr];
-
-  // MSFS .pln format is XML — this is the exact format MSFS 2020/2024 expects
-  // Intermediate waypoints use IntersectionName type; airports use Airport type
-  const icaoPattern = /^[A-Z]{4}$/;
-
-  const waypointXML = allWaypoints.map((fix, i) => {
-    const isFirst = i === 0;
-    const isLast  = i === allWaypoints.length - 1;
-    const isAirport = icaoPattern.test(fix) && (isFirst || isLast);
-    const wpType = isAirport ? 'Airport' : 'Intersection';
-    const wpIdent = isAirport ? `ICAO:${fix}` : fix;
-
-    return `    <ATCWaypoint id="${fix}">
-      <ATCWaypointType>${wpType}</ATCWaypointType>
+  const altitude = parseInt(document.getElementById('fp-altitude').value)||36000;
+  const mid = waypoints.filter(w=>w.trim());
+  const all = [dep,...mid,arr];
+  const icao = /^[A-Z]{4}$/;
+  const wpXML = all.map(fix => `    <ATCWaypoint id="${fix}">
+      <ATCWaypointType>${icao.test(fix)?'Airport':'Intersection'}</ATCWaypointType>
       <WorldPosition>N000° 0' 0.00",E000° 0' 0.00",+000000.00</WorldPosition>
-      <ICAO>
-        <ICAOIdent>${fix}</ICAOIdent>
-      </ICAO>
-    </ATCWaypoint>`;
-  }).join('\n');
-
-  const routeStr = allWaypoints.join(' ');
-  const altFeet  = altitude;
-
+      <ICAO><ICAOIdent>${fix}</ICAOIdent></ICAO>
+    </ATCWaypoint>`).join('\n');
   const pln = `<?xml version="1.0" encoding="utf-8"?>
 <SimBase.Document Type="AceXML" version="1,0">
   <Descr>VTAC GSC — ${dep} to ${arr}</Descr>
@@ -373,118 +439,58 @@ function exportMSFS() {
     <Title>${dep} to ${arr}</Title>
     <FPType>IFR</FPType>
     <RouteType>HighAlt</RouteType>
-    <CruisingAlt>${altFeet}</CruisingAlt>
+    <CruisingAlt>${altitude}</CruisingAlt>
     <DepartureID>${dep}</DepartureID>
     <DepartureLLA>N000° 0' 0.00",E000° 0' 0.00",+000000.00</DepartureLLA>
     <DestinationID>${arr}</DestinationID>
     <DestinationLLA>N000° 0' 0.00",E000° 0' 0.00",+000000.00</DestinationLLA>
-    <Descr>${aircraft} · VTAC GSC · ${routeStr}</Descr>
+    <Descr>${aircraft} · VTAC GSC</Descr>
     <DepartureName>${dep}</DepartureName>
     <DestinationName>${arr}</DestinationName>
-    <AppVersion>
-      <AppVersionMajor>11</AppVersionMajor>
-      <AppVersionBuild>282174</AppVersionBuild>
-    </AppVersion>
-${waypointXML}
+    <AppVersion><AppVersionMajor>11</AppVersionMajor><AppVersionBuild>282174</AppVersionBuild></AppVersion>
+${wpXML}
   </FlightPlan.FlightPlan>
 </SimBase.Document>`;
-
-  // Download the file
-  const blob = new Blob([pln], { type: 'application/xml' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `VTAC_${dep}_${arr}.pln`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  toast(`✈ ${dep}→${arr}.pln downloaded — drop it into MSFS World Map`);
+  const blob = new Blob([pln],{type:'application/xml'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`VTAC_${dep}_${arr}.pln`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast(`✈ ${dep}→${arr}.pln downloaded`);
 }
 
-// ── ROUTE BUILDER ─────────────────────────────────────────────
-function addWaypoint() { waypoints.push(''); renderWaypoints(); }
-function removeWaypoint(i) { waypoints.splice(i,1); renderWaypoints(); updateRoute(); }
-function renderWaypoints() {
-  const el = document.getElementById('fp-waypoints');
-  el.innerHTML = waypoints.map((wp,i) => `
-    <div class="waypoint-row">
-      <div class="wp-num">${i+1}</div>
-      <input type="text" class="wp-input" value="${wp}" placeholder="Fix / airway / waypoint"
-        oninput="waypoints[${i}]=this.value.toUpperCase();updateRoute()">
-      <button class="wp-remove" onclick="removeWaypoint(${i})">×</button>
-    </div>`).join('');
-}
-
-function updateRoute() {
-  const dep = document.getElementById('fp-dep').value.trim().toUpperCase();
-  const arr = document.getElementById('fp-arr').value.trim().toUpperCase();
-  const mid = waypoints.filter(w => w.trim());
-  const parts = [dep, ...mid, arr].filter(Boolean);
-  document.getElementById('route-string').textContent = parts.join(' ') || '—';
-  document.getElementById('sum-route').textContent    = (dep&&arr) ? `${dep} → ${arr}` : '—';
-  document.getElementById('sum-waypoints').textContent = mid.length;
-  document.getElementById('sum-aircraft').textContent  = document.getElementById('fp-aircraft').value;
-  document.getElementById('sum-alt').textContent =
-    document.getElementById('fp-altitude').value
-      ? `FL${Math.round(parseInt(document.getElementById('fp-altitude').value)/100)}`
-      : '—';
-  // Fallback straight-line estimate if not from SimBrief
-  if (!sbData) {
-    if (parts.length >= 2) {
-      const est = (parts.length - 1) * 180;
-      document.getElementById('sum-distance').textContent = `~${est.toLocaleString()} NM (est.)`;
-      const speed = parseFloat(document.getElementById('fp-speed').value) || 450;
-      const h = Math.floor(est/speed), m = Math.round((est/speed - Math.floor(est/speed))*60);
-      document.getElementById('sum-time').textContent = `~${h}h ${m}m (est.)`;
-    } else {
-      document.getElementById('sum-distance').textContent = '—';
-      document.getElementById('sum-time').textContent = '—';
-    }
-  }
-}
-
-function copyRoute() {
-  const route = document.getElementById('route-string').textContent;
-  if (route === '—') { toast('Build a route first','error'); return; }
-  navigator.clipboard.writeText(route).then(() => toast('Route copied!'));
-}
-
-// ── SAVE PLAN ─────────────────────────────────────────────────
+// ── SAVE / LOAD ───────────────────────────────────────────────
 async function savePlan() {
   if (!isLoggedIn) { window.location.href='/pages/login.html'; return; }
-  const dep = document.getElementById('fp-dep').value.trim().toUpperCase();
-  const arr = document.getElementById('fp-arr').value.trim().toUpperCase();
-  if (!dep || !arr) { toast('Enter departure and arrival first','error'); return; }
-
+  const dep = (document.getElementById('fp-dep').value||'').trim().toUpperCase();
+  const arr = (document.getElementById('fp-arr').value||'').trim().toUpperCase();
+  if (!dep||!arr) { toast('Enter departure and arrival first','error'); return; }
   const plan = {
-    pilotUid:      currentUser.uid,
-    pilotCallsign: currentPilot?.callsign || currentPilot?.displayName || 'Unknown',
-    departure: dep, arrival: arr,
-    waypoints:  waypoints.filter(w => w.trim()),
-    route:      document.getElementById('route-string').textContent,
-    aircraft:   document.getElementById('fp-aircraft').value,
-    altitude:   document.getElementById('fp-altitude').value,
-    speed:      document.getElementById('fp-speed').value,
+    pilotUid: currentUser.uid,
+    pilotCallsign: currentPilot?.callsign||currentPilot?.displayName||'Unknown',
+    departure:dep, arrival:arr,
+    waypoints: waypoints.filter(w=>w.trim()),
+    route: document.getElementById('route-string').textContent,
+    aircraft: document.getElementById('fp-aircraft').value,
+    altitude: document.getElementById('fp-altitude').value,
+    speed: document.getElementById('fp-speed').value,
     departureTime: document.getElementById('fp-deptime').value.trim(),
-    notes:      document.getElementById('fp-notes').value.trim(),
-    distance:   document.getElementById('sum-distance').textContent,
-    estTime:    document.getElementById('sum-time').textContent,
+    notes: document.getElementById('fp-notes').value.trim(),
+    distance: document.getElementById('sum-distance').textContent,
+    estTime: document.getElementById('sum-time').textContent,
     fromSimBrief: !!sbData,
-    createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
   };
-
   try {
     await db.collection('flightPlans').add(plan);
-    toast('Flight plan saved to squadron ✓');
+    toast('Flight plan saved ✓');
     loadSavedPlans();
-    // Discord notification
+    // Discord webhook
     sendDiscordFlightPlan(plan);
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
-// ── LOAD / DELETE SAVED PLANS ─────────────────────────────────
 async function loadSavedPlans() {
   if (!isLoggedIn) return;
   try {
@@ -492,13 +498,8 @@ async function loadSavedPlans() {
       .where('pilotUid','==',currentUser.uid)
       .orderBy('createdAt','desc').limit(15).get();
     const el = document.getElementById('saved-plans-list');
-    if (snap.empty) {
-      el.innerHTML = '<div class="empty-state" style="padding:20px"><p>No saved plans yet</p></div>';
-      return;
-    }
-    el.innerHTML = snap.docs.map(d => {
-      const p = d.data();
-      return `
+    if (snap.empty) { el.innerHTML='<div class="empty-state" style="padding:20px"><p>No saved plans yet</p></div>'; return; }
+    el.innerHTML = snap.docs.map(d=>{const p=d.data();return `
       <div class="saved-plan-card">
         <div class="spc-route">${p.departure} → ${p.arrival}</div>
         <div class="spc-meta">${p.aircraft||''} · ${p.distance||''} · ${p.estTime||''}${p.fromSimBrief?' · <span style="color:var(--blue2)">SimBrief</span>':''}</div>
@@ -507,88 +508,56 @@ async function loadSavedPlans() {
           <button class="btn btn-outline btn-xs" onclick="exportPlanById('${d.id}')">🎮 MSFS</button>
           <button class="btn btn-danger btn-xs" onclick="deletePlan('${d.id}')">Delete</button>
         </div>
-      </div>`;
-    }).join('');
-    window._savedPlansCache = {};
-    snap.forEach(d => window._savedPlansCache[d.id] = d.data());
+      </div>`;}).join('');
+    window._plansCache = {};
+    snap.forEach(d=>window._plansCache[d.id]=d.data());
   } catch(e) {}
 }
 
 function loadPlan(id) {
-  const p = window._savedPlansCache?.[id];
-  if (!p) return;
-  sbData = null; // clear SimBrief data when loading a saved plan manually
-  document.getElementById('fp-dep').value = p.departure || '';
-  document.getElementById('fp-arr').value = p.arrival || '';
-  waypoints = p.waypoints || [];
+  const p = window._plansCache?.[id]; if(!p) return;
+  sbData = null;
+  document.getElementById('fp-dep').value = p.departure||'';
+  document.getElementById('fp-arr').value = p.arrival||'';
+  waypoints = p.waypoints||[];
   renderWaypoints();
-  document.getElementById('fp-aircraft').value = p.aircraft || 'B-1B Lancer';
-  document.getElementById('fp-altitude').value = p.altitude || '';
-  document.getElementById('fp-speed').value    = p.speed || '';
-  document.getElementById('fp-deptime').value  = p.departureTime || '';
-  document.getElementById('fp-notes').value    = p.notes || '';
+  document.getElementById('fp-aircraft').value = p.aircraft||'B-1B Lancer';
+  document.getElementById('fp-altitude').value = p.altitude||'';
+  document.getElementById('fp-speed').value = p.speed||'';
+  document.getElementById('fp-deptime').value = p.departureTime||'';
+  document.getElementById('fp-notes').value = p.notes||'';
   updateRoute();
-  document.getElementById('sum-distance').textContent = p.distance || '—';
-  document.getElementById('sum-time').textContent     = p.estTime  || '—';
+  document.getElementById('sum-distance').textContent = p.distance||'—';
+  document.getElementById('sum-time').textContent = p.estTime||'—';
+  switchTab('custom', document.querySelector('[onclick*="custom"]'));
   toast('Plan loaded');
   window.scrollTo({top:0,behavior:'smooth'});
 }
-
-function exportPlanById(id) {
-  const p = window._savedPlansCache?.[id];
-  if (!p) return;
-  loadPlan(id);
-  setTimeout(exportMSFS, 100);
-}
-
-async function deletePlan(id) {
-  if (!confirm('Delete this saved flight plan?')) return;
+function exportPlanById(id){const p=window._plansCache?.[id];if(!p)return;loadPlan(id);setTimeout(exportMSFS,100);}
+async function deletePlan(id){
+  if(!confirm('Delete this plan?'))return;
   await db.collection('flightPlans').doc(id).delete();
-  toast('Plan deleted');
-  loadSavedPlans();
+  toast('Deleted'); loadSavedPlans();
 }
 
-// ── DISCORD WEBHOOK ───────────────────────────────────────────
 async function sendDiscordFlightPlan(plan) {
-  // Try to get webhook URL from Firestore settings if not hardcoded
-  let webhookUrl = DISCORD_WEBHOOK_URL;
-  if (!webhookUrl) {
-    try {
-      const s = await db.collection('settings').doc('discord').get();
-      if (s.exists) webhookUrl = s.data().flightPlanWebhook || s.data().webhookUrl || '';
-    } catch(e) {}
-  }
-  if (!webhookUrl) return; // no webhook configured — silent skip
-
-  const acftEmoji = {'B-1B Lancer':'🪃','B-2 Spirit':'🥏','B-52H Stratofortress':'💣'}[plan.aircraft] || '✈';
-  const embed = {
-    embeds: [{
-      color: 0xc8a951,
-      author: { name: 'VTAC Global Strike Command', icon_url: 'https://vtacgsc.com/assets/img/logo.png' },
-      title: `${acftEmoji} Flight Plan Saved`,
-      fields: [
-        { name: 'Pilot',    value: plan.pilotCallsign || 'Unknown', inline: true },
-        { name: 'Aircraft', value: plan.aircraft || '—',            inline: true },
-        { name: 'Route',    value: `\`${plan.departure} → ${plan.arrival}\``, inline: false },
-        { name: 'Distance', value: plan.distance || '—', inline: true },
-        { name: 'Est. Time',value: plan.estTime  || '—', inline: true },
-        ...(plan.notes ? [{ name: 'Notes', value: plan.notes, inline: false }] : []),
-      ],
-      footer: { text: plan.fromSimBrief ? 'Route from SimBrief OFP' : 'Manual route entry' },
-      timestamp: new Date().toISOString(),
-    }]
-  };
-
   try {
-    await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(embed),
-    });
-  } catch(e) {} // fail silently — webhook errors should never break the UI
+    const s = await db.collection('settings').doc('webhooks').get();
+    const url = s.exists ? (s.data()?.channels?.flight_plans?.url||'') : '';
+    if (!url) return;
+    const embed = {embeds:[{color:0xc8a951,title:'📋 Flight Plan Saved',fields:[
+      {name:'Pilot',value:plan.pilotCallsign,inline:true},
+      {name:'Aircraft',value:plan.aircraft,inline:true},
+      {name:'Route',value:'`'+plan.departure+' → '+plan.arrival+'`',inline:false},
+      {name:'Distance',value:plan.distance||'—',inline:true},
+      {name:'Est. Time',value:plan.estTime||'—',inline:true},
+    ],footer:{text:plan.fromSimBrief?'SimBrief OFP':'Manual route'},timestamp:new Date().toISOString()}]};
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(embed)}).catch(()=>{});
+  } catch(e){}
 }
 
 // ── INIT ──────────────────────────────────────────────────────
+buildSquadronRoutes();
 renderWaypoints();
 updateRoute();
 </script>
