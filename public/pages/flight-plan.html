@@ -625,34 +625,34 @@ async function loadCommunityRoutes() {
     el.innerHTML = snap.docs.map(d => {
       const r = d.data();
       const color = WING_COLORS_CR[r.category] || 'var(--text3)';
-      const canDelete = isLoggedIn && (currentUser?.uid === r.pilotUid || canDeleteAny);
-      return \`
-      <div class="cr-card" id="cr-\${d.id}">
-        <div class="cr-card-top">
-          <div style="flex:1">
-            <div class="cr-route-str">\${r.departure} → \${r.arrival}</div>
-            <div class="cr-meta">
-              \${r.aircraft || '—'} ·
-              \${r.altitude ? 'FL' + Math.round(r.altitude/100) : '—'} ·
-              \${r.dist ? r.dist + ' NM · ' : ''}\${r.description || ''} ·
-              <span style="color:var(--text2)">\${r.pilotCallsign || 'Unknown'}</span>
-            </div>
-          </div>
-          <span class="cr-badge" style="background:\${color}22;color:\${color};border:1px solid \${color}44">
-            \${CATEGORY_LABELS[r.category] || r.category}
-          </span>
-        </div>
-        \${r.route ? \`<div class="cr-airway">\${r.route}</div>\` : ''}
-        \${r.notes ? \`<div class="cr-notes-text">\${r.notes}</div>\` : ''}
-        <div class="cr-actions">
-          <button class="btn btn-primary btn-xs" onclick="loadCommunityRouteById('\${d.id}')">Load Route</button>
-          <button class="btn btn-outline btn-xs" onclick="copyToClipboard('\${r.route || r.departure + ' ' + r.arrival}')">📋 Copy</button>
-          \${canDelete ? \`<button class="btn btn-danger btn-xs" onclick="deleteCommunityRoute('\${d.id}')">Delete</button>\` : ''}
-        </div>
-      </div>\`;
+      const canDelete = isLoggedIn && (currentUser && currentUser.uid === r.pilotUid || canDeleteAny);
+      const routeHtml = r.route ? '<div class="cr-airway">' + r.route + '</div>' : '';
+      const notesHtml = r.notes ? '<div class="cr-notes-text">' + r.notes + '</div>' : '';
+      const deleteBtn = canDelete ? '<button class="btn btn-danger btn-xs" onclick="deleteCommunityRoute('' + d.id + '')">Delete</button>' : '';
+      const copyVal  = (r.route || r.departure + ' ' + r.arrival).replace(/'/g, '&#39;');
+      return '<div class="cr-card" id="cr-' + d.id + '">'
+        + '<div class="cr-card-top">'
+        + '<div style="flex:1">'
+        + '<div class="cr-route-str">' + r.departure + ' → ' + r.arrival + '</div>'
+        + '<div class="cr-meta">'
+        + (r.aircraft || '—') + ' · '
+        + (r.altitude ? 'FL' + Math.round(r.altitude/100) : '—') + ' · '
+        + (r.dist ? r.dist + ' NM · ' : '') + (r.description || '') + ' · '
+        + '<span style="color:var(--text2)">' + (r.pilotCallsign || 'Unknown') + '</span>'
+        + '</div></div>'
+        + '<span class="cr-badge" style="background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44">'
+        + (CATEGORY_LABELS[r.category] || r.category) + '</span>'
+        + '</div>'
+        + routeHtml
+        + notesHtml
+        + '<div class="cr-actions">'
+        + '<button class="btn btn-primary btn-xs" onclick="loadCommunityRouteById('' + d.id + '')">Load Route</button>'
+        + '<button class="btn btn-outline btn-xs" onclick="copyToClipboard('' + copyVal + '')">📋 Copy</button>'
+        + deleteBtn
+        + '</div></div>';
     }).join('');
   } catch(e) {
-    el.innerHTML = \`<div class="alert alert-error">Error loading routes: \${e.message}</div>\`;
+    el.innerHTML = '<div class="alert alert-error">Error loading routes: ' + e.message + '</div>';
   }
 }
 
