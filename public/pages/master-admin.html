@@ -56,6 +56,11 @@
 .color-swatch { width:34px;height:34px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all .12s; }
 .color-swatch:hover { transform:scale(1.12); }
 .color-swatch.active { border-color:#fff;box-shadow:0 0 0 2px var(--gold); }
+
+.logo-slot-row { display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border); }
+.logo-slot-row:last-child { border-bottom:none; }
+.logo-slot-preview { width:44px;height:44px;border-radius:50%;background:var(--card);border:1px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.logo-slot-label { min-width:150px;font-size:12px;font-weight:700;color:var(--text); }
 </style>
 </head>
 <body>
@@ -282,12 +287,25 @@
               <span id="site-logo-placeholder" style="font-size:11px;color:var(--text3)">No logo</span>
             </div>
             <div style="flex:1;min-width:200px">
-              <input type="file" id="site-logo-file" accept="image/*" style="display:none" onchange="uploadSiteLogo(this)">
+              <input type="file" id="site-logo-file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadSiteLogo(this)">
               <button class="btn btn-outline btn-sm" onclick="document.getElementById('site-logo-file').click()">Upload logo</button>
               <button class="btn btn-danger btn-sm" id="site-logo-remove-btn" style="display:none" onclick="removeSiteLogo()">Remove</button>
-              <div style="font-size:11px;color:var(--text3);margin-top:6px">Square image recommended · auto-resized to 128×128 · shown in the nav bar in place of the "GSC" badge</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:6px">PNG, JPG, or WebP · square image recommended · auto-resized to 128×128 · shown in the nav bar in place of the "GSC" badge</div>
+              <div style="display:flex;gap:8px;margin-top:12px">
+                <input type="url" id="site-logo-url" placeholder="Or paste an image link — https://cdn.discordapp.com/attachments/..." style="flex:1;font-size:12px">
+                <button class="btn btn-primary btn-sm" onclick="setSiteLogoFromUrl()">Use URL</button>
+              </div>
+              <div class="form-hint">Discord attachment links work here. Right-click an image in Discord → Copy Link.</div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-icon">🛡</div><div class="card-title">Wing &amp; squadron logos</div></div>
+        <div class="card-body">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Set a logo for each wing and squadron — upload a PNG/JPG/WebP file or paste a hosted image link (Discord CDN links work). Square images look best. Logos save to Firestore and appear anywhere wing/squadron emblems are shown.</div>
+          <div id="wing-logo-editor"><div class="empty-state"><p>Loading…</p></div></div>
         </div>
       </div>
 
@@ -1045,6 +1063,11 @@ async function deleteNews(id) {
   toast('Deleted'); loadNews();
 }
 
+// Clears the cached nav branding so every page refetches the new logo/name
+function clearBrandingCache() {
+  try { sessionStorage.removeItem('vtac_site'); } catch(e) {}
+}
+
 async function loadCustomizeSettings() {
   try {
     const doc = await db.collection('settings').doc('site').get();
@@ -1063,6 +1086,7 @@ async function loadCustomizeSettings() {
     }
   } catch(e) {}
   await buildWingNameEditor();
+  renderWingLogoEditor();
 }
 
 let liveWingsData = {};
@@ -1071,7 +1095,14 @@ async function buildWingNameEditor() {
   try {
     const snap = await db.collection('wings').get();
     snap.forEach(d => {
-      liveWingsData[d.id] = {...(liveWingsData[d.id]||{}), ...d.data(), id: d.id};
+      const remote = d.data();
+      const local  = liveWingsData[d.id] || {};
+      // Deep-merge squadrons so remote logoUrl/callsignPool don't wipe local names
+      const mergedSqs = {...(local.squadrons||{})};
+      Object.entries(remote.squadrons||{}).forEach(([sqId, sq]) => {
+        mergedSqs[sqId] = {...(mergedSqs[sqId]||{}), ...sq};
+      });
+      liveWingsData[d.id] = {...local, ...remote, squadrons: mergedSqs, id: d.id};
     });
   } catch(e) {}
 
@@ -1181,6 +1212,7 @@ async function uploadSiteLogo(input) {
     await ref.put(blob, { contentType: 'image/png' });
     const url = await ref.getDownloadURL();
     await db.collection('settings').doc('site').set({ logoUrl: url }, { merge: true });
+    clearBrandingCache();
     document.getElementById('site-logo-preview').src = url;
     document.getElementById('site-logo-preview').style.display = 'block';
     document.getElementById('site-logo-placeholder').style.display = 'none';
@@ -1189,13 +1221,117 @@ async function uploadSiteLogo(input) {
   } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
 }
 
+async function setSiteLogoFromUrl() {
+  const url = document.getElementById('site-logo-url').value.trim();
+  if (!url) { toast('Paste an image link first', 'error'); return; }
+  try {
+    await db.collection('settings').doc('site').set({ logoUrl: url }, { merge: true });
+    clearBrandingCache();
+    document.getElementById('site-logo-preview').src = url;
+    document.getElementById('site-logo-preview').style.display = 'block';
+    document.getElementById('site-logo-placeholder').style.display = 'none';
+    document.getElementById('site-logo-remove-btn').style.display = 'inline-flex';
+    document.getElementById('site-logo-url').value = '';
+    toast('Logo saved! It will appear in the nav on all pages.');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
 async function removeSiteLogo() {
   if (!confirm('Remove the site logo? The nav will show the text badge again.')) return;
   try {
     await db.collection('settings').doc('site').set({ logoUrl: firebase.firestore.FieldValue.delete() }, { merge: true });
+    clearBrandingCache();
     document.getElementById('site-logo-preview').style.display = 'none';
     document.getElementById('site-logo-placeholder').style.display = 'block';
     document.getElementById('site-logo-remove-btn').style.display = 'none';
+    toast('Logo removed');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// ── WING & SQUADRON LOGOS ────────────────────────────────────
+// Each wing and squadron gets a logo slot. Set it by pasting a hosted
+// image link (Discord CDN etc.) or uploading a PNG/JPG/WebP file.
+// Saved to Firestore: wings/{wingId}.logoUrl and
+// wings/{wingId}.squadrons.{sqId}.logoUrl
+
+function logoSlotRow(wingId, sqId, label, url, isWing) {
+  const key = sqId ? wingId + '-' + sqId : wingId;
+  return `
+    <div class="logo-slot-row">
+      <div class="logo-slot-preview">
+        ${url ? `<img src="${url}" style="width:100%;height:100%;object-fit:cover" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'⚠',style:'color:var(--red2)'}))">`
+              : '<span style="font-size:9px;color:var(--text3)">None</span>'}
+      </div>
+      <div class="logo-slot-label">${label}${isWing?' <span class="badge badge-gold" style="margin-left:4px;font-size:9px">WING</span>':''}</div>
+      <input type="url" id="logo-url-${key}" placeholder="Paste image link (Discord, imgur…)" style="flex:1;min-width:180px;font-size:12px">
+      <button class="btn btn-primary btn-xs" onclick="setWingSqLogoFromUrl('${wingId}','${sqId||''}')">Use URL</button>
+      <input type="file" id="logo-file-${key}" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadWingSqLogo(this,'${wingId}','${sqId||''}')">
+      <button class="btn btn-outline btn-xs" onclick="document.getElementById('logo-file-${key}').click()">Upload</button>
+      ${url ? `<button class="btn btn-danger btn-xs" onclick="removeWingSqLogo('${wingId}','${sqId||''}')">Remove</button>` : ''}
+    </div>`;
+}
+
+function renderWingLogoEditor() {
+  const el = document.getElementById('wing-logo-editor');
+  if (!el) return;
+  el.innerHTML = Object.entries(liveWingsData).map(([wingId, wing]) => `
+    <div style="margin-bottom:16px;padding:6px 14px;background:var(--card2);border-radius:8px;border-left:3px solid var(--${wingId},#c8a951)">
+      ${logoSlotRow(wingId, null, wing.name, wing.logoUrl, true)}
+      ${Object.entries(wing.squadrons||{}).map(([sqId, sq]) =>
+        logoSlotRow(wingId, sqId, sq.name, sq.logoUrl, false)
+      ).join('')}
+    </div>`).join('');
+}
+
+async function saveWingSqLogoUrl(wingId, sqId, url) {
+  if (sqId) {
+    await db.collection('wings').doc(wingId).set({ squadrons: { [sqId]: { logoUrl: url } } }, { merge: true });
+    liveWingsData[wingId].squadrons[sqId].logoUrl = url;
+  } else {
+    await db.collection('wings').doc(wingId).set({ logoUrl: url }, { merge: true });
+    liveWingsData[wingId].logoUrl = url;
+  }
+  renderWingLogoEditor();
+}
+
+async function setWingSqLogoFromUrl(wingId, sqId) {
+  const key = sqId ? wingId + '-' + sqId : wingId;
+  const input = document.getElementById('logo-url-' + key);
+  const url = input ? input.value.trim() : '';
+  if (!url) { toast('Paste an image link first', 'error'); return; }
+  try {
+    await saveWingSqLogoUrl(wingId, sqId || null, url);
+    toast('Logo saved!');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function uploadWingSqLogo(input, wingId, sqId) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Select an image file', 'error'); return; }
+  try {
+    const blob = await resizeImageFilePNG(file, 256, 256);
+    const path = sqId ? ('logos/sq-' + sqId + '.png') : ('logos/wing-' + wingId + '.png');
+    const ref = storage.ref(path);
+    await ref.put(blob, { contentType: 'image/png' });
+    const url = await ref.getDownloadURL();
+    await saveWingSqLogoUrl(wingId, sqId || null, url);
+    input.value = '';
+    toast('Logo uploaded!');
+  } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
+}
+
+async function removeWingSqLogo(wingId, sqId) {
+  if (!confirm('Remove this logo?')) return;
+  try {
+    if (sqId) {
+      await db.collection('wings').doc(wingId).set({ squadrons: { [sqId]: { logoUrl: firebase.firestore.FieldValue.delete() } } }, { merge: true });
+      delete liveWingsData[wingId].squadrons[sqId].logoUrl;
+    } else {
+      await db.collection('wings').doc(wingId).set({ logoUrl: firebase.firestore.FieldValue.delete() }, { merge: true });
+      delete liveWingsData[wingId].logoUrl;
+    }
+    renderWingLogoEditor();
     toast('Logo removed');
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
@@ -1208,6 +1344,7 @@ async function saveSiteSettings() {
     footer:   document.getElementById('cust-footer').value,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
   }, {merge:true});
+  clearBrandingCache();
   toast('Site settings saved!');
 }
 async function saveWingSettings() {
