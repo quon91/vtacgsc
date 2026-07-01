@@ -25,6 +25,8 @@
 .empty-roster{font-size:13px;color:var(--text3);padding:8px 0}
 .edit-pencil{background:rgba(200,169,81,.12);border:1px solid rgba(200,169,81,.3);color:var(--gold);border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-family:var(--sans);display:none}
 .editable-mode .edit-pencil{display:inline-flex;align-items:center;gap:4px}
+#wing-logo-edit-btn{display:none}
+.editable-mode #wing-logo-edit-btn{display:inline-flex}
 .ov-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
 .ov-stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
 .ov-stat-val{font-size:26px;font-weight:900;color:var(--gold)}
@@ -58,6 +60,8 @@
 
 <div class="wing-hero" id="wing-hero">
   <div class="wing-emblem-big" id="wing-emblem">--</div>
+  <button class="edit-pencil" id="wing-logo-edit-btn" onclick="document.getElementById('wing-logo-file').click()" style="margin-bottom:10px">📷 Change Wing Logo</button>
+  <input type="file" id="wing-logo-file" accept="image/*" style="display:none" onchange="uploadWingLogo(this)">
   <div class="wing-hero-name" id="wing-name">Loading...</div>
   <div class="wing-hero-base" id="wing-base"></div>
   <div class="wing-hero-aircraft" id="wing-aircraft"></div>
@@ -146,13 +150,16 @@ function onAuthReady(user, pilot) {
   const navArea = document.getElementById('nav-right-area');
   if (user && pilot && pilot.status === 'active') {
     navArea.innerHTML = '<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>';
-    canEdit = pilot.role === 'master_admin' || (pilot.role === 'wing_commander' && pilot.wing === wingId);
+    canEdit = pilot.role === 'master_admin' ||
+              ((pilot.role === 'wing_commander' || pilot.role === 'sq_commander') && pilot.wing === wingId);
     if (canEdit) {
       document.body.classList.add('editable-mode');
       const editBtn = document.getElementById('history-edit-btn');
       if (editBtn) editBtn.style.display = 'inline-flex';
       const fab = document.getElementById('edit-fab-btn');
       if (fab) fab.classList.add('show');
+      const logoBtn = document.getElementById('wing-logo-edit-btn');
+      if (logoBtn) logoBtn.style.display = 'inline-flex';
     }
   }
   loadWing();
@@ -168,8 +175,14 @@ async function loadWing() {
 
   const color = wingData.color || '#c8a951';
   document.getElementById('wing-hero').style.background = 'radial-gradient(ellipse at top, ' + color + '15, transparent 60%)';
-  document.getElementById('wing-emblem').style.background = color;
-  document.getElementById('wing-emblem').textContent = (wingData.name||'').split(' ').map(w=>w[0]).slice(0,2).join('');
+  const emblemEl = document.getElementById('wing-emblem');
+  if (wingData.logoUrl) {
+    emblemEl.innerHTML = '<img src="' + wingData.logoUrl + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    emblemEl.style.background = 'transparent';
+  } else {
+    emblemEl.style.background = color;
+    emblemEl.textContent = (wingData.name||'').split(' ').map(w=>w[0]).slice(0,2).join('');
+  }
   document.getElementById('wing-name').textContent = wingData.name;
   document.getElementById('wing-base').textContent = (wingData.base||'') + (wingData.location?' · '+wingData.location:'');
   document.getElementById('wing-aircraft').textContent = (wingData.aircraft||[]).join(', ');
@@ -292,6 +305,48 @@ async function saveHistory() {
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+function resizeImageFilePNG(file, maxW, maxH) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxW || h > maxH) {
+        const ratio = Math.min(maxW/w, maxH/h);
+        w = Math.round(w*ratio); h = Math.round(h*ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Resize failed')), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Load failed')); };
+    img.src = url;
+  });
+}
+
+async function uploadWingLogo(input) {
+  if (!canEdit) return;
+  const file = input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Select an image file', 'error'); return; }
+  try {
+    const blob = await resizeImageFilePNG(file, 160, 160);
+    const ref = storage.ref('logos/wing-' + wingId + '.png');
+    await ref.put(blob, { contentType: 'image/png' });
+    const url = await ref.getDownloadURL();
+    await db.collection('wings').doc(wingId).set({ logoUrl: url }, { merge: true });
+    wingData.logoUrl = url;
+    const emblemEl = document.getElementById('wing-emblem');
+    emblemEl.innerHTML = '<img src="' + url + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    emblemEl.style.background = 'transparent';
+    toast('Wing logo updated!');
+  } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
+}
 </script>
 </body>
 </html>

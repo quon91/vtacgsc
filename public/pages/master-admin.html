@@ -274,6 +274,24 @@
       <div class="sec-sub">Change colors, squadron names, callsigns, and site text. All changes save to Firebase and appear site-wide instantly.</div>
 
       <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-icon">🖼</div><div class="card-title">Site logo</div></div>
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+            <div id="site-logo-preview-wrap" style="width:64px;height:64px;border-radius:50%;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+              <img id="site-logo-preview" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none">
+              <span id="site-logo-placeholder" style="font-size:11px;color:var(--text3)">No logo</span>
+            </div>
+            <div style="flex:1;min-width:200px">
+              <input type="file" id="site-logo-file" accept="image/*" style="display:none" onchange="uploadSiteLogo(this)">
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('site-logo-file').click()">Upload logo</button>
+              <button class="btn btn-danger btn-sm" id="site-logo-remove-btn" style="display:none" onclick="removeSiteLogo()">Remove</button>
+              <div style="font-size:11px;color:var(--text3);margin-top:6px">Square image recommended · auto-resized to 128×128 · shown in the nav bar in place of the "GSC" badge</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
         <div class="card-header"><div class="card-icon">🎨</div><div class="card-title">Color theme</div></div>
         <div class="card-body">
           <div class="form-group">
@@ -965,6 +983,12 @@ async function loadCustomizeSettings() {
       if (d.badge)    document.getElementById('cust-badge').value    = d.badge;
       if (d.heroSub)  document.getElementById('cust-hero-sub').value = d.heroSub;
       if (d.footer)   document.getElementById('cust-footer').value   = d.footer;
+      if (d.logoUrl) {
+        document.getElementById('site-logo-preview').src = d.logoUrl;
+        document.getElementById('site-logo-preview').style.display = 'block';
+        document.getElementById('site-logo-placeholder').style.display = 'none';
+        document.getElementById('site-logo-remove-btn').style.display = 'inline-flex';
+      }
     }
   } catch(e) {}
   await buildWingNameEditor();
@@ -1053,6 +1077,58 @@ async function removeCallsignFromPool(wingId, sqId, idx) {
     toast('Removed');
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
+function resizeImageFilePNG(file, maxW, maxH) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxW || h > maxH) {
+        const ratio = Math.min(maxW/w, maxH/h);
+        w = Math.round(w*ratio); h = Math.round(h*ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Resize failed')), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Load failed')); };
+    img.src = url;
+  });
+}
+
+async function uploadSiteLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Select an image file', 'error'); return; }
+  try {
+    const blob = await resizeImageFilePNG(file, 128, 128);
+    const ref = storage.ref('logos/site.png');
+    await ref.put(blob, { contentType: 'image/png' });
+    const url = await ref.getDownloadURL();
+    await db.collection('settings').doc('site').set({ logoUrl: url }, { merge: true });
+    document.getElementById('site-logo-preview').src = url;
+    document.getElementById('site-logo-preview').style.display = 'block';
+    document.getElementById('site-logo-placeholder').style.display = 'none';
+    document.getElementById('site-logo-remove-btn').style.display = 'inline-flex';
+    toast('Logo updated! It will appear in the nav on all pages.');
+  } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
+}
+
+async function removeSiteLogo() {
+  if (!confirm('Remove the site logo? The nav will show the text badge again.')) return;
+  try {
+    await db.collection('settings').doc('site').set({ logoUrl: firebase.firestore.FieldValue.delete() }, { merge: true });
+    document.getElementById('site-logo-preview').style.display = 'none';
+    document.getElementById('site-logo-placeholder').style.display = 'block';
+    document.getElementById('site-logo-remove-btn').style.display = 'none';
+    toast('Logo removed');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
 async function saveSiteSettings() {
   await db.collection('settings').doc('site').set({
     orgName:  document.getElementById('cust-org-name').value,
