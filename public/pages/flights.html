@@ -7,32 +7,10 @@
 <link rel="stylesheet" href="/css/main.css">
 <style>
 .fl-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
-.wing-tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:24px;overflow-x:auto;gap:0}
-.wing-tab{padding:12px 24px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;color:var(--text2);background:none;border-top:none;border-left:none;border-right:none;font-family:var(--sans);transition:all .14s}
-.wing-tab:hover{color:var(--text)}
-.wing-tab.active-all  {color:var(--gold); border-bottom-color:var(--gold)}
-.wing-tab.active-7bw  {color:var(--gold); border-bottom-color:var(--gold)}
-.wing-tab.active-509bw{color:var(--blue); border-bottom-color:var(--blue)}
-.wing-tab.active-2bw  {color:var(--green);border-bottom-color:var(--green)}
-.wing-tab.active-mine {color:var(--amber);border-bottom-color:var(--amber)}
-.fl-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:24px}
-.fl-stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
-.fl-stat-val{font-size:22px;font-weight:900;color:var(--gold);line-height:1}
-.fl-stat-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-top:4px}
-.flight-row{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;transition:border-color .14s}
-.flight-row:hover{border-color:var(--border2)}
-.flight-wing-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:6px}
-.flight-route{font-size:15px;font-weight:700;color:var(--text);font-family:var(--mono)}
-.flight-arrow{color:var(--gold)}
-.flight-meta{font-size:12px;color:var(--text3);margin-top:3px}
-.flight-duration{margin-left:auto;font-size:14px;font-weight:600;color:var(--text2);white-space:nowrap;text-align:right}
-.flight-delete-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 6px;opacity:0;transition:opacity .15s}
-.flight-row:hover .flight-delete-btn{opacity:1}
-.flight-delete-btn:hover{color:var(--red2)}
+.fl-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.fl-filter-btn{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--card);color:var(--text3);font-family:var(--sans);transition:all .12s}
+.fl-filter-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(200,169,81,.08)}
 .no-pool-warning{background:rgba(224,144,48,.08);border:1px solid rgba(224,144,48,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--amber2);margin-bottom:10px}
-.search-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-.search-input{flex:1;min-width:200px;padding:9px 14px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--sans);outline:none}
-.search-input:focus{border-color:var(--gold)}
 </style>
 </head>
 <body>
@@ -40,9 +18,13 @@
   <div class="nav-inner">
     <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
     <div class="nav-links" id="nav-links">
-      <a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a>
-      <a href="/pages/bases.html">Bases</a><a href="/pages/training/index.html">Training</a>
-      <a href="/pages/flights.html" class="active">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a>
+      <a href="/index.html">Home</a>
+      <a href="/pages/roster.html">Roster</a>
+      <a href="/pages/history.html">History</a>
+      <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html">Training</a>
+      <a href="/pages/flights.html" class="active">Flight Log</a>
+      <a href="/pages/flight-plan.html">Flight Planner</a>
     </div>
     <div class="nav-right" id="nav-right-area"><a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a></div>
     <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
@@ -52,71 +34,41 @@
 <div class="fl-hero">
   <div class="hero-eyebrow">Operations Record</div>
   <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Flight <span>Log</span></h1>
-  <p class="hero-sub" style="font-size:14px">Every logged sortie across Virtual Global Strike Command — filtered by wing.</p>
+  <p class="hero-sub" style="font-size:14px">Every logged flight across Virtual Global Strike Command.</p>
   <div class="hero-actions" id="log-flight-btn-wrap" style="display:none">
     <a href="#" onclick="openLogModal();return false;" class="btn btn-primary">+ Log a Flight</a>
   </div>
 </div>
 
 <div class="container page-body">
-
-  <!-- WING TABS -->
-  <div class="wing-tabs" id="wing-tabs">
-    <button class="wing-tab active-all" onclick="setWingTab('all',this)">🌐 All Wings</button>
-    <button class="wing-tab" onclick="setWingTab('7bw',this)">⬥ 7th BW — B-1B</button>
-    <button class="wing-tab" onclick="setWingTab('509bw',this)">⬥ 509th BW — B-2</button>
-    <button class="wing-tab" onclick="setWingTab('2bw',this)">⬥ 2nd BW — B-52H</button>
-    <button class="wing-tab" id="my-flights-tab" style="display:none" onclick="setWingTab('mine',this)">👤 My Flights</button>
+  <div class="fl-filters" id="fl-filters">
+    <button class="fl-filter-btn active" onclick="filterWing(null,this)">All Wings</button>
+    <button class="fl-filter-btn" onclick="filterWing('7bw',this)">7th BW</button>
+    <button class="fl-filter-btn" onclick="filterWing('509bw',this)">509th BW</button>
+    <button class="fl-filter-btn" onclick="filterWing('2bw',this)">2nd BW</button>
   </div>
-
-  <!-- STATS ROW -->
-  <div class="fl-stats" id="fl-stats">
-    <div class="fl-stat"><div class="fl-stat-val" id="stat-total">—</div><div class="fl-stat-lbl">Total Flights</div></div>
-    <div class="fl-stat"><div class="fl-stat-val" id="stat-hours">—</div><div class="fl-stat-lbl">Flight Hours</div></div>
-    <div class="fl-stat"><div class="fl-stat-val" id="stat-7bw">—</div><div class="fl-stat-lbl">7th BW Sorties</div></div>
-    <div class="fl-stat"><div class="fl-stat-val" id="stat-509bw">—</div><div class="fl-stat-lbl">509th BW Sorties</div></div>
-    <div class="fl-stat"><div class="fl-stat-val" id="stat-2bw">—</div><div class="fl-stat-lbl">2nd BW Sorties</div></div>
-  </div>
-
-  <!-- SEARCH -->
-  <div class="search-bar">
-    <input class="search-input" id="fl-search" placeholder="Search by pilot, route, aircraft…" oninput="renderFlights()">
-    <select id="fl-aircraft-filter" onchange="renderFlights()" style="padding:9px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--sans)">
-      <option value="">All aircraft</option>
-      <option value="B-1B Lancer">B-1B Lancer</option>
-      <option value="B-2 Spirit">B-2 Spirit</option>
-      <option value="B-52H Stratofortress">B-52H Stratofortress</option>
-    </select>
-  </div>
-
-  <div id="flights-list"><div class="empty-state"><div class="icon">✈️</div><p>Loading flights…</p></div></div>
+  <div id="flights-list"><div class="empty-state"><div class="icon">✈️</div><p>Loading flights...</p></div></div>
 </div>
 
 <!-- LOG FLIGHT MODAL -->
 <div class="modal-overlay" id="log-modal">
   <div class="modal">
     <div class="modal-title">Log a Flight</div>
-    <div class="modal-sub">Record your sortie for the squadron flight log.</div>
+    <div class="modal-sub">Record your flight for the squadron flight log.</div>
     <div class="form-group">
-      <label>Callsign</label>
+      <label>Callsign used for this flight</label>
       <select id="lf-callsign"></select>
-      <div id="lf-no-pool" class="no-pool-warning" style="display:none">No callsign pool configured — using your display name. Ask your Wing Commander to add callsigns.</div>
+      <div id="lf-no-pool" class="no-pool-warning" style="display:none">Your squadron has no callsign pool set yet — using your display name instead. Ask your wing commander to add callsigns.</div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Departure (ICAO)</label><input type="text" id="lf-dep" placeholder="KDYS" maxlength="4" style="text-transform:uppercase"></div>
       <div class="form-group"><label>Arrival (ICAO)</label><input type="text" id="lf-arr" placeholder="KTIK" maxlength="4" style="text-transform:uppercase"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Aircraft</label>
-        <select id="lf-aircraft">
-          <option value="B-1B Lancer">B-1B Lancer</option>
-          <option value="B-2 Spirit">B-2 Spirit</option>
-          <option value="B-52H Stratofortress">B-52H Stratofortress</option>
-        </select>
-      </div>
+      <div class="form-group"><label>Aircraft</label><input type="text" id="lf-aircraft" placeholder="B-1B Lancer"></div>
       <div class="form-group"><label>Duration (minutes)</label><input type="number" id="lf-duration" placeholder="90" min="1"></div>
     </div>
-    <div class="form-group"><label>Notes (optional)</label><textarea id="lf-notes" placeholder="Mission type, weather, training event…"></textarea></div>
+    <div class="form-group"><label>Notes (optional)</label><textarea id="lf-notes" placeholder="Mission type, weather, training event, etc."></textarea></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('log-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitFlight()">Log Flight</button>
@@ -131,245 +83,123 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
 <script>
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
 
-// ── STATE ─────────────────────────────────────────────────────
-let allFlights = [], activeWing = 'all', myPilot = null, canDeleteAny = false;
+let allFlights = [], activeWingFilter = null, myPilot = null;
 
-const WING_COLORS = { '7bw':'var(--gold)', '509bw':'var(--blue)', '2bw':'var(--green)' };
-const WING_ACFT   = { '7bw':'B-1B Lancer', '509bw':'B-2 Spirit', '2bw':'B-52H Stratofortress' };
-
-// ── AUTH ──────────────────────────────────────────────────────
 function onAuthReady(user, pilot) {
-  if (user && pilot?.status === 'active') {
-    document.getElementById('nav-right-area').innerHTML =
-      `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
-    myPilot = pilot;
-    canDeleteAny = isMasterAdminPilot(pilot) || hasPermission(pilot,'delete_flights');
+  // nav.js handles nav - just handle page-specific state
+  const activePilot = pilot || (typeof currentPilot !== 'undefined' ? currentPilot : null);
+  if (user && activePilot && activePilot.status === 'active') {
+    myPilot = activePilot;
+    canDeleteAny = (typeof isMasterAdminPilot === 'function' && isMasterAdminPilot(activePilot)) ||
+                   (typeof hasPermission === 'function' && hasPermission(activePilot, 'delete_flights'));
     document.getElementById('log-flight-btn-wrap').style.display = 'flex';
     document.getElementById('my-flights-tab').style.display = 'block';
     // Pre-select pilot's own wing tab
-    if (pilot.wing) {
-      const tab = document.querySelector(`[onclick="setWingTab('${pilot.wing}',this)"]`);
-      if (tab) { setWingTab(pilot.wing, tab); return; }
+    if (activePilot.wing) {
+      const tab = document.querySelector('[onclick*="' + activePilot.wing + '"]');
+      if (tab) setWingTab(activePilot.wing, tab);
     }
   }
   loadFlights();
 }
 
-// ── LOAD ──────────────────────────────────────────────────────
 async function loadFlights() {
   try {
-    const snap = await db.collection('flights').orderBy('loggedAt','desc').limit(200).get();
-    allFlights = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    updateStats();
+    const snap = await db.collection('flights').orderBy('loggedAt','desc').limit(100).get();
+    allFlights = snap.docs.map(d=>({id:d.id,...d.data()}));
   } catch(e) { allFlights = []; }
   renderFlights();
 }
 
-function updateStats() {
-  const total = allFlights.length;
-  const totalMins = allFlights.reduce((s,f) => s + (f.durationMins||0), 0);
-  document.getElementById('stat-total').textContent  = total;
-  document.getElementById('stat-hours').textContent  = Math.round(totalMins/60);
-  document.getElementById('stat-7bw').textContent    = allFlights.filter(f=>f.wing==='7bw').length;
-  document.getElementById('stat-509bw').textContent  = allFlights.filter(f=>f.wing==='509bw').length;
-  document.getElementById('stat-2bw').textContent    = allFlights.filter(f=>f.wing==='2bw').length;
-}
-
-// ── TABS ──────────────────────────────────────────────────────
-function setWingTab(wing, btn) {
-  activeWing = wing;
-  // Update tab active classes
-  document.querySelectorAll('.wing-tab').forEach(b => {
-    b.className = 'wing-tab'; // reset
-  });
-  btn.classList.add(`active-${wing}`);
+function filterWing(wingId, btn) {
+  activeWingFilter = wingId;
+  document.querySelectorAll('#fl-filters .fl-filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
   renderFlights();
 }
 
-// ── RENDER ────────────────────────────────────────────────────
 function renderFlights() {
-  const search  = document.getElementById('fl-search').value.toLowerCase();
-  const acftFilter = document.getElementById('fl-aircraft-filter').value;
-
-  let filtered = allFlights;
-
-  // Wing filter
-  if (activeWing === 'mine' && myPilot) {
-    filtered = filtered.filter(f => f.pilotUid === myPilot.uid);
-  } else if (activeWing !== 'all') {
-    filtered = filtered.filter(f => f.wing === activeWing);
-  }
-
-  // Aircraft filter
-  if (acftFilter) filtered = filtered.filter(f => f.aircraft === acftFilter);
-
-  // Search
-  if (search) {
-    filtered = filtered.filter(f =>
-      (f.pilotCallsign||'').toLowerCase().includes(search) ||
-      (f.departure||'').toLowerCase().includes(search) ||
-      (f.arrival||'').toLowerCase().includes(search) ||
-      (f.aircraft||'').toLowerCase().includes(search) ||
-      (f.notes||'').toLowerCase().includes(search)
-    );
-  }
-
   const el = document.getElementById('flights-list');
-  if (!filtered.length) {
-    el.innerHTML = '<div class="empty-state"><div class="icon">✈️</div><p>No flights match this filter.</p></div>';
-    return;
-  }
-
-  el.innerHTML = filtered.map(f => {
-    const dotColor = WING_COLORS[f.wing] || 'var(--text3)';
-    const canDelete = canDeleteAny || (myPilot && f.pilotUid === myPilot.uid);
-    const h = Math.floor((f.durationMins||0)/60);
-    const m = (f.durationMins||0)%60;
-    return `
-    <div class="flight-row" id="fr-${f.id}">
-      <div class="flight-wing-dot" style="background:${dotColor}"></div>
-      <div style="flex:1;min-width:0">
-        <div class="flight-route">${f.departure||'?'} <span class="flight-arrow">→</span> ${f.arrival||'?'}</div>
-        <div class="flight-meta">
-          ${f.pilotCallsign||'Unknown'} ·
-          ${f.aircraft||'—'} ·
-          <span style="color:${dotColor}">${getWingName(f.wing)||f.wing||''}</span> ·
-          ${formatDate(f.loggedAt)}
-        </div>
-        ${f.notes ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">${f.notes}</div>` : ''}
+  const filtered = activeWingFilter ? allFlights.filter(f=>f.wing===activeWingFilter) : allFlights;
+  if (!filtered.length) { el.innerHTML='<div class="empty-state"><div class="icon">✈️</div><p>No flights logged yet for this filter</p></div>'; return; }
+  el.innerHTML = filtered.map(f => `
+    <div class="flight-row">
+      <div style="flex:1">
+        <div class="flight-route">${f.departure} <span class="flight-arrow">→</span> ${f.arrival}</div>
+        <div class="flight-meta">${f.pilotCallsign||'Unknown'} · ${f.aircraft||'—'} · ${getWingName(f.wing)||''} · ${formatDate(f.loggedAt)}</div>
+        ${f.notes?`<div style="font-size:12px;color:var(--text3);margin-top:4px">${f.notes}</div>`:''}
       </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <div class="flight-duration">${h}h ${m}m</div>
-        ${canDelete ? `<button class="flight-delete-btn" onclick="deleteFlight('${f.id}')" title="Delete flight">🗑</button>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── DELETE FLIGHT ─────────────────────────────────────────────
-async function deleteFlight(id) {
-  if (!confirm('Delete this flight log entry? This cannot be undone.')) return;
-  const flight = allFlights.find(f => f.id === id);
-  if (!flight) return;
-
-  // Permission check — own flight or has delete_flights permission
-  const canDelete = canDeleteAny || (myPilot && flight.pilotUid === myPilot.uid);
-  if (!canDelete) { toast('No permission to delete this flight','error'); return; }
-
-  try {
-    await db.collection('flights').doc(id).delete();
-
-    // Update pilot stats
-    if (flight.pilotUid) {
-      db.collection('pilots').doc(flight.pilotUid).update({
-        totalFlights: firebase.firestore.FieldValue.increment(-1),
-        flightHours:  firebase.firestore.FieldValue.increment(-(flight.durationMins||0)/60),
-      }).catch(()=>{});
-    }
-
-    // Audit log
-    logAudit(AUDIT.FLIGHT_DELETED, {
-      flightId:      id,
-      pilotCallsign: flight.pilotCallsign,
-      departure:     flight.departure,
-      arrival:       flight.arrival,
-      aircraft:      flight.aircraft,
-      wing:          flight.wing,
-      durationMins:  flight.durationMins,
-    });
-
-    // Remove from local array and re-render
-    allFlights = allFlights.filter(f => f.id !== id);
-    updateStats();
-    renderFlights();
-    toast('Flight deleted');
-  } catch(e) { toast('Error: '+e.message,'error'); }
+      <div class="flight-duration">${Math.floor((f.durationMins||0)/60)}h ${(f.durationMins||0)%60}m</div>
+    </div>`).join('');
 }
 
 // ── LOG FLIGHT MODAL ──────────────────────────────────────────
 async function openLogModal() {
   if (!myPilot) { window.location.href='/pages/login.html'; return; }
-  ['lf-dep','lf-arr','lf-notes'].forEach(id => document.getElementById(id).value='');
-  document.getElementById('lf-duration').value='';
+  document.getElementById('lf-dep').value=''; document.getElementById('lf-arr').value='';
+  document.getElementById('lf-aircraft').value=''; document.getElementById('lf-duration').value='';
+  document.getElementById('lf-notes').value='';
 
-  // Pre-select aircraft based on pilot's wing
-  if (myPilot.wing && WING_ACFT[myPilot.wing]) {
-    document.getElementById('lf-aircraft').value = WING_ACFT[myPilot.wing];
-  }
-
-  // Build callsign dropdown
+  // Build callsign dropdown from squadron pool + personal callsigns
   const sel = document.getElementById('lf-callsign');
+  const noPoolWarn = document.getElementById('lf-no-pool');
   let options = [];
+
   try {
     const wingDoc = await db.collection('wings').doc(myPilot.wing).get();
     const wingData = wingDoc.exists ? wingDoc.data() : WINGS[myPilot.wing];
     const sqData = wingData?.squadrons?.[myPilot.squadron];
     if (sqData?.callsignPool?.length) options = [...sqData.callsignPool];
   } catch(e) {}
-  if (myPilot.callsigns?.length) myPilot.callsigns.forEach(cs => { if(!options.includes(cs.value)) options.push(cs.value); });
-  if (!options.length) options = [myPilot.callsign || myPilot.displayName || 'Unknown'];
-  document.getElementById('lf-no-pool').style.display = options.length <= 1 ? 'block' : 'none';
+
+  // Add personal callsigns too
+  if (myPilot.callsigns?.length) {
+    myPilot.callsigns.forEach(cs => { if (!options.includes(cs.value)) options.push(cs.value); });
+  }
+  if (!options.length) options = [myPilot.displayName || myPilot.callsign];
+
+  noPoolWarn.style.display = options.length <= 1 ? 'block' : 'none';
   sel.innerHTML = options.map(o=>`<option value="${o}">${o}</option>`).join('');
 
   document.getElementById('log-modal').classList.add('open');
 }
-
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 async function submitFlight() {
-  const dep      = document.getElementById('lf-dep').value.trim().toUpperCase();
-  const arr      = document.getElementById('lf-arr').value.trim().toUpperCase();
-  const aircraft = document.getElementById('lf-aircraft').value;
+  const dep = document.getElementById('lf-dep').value.trim().toUpperCase();
+  const arr = document.getElementById('lf-arr').value.trim().toUpperCase();
+  const aircraft = document.getElementById('lf-aircraft').value.trim();
   const duration = parseInt(document.getElementById('lf-duration').value) || 0;
-  const callsign = document.getElementById('lf-callsign').value;
-  const notes    = document.getElementById('lf-notes').value.trim();
-
   if (!dep || !arr || !duration) { toast('Fill in departure, arrival, and duration','error'); return; }
 
-  const flight = {
-    pilotUid:      currentUser.uid,
-    pilotCallsign: callsign,
-    wing:          myPilot.wing,
-    squadron:      myPilot.squadron,
-    departure: dep, arrival: arr, aircraft,
-    durationMins: duration,
-    notes,
-    loggedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  };
-
   try {
-    const ref = await db.collection('flights').add(flight);
-
+    await db.collection('flights').add({
+      pilotUid:      currentUser.uid,
+      pilotCallsign: document.getElementById('lf-callsign').value,
+      wing:          myPilot.wing,
+      squadron:      myPilot.squadron,
+      departure: dep, arrival: arr, aircraft,
+      durationMins: duration,
+      notes: document.getElementById('lf-notes').value.trim(),
+      loggedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
     // Update pilot stats
     await db.collection('pilots').doc(currentUser.uid).update({
       totalFlights: firebase.firestore.FieldValue.increment(1),
       flightHours:  firebase.firestore.FieldValue.increment(duration/60),
     });
-
-    // Audit log + Discord
-    logAudit(AUDIT.FLIGHT_LOGGED, {
-      flightId:      ref.id,
-      pilotCallsign: callsign,
-      departure: dep, arrival: arr, aircraft,
-      durationMins: duration,
-      wing: myPilot.wing,
-      notes,
-    });
-
     closeModal('log-modal');
-    toast('Flight logged ✓');
+    toast('Flight logged!');
     loadFlights();
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 
-document.querySelectorAll('.modal-overlay').forEach(m =>
-  m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); })
-);
 
-loadFlights();
 </script>
 </body>
 </html>

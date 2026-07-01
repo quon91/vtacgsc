@@ -246,6 +246,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
 <script>
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
 
@@ -347,31 +348,19 @@ function switchTab(id, btn) {
 let waypoints = [], isLoggedIn = false, sbData = null;
 
 function onAuthReady(user, pilot) {
-  // Show logged-in state if user is authenticated, even if pilot doc had issues
-  if (user) {
-    document.getElementById('nav-right-area').innerHTML =
-      `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
-    // Only set full isLoggedIn if pilot is active (for saving flights etc)
-    if (pilot && pilot.status === 'active') {
-      isLoggedIn = true;
-      canDeleteAny = typeof isMasterAdminPilot === 'function' && isMasterAdminPilot(pilot) ||
-                     typeof hasPermission === 'function' && hasPermission(pilot, 'delete_flights');
-      loadSavedPlans();
-      if (pilot.simBriefUsername) document.getElementById('sb-username').value = pilot.simBriefUsername;
-      const sbtn = document.getElementById('submit-route-btn');
-      if (sbtn) sbtn.style.display = 'block';
-    } else if (pilot === null || !pilot) {
-      // User authenticated but pilot doc not loaded - still allow read-only access
-      // Try loading saved plans after a short delay (pilot doc may still be loading)
-      setTimeout(() => {
-        if (currentPilot && currentPilot.status === 'active') {
-          isLoggedIn = true;
-          loadSavedPlans();
-          const sbtn = document.getElementById('submit-route-btn');
-          if (sbtn) sbtn.style.display = 'block';
-        }
-      }, 2000);
+  // nav.js handles nav updates globally - just handle page-specific auth here
+  const activePilot = pilot || (typeof currentPilot !== 'undefined' ? currentPilot : null);
+  if (user && activePilot && activePilot.status === 'active') {
+    isLoggedIn = true;
+    canDeleteAny = (typeof isMasterAdminPilot === 'function' && isMasterAdminPilot(activePilot)) ||
+                   (typeof hasPermission === 'function' && hasPermission(activePilot, 'delete_flights'));
+    loadSavedPlans();
+    if (activePilot.simBriefUsername) {
+      const sbEl = document.getElementById('sb-username');
+      if (sbEl) sbEl.value = activePilot.simBriefUsername;
     }
+    const sbtn = document.getElementById('submit-route-btn');
+    if (sbtn) sbtn.style.display = 'block';
   }
 }
 
