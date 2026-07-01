@@ -556,7 +556,7 @@ function showSec(id) {
   document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.remove('active'));
   document.getElementById('sec-'+id).classList.add('active');
   event.currentTarget.classList.add('active');
-  if (id==='applications') loadAccess Requests();
+  if (id==='applications') loadApplications();
   if (id==='pilots')       loadAllPilots();
   if (id==='rosters')      loadRosters('7bw');
   if (id==='flights')      loadAllFlights();
@@ -605,7 +605,7 @@ function renderDashPending() {
 }
 
 // ── APPLICATIONS ──────────────────────────────────────────────
-async function loadAccess Requests() {
+async function loadApplications() {
   const snap = await db.collection('pilots').where('status','==','pending').orderBy('appliedAt','desc').get();
   const list = document.getElementById('applications-list');
   if (snap.empty) { list.innerHTML='<div class="empty-state"><div class="icon">✅</div><p>No pending applications</p></div>'; return; }

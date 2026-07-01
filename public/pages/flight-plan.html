@@ -631,7 +631,7 @@ async function loadCommunityRoutes() {
       const canDelete = isLoggedIn && (currentUser && currentUser.uid === r.pilotUid || canDeleteAny);
       const routeHtml = r.route ? '<div class="cr-airway">' + r.route + '</div>' : '';
       const notesHtml = r.notes ? '<div class="cr-notes-text">' + r.notes + '</div>' : '';
-      const deleteBtn = canDelete ? '<button class="btn btn-danger btn-xs" onclick="deleteCommunityRoute('' + d.id + '')">Delete</button>' : '';
+      const deleteBtn = canDelete ? '<button class="btn btn-danger btn-xs" onclick="deleteCommunityRoute(\'' + d.id + '\')">Delete</button>' : '';
       const copyVal  = (r.route || r.departure + ' ' + r.arrival).replace(/'/g, '&#39;');
       return '<div class="cr-card" id="cr-' + d.id + '">'
         + '<div class="cr-card-top">'
@@ -649,8 +649,8 @@ async function loadCommunityRoutes() {
         + routeHtml
         + notesHtml
         + '<div class="cr-actions">'
-        + '<button class="btn btn-primary btn-xs" onclick="loadCommunityRouteById('' + d.id + '')">Load Route</button>'
-        + '<button class="btn btn-outline btn-xs" onclick="copyToClipboard('' + copyVal + '')">📋 Copy</button>'
+        + '<button class="btn btn-primary btn-xs" onclick="loadCommunityRouteById(\'' + d.id + '\')">Load Route</button>'
+        + '<button class="btn btn-outline btn-xs" onclick="copyToClipboard(\'' + copyVal + '\')">📋 Copy</button>'
         + deleteBtn
         + '</div></div>';
     }).join('');
@@ -749,7 +749,7 @@ async function submitCommunityRoute() {
   };
   try {
     await db.collection('communityRoutes').add(r);
-    toast('Route submitted! It's now visible to all pilots.');
+    toast('Route submitted! It is now visible to all pilots.');
     closeSubmitModal();
     // Clear form
     ['cr-dep','cr-arr','cr-route','cr-desc','cr-notes','cr-dist'].forEach(id => {
