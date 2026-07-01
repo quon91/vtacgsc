@@ -92,5 +92,18 @@ SIGNAL   -70DBM</div><p style="font-size:12px;color:var(--text2)">Live GPS healt
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
 function switchPhase(ns,id){document.querySelectorAll('[id^="'+ns+'-"].phase-panel').forEach(p=>p.classList.remove('active'));const t=document.getElementById(ns+'-'+id);if(t)t.classList.add('active');if(event&&event.target){event.target.closest('.phase-nav')?.querySelectorAll('.phase-btn').forEach(b=>b.classList.toggle('active',b===event.target));}}
 </script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+function onAuthReady(user, pilot) {
+  if (user && pilot && pilot.status === 'active') {
+    const nav = document.getElementById('nav-right');
+    if (nav) nav.innerHTML = '<a href="/pages/profile.html" class="btn btn-outline btn-sm">' + (pilot.callsign || pilot.displayName || 'My Profile') + '</a>';
+  }
+}
+</script>
 </body>
 </html>

@@ -191,8 +191,38 @@
   <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
 </footer>
 
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
 <script>
 function toggleMobileNav() { document.getElementById('nav-links').classList.toggle('open'); }
+
+// Update nav when auth resolves - training pages are PUBLIC (no redirect)
+function onAuthReady(user, pilot) {
+  if (user && pilot?.status === 'active') {
+    const authArea = document.getElementById('nav-auth-area');
+    const userArea = document.getElementById('nav-user-area');
+    if (authArea) authArea.style.display = 'none';
+    if (userArea) {
+      userArea.style.display = 'flex';
+      const nameEl = document.getElementById('nav-pilot-name');
+      const rankEl = document.getElementById('nav-rank-badge');
+      if (nameEl) nameEl.textContent = pilot.callsign || pilot.displayName || '';
+      if (rankEl) {
+        const roleInfo = typeof getDisplayRole === 'function' ? getDisplayRole(pilot) : null;
+        if (roleInfo) {
+          rankEl.textContent = roleInfo.name;
+          rankEl.style.background = (roleInfo.color || '#c8a951') + '26';
+          rankEl.style.color = roleInfo.color || '#c8a951';
+        }
+      }
+      const avatarEl = document.getElementById('nav-avatar');
+      if (avatarEl && pilot.avatarUrl) avatarEl.src = pilot.avatarUrl;
+    }
+  }
+}
 </script>
 </body>
 </html>
