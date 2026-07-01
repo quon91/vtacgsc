@@ -226,37 +226,12 @@ function renderBases() {
 
       <!-- BASE TABS -->
       <div class="base-tabs">
-        <button class="base-tab active" data-base="${wingId}" onclick="switchBaseTab('${wingId}','info',this)">📡 Airfield Info</button>
-        <button class="base-tab" data-base="${wingId}" onclick="switchBaseTab('${wingId}','history',this)">🏛 Base History</button>
-        <button class="base-tab" data-base="${wingId}" onclick="switchBaseTab('${wingId}','timeline',this)">✈ Aircraft Timeline</button>
-      </div>
-
-      <!-- TAB: AIRFIELD INFO -->
-      <div id="btab-${wingId}-info" class="base-tab-panel active" data-base="${wingId}">
-        ${runways.length ? `
-          <div class="base-section-lbl">Runways</div>
-          <div class="runway-row header"><div>RWY</div><div>Heading</div><div>Length</div><div>ILS Freq</div><div>ILS Course</div></div>
-          ${runways.map(r=>`
-            <div class="runway-row">
-              <div class="rwy-id">${r.id}</div>
-              <div>${r.heading||'—'}°</div>
-              <div>${r.length||'—'}</div>
-              <div>${r.ilsFreq ? `${r.ilsFreq} <span class="ils-tag">${r.ilsIdent||''}</span>` : '—'}</div>
-              <div>${r.ilsCourse?r.ilsCourse+'°':'—'}</div>
-            </div>`).join('')}
-        ` : '<div style="font-size:13px;color:var(--text3);margin-bottom:12px">No runway data — click Edit to add.</div>'}
-        <div class="base-section-lbl" style="margin-top:14px">ATC Frequencies</div>
-        <table class="freq-table">
-          <tr><td>ATIS</td><td>${b.atis||'—'}</td></tr>
-          <tr><td>Clearance Delivery</td><td>${b.clearance||'—'}</td></tr>
-          <tr><td>Ground</td><td>${b.ground||'—'}</td></tr>
-          <tr><td>Tower</td><td>${b.tower||'—'}</td></tr>
-          <tr><td>Approach / Departure</td><td>${b.approach||'—'}</td></tr>
-        </table>
+        <button class="base-tab" data-base="${wingId}" data-base="${wingId}" onclick="switchBaseTab('${wingId}','history',this)">🏛 Base History</button>
+        <button class="base-tab" data-base="${wingId}" data-base="${wingId}" onclick="switchBaseTab('${wingId}','timeline',this)">✈ Aircraft Timeline</button>
       </div>
 
       <!-- TAB: BASE HISTORY -->
-      <div id="btab-${wingId}-history" class="base-tab-panel" data-base="${wingId}">
+      <div id="btab-${wingId}-history" class="base-tab-panel active" data-base="${wingId}">
         ${_hist.history
           ? `<div class="base-history-text">${_hist.history}</div>`
           : '<div style="font-size:13px;color:var(--text3)">No history written yet for this base.</div>'}

@@ -347,17 +347,31 @@ function switchTab(id, btn) {
 let waypoints = [], isLoggedIn = false, sbData = null;
 
 function onAuthReady(user, pilot) {
-  if (user && pilot?.status === 'active') {
+  // Show logged-in state if user is authenticated, even if pilot doc had issues
+  if (user) {
     document.getElementById('nav-right-area').innerHTML =
       `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
-    isLoggedIn = true;
-    canDeleteAny = typeof isMasterAdminPilot === 'function' && isMasterAdminPilot(pilot) ||
-                   typeof hasPermission === 'function' && hasPermission(pilot, 'delete_flights');
-    loadSavedPlans();
-    if (pilot.simBriefUsername) document.getElementById('sb-username').value = pilot.simBriefUsername;
-    // Show submit button for logged-in pilots
-    const sbtn = document.getElementById('submit-route-btn');
-    if (sbtn) sbtn.style.display = 'block';
+    // Only set full isLoggedIn if pilot is active (for saving flights etc)
+    if (pilot && pilot.status === 'active') {
+      isLoggedIn = true;
+      canDeleteAny = typeof isMasterAdminPilot === 'function' && isMasterAdminPilot(pilot) ||
+                     typeof hasPermission === 'function' && hasPermission(pilot, 'delete_flights');
+      loadSavedPlans();
+      if (pilot.simBriefUsername) document.getElementById('sb-username').value = pilot.simBriefUsername;
+      const sbtn = document.getElementById('submit-route-btn');
+      if (sbtn) sbtn.style.display = 'block';
+    } else if (pilot === null || !pilot) {
+      // User authenticated but pilot doc not loaded - still allow read-only access
+      // Try loading saved plans after a short delay (pilot doc may still be loading)
+      setTimeout(() => {
+        if (currentPilot && currentPilot.status === 'active') {
+          isLoggedIn = true;
+          loadSavedPlans();
+          const sbtn = document.getElementById('submit-route-btn');
+          if (sbtn) sbtn.style.display = 'block';
+        }
+      }, 2000);
+    }
   }
 }
 
