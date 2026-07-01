@@ -105,6 +105,7 @@
     <div class="sidebar-item" onclick="showSec('slideshow')"><span class="si-icon">🖼</span> Slideshow</div>
     <div class="sidebar-item" onclick="showSec('news')"><span class="si-icon">📢</span> News / Announcements</div>
     <div class="sidebar-item" onclick="showSec('wings')"><span class="si-icon">✈</span> Wing Settings</div>
+    <div class="sidebar-item" onclick="showSec('viewas')"><span class="si-icon">👁</span> View As Role</div>
     <div class="sidebar-label">Logs</div>
     <div class="sidebar-item" onclick="showSec('webhooks')"><span class="si-icon">🔗</span> Discord Webhooks</div>
     <div class="sidebar-item" onclick="showSec('auditlog')"><span class="si-icon">📜</span> Audit Log</div>
@@ -416,6 +417,14 @@
       <div id="wing-settings-content"></div>
     </div>
 
+    <div id="sec-viewas" class="sec">
+      <div class="sec-title">View Site As…</div>
+      <div class="sec-sub">Preview the entire site through the eyes of any role — nav, pages, buttons, and redirects render exactly as that role experiences them. While active, an amber bar stays pinned to the bottom of every page; click <strong>Exit view</strong> on it to come back here.</div>
+      <div class="alert alert-info" style="margin-bottom:18px;font-size:12px"><strong>Heads up:</strong> This simulates the interface and permission checks only. The database still sees your real master admin account, so anything you save while previewing is saved with your real access — it's a viewing tool, not a sandbox.</div>
+      <div id="viewas-active-notice"></div>
+      <div id="viewas-list"><div class="empty-state"><p>Loading roles…</p></div></div>
+    </div>
+
     <div id="sec-webhooks" class="sec">
       <div class="sec-title">Discord Webhooks</div>
       <div class="sec-sub">Configure a Discord webhook URL per event channel. Each fires to a different Discord channel of your choice.</div>
@@ -621,6 +630,7 @@ function showSec(id) {
   if (id==='medals')       { if (!allPilots.length) loadAllPilots(); }
   if (id==='webhooks')     adminLoadWebhooks();
   if (id==='auditlog')     adminLoadAudit();
+  if (id==='viewas')       renderViewAsSection();
 }
 
 let allPilots = [], pendingApps = [];
@@ -1835,6 +1845,66 @@ async function adminFetchAuditPage(reset) {
     const list = document.getElementById('admin-audit-list');
     if (list) list.innerHTML = '<div class="alert alert-error">Error: ' + e.message + '<br><small>You may need to create a Firestore index for auditLog (eventType ASC + timestamp DESC).</small></div>';
   }
+}
+
+// ── VIEW AS ROLE ─────────────────────────────────────────────
+// Renders one card per role (plus a logged-out visitor option).
+// Picking one stores the role in sessionStorage and jumps to the
+// homepage; firebase-config.js applies the simulation on every
+// page load, and nav.js shows the amber Exit bar.
+function renderViewAsSection() {
+  const active = (function(){ try { return sessionStorage.getItem('vtac_viewas'); } catch(e) { return null; } })();
+  const notice = document.getElementById('viewas-active-notice');
+  if (active) {
+    const label = active === 'logged_out' ? 'Logged-out visitor' : (ROLES[active]?.name || active);
+    notice.innerHTML = '<div class="alert alert-info" style="margin-bottom:14px;font-size:12px;border-color:var(--amber)">👁 A View As session is currently active: <strong>' + label + '</strong> <button class="btn btn-outline btn-xs" style="margin-left:10px" onclick="exitViewAs()">Exit now</button></div>';
+  } else {
+    notice.innerHTML = '';
+  }
+
+  const el = document.getElementById('viewas-list');
+  const entries = Object.entries(ROLES)
+    .filter(([id, r]) => !r.isMasterAdmin)
+    .sort((a,b) => (b[1].level||0) - (a[1].level||0));
+
+  const loggedOutCard = `
+    <div class="pilot-row" style="border-color:rgba(224,144,48,.5)">
+      <div style="font-size:18px;flex-shrink:0;width:14px;text-align:center">🚪</div>
+      <div class="pilot-row-info">
+        <div class="pilot-row-name">Logged-out visitor</div>
+        <div class="pilot-row-meta">See the public site exactly as someone with no account sees it</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="startViewAs('logged_out')">👁 View logged out</button>
+    </div>`;
+
+  const roleCards = entries.map(([roleId, role]) => `
+    <div class="pilot-row">
+      <div style="width:14px;height:14px;border-radius:50%;background:${role.color||'#888'};flex-shrink:0"></div>
+      <div class="pilot-row-info">
+        <div class="pilot-row-name">${role.name}</div>
+        <div class="pilot-row-meta">Authority level ${role.level||0}${(role.permissions||[]).length ? ' · ' + role.permissions.length + ' permission' + (role.permissions.length===1?'':'s') : ' · no special permissions'}</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="startViewAs('${roleId}')">👁 View as this role</button>
+    </div>`).join('');
+
+  el.innerHTML = loggedOutCard + roleCards;
+}
+
+function startViewAs(roleId) {
+  try {
+    sessionStorage.setItem('vtac_viewas', roleId);
+  } catch(e) {
+    toast('Could not start View As — sessionStorage unavailable', 'error');
+    return;
+  }
+  // Start the simulation from the homepage, like a fresh visit
+  window.location.href = '/index.html';
+}
+
+function exitViewAs() {
+  try { sessionStorage.removeItem('vtac_viewas'); } catch(e) {}
+  toast('View As session ended');
+  renderViewAsSection();
 }
 
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
