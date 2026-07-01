@@ -470,11 +470,16 @@ function onAuthReady(user, pilot) {
     return;
   }
   // Check for instructor or higher
+  // Also check raw role field as fallback in case ROLES hasn't loaded from Firestore yet
+  const rawRoles = pilot.roles || (pilot.role ? [pilot.role] : []);
+  const isMasterRaw = rawRoles.includes('master_admin') || rawRoles.includes('wing_commander');
   const canAccess = hasPermission(pilot, 'manage_training') ||
                     hasPermission(pilot, 'award_medals') ||
-                    isMasterAdminPilot(pilot);
+                    isMasterAdminPilot(pilot) ||
+                    isMasterRaw;
   if (!canAccess) {
     document.getElementById('access-denied').style.display = 'block';
+    console.warn('[InstructorCorner] Access denied. Pilot roles:', rawRoles, 'ROLES loaded:', Object.keys(ROLES));
     return;
   }
   // Wire up nav
