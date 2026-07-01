@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RNAV / GPS Approach — B-1B Lancer — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.phase-nav{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:0}
+.phase-btn{padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;background:var(--card);border:1px solid var(--border);border-bottom:none;color:var(--text2);font-family:var(--sans);border-radius:8px 8px 0 0;transition:all .12s;white-space:nowrap}
+.phase-btn:hover{color:var(--text);background:var(--card2)}
+.phase-btn.active{background:var(--card2);color:var(--gold);border-color:var(--border2)}
+.phase-panel{display:none;padding:28px 0}.phase-panel.active{display:block}
+.fms{background:#050a08;border:1px solid #1a2e20;border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:12px;color:#5fe87a;line-height:1.8;margin-bottom:8px;white-space:pre;overflow-x:auto}
+.fms .hi{color:#ffe87a}
+.b-on{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#06241f;color:#4dffea;border:1px solid #1c8a76}
+.b-off{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:var(--card2);color:var(--text3);border:1px solid var(--border)}
+.b-arm{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#2a1a00;color:#ffdd00;border:1px solid #aa8800}
+.cl{list-style:none;padding:0}.cl li{font-size:13px;color:var(--text2);padding:3px 0;display:flex;gap:8px;line-height:1.6}.cl li::before{content:"▸";color:var(--gold);flex-shrink:0}.cl li strong{color:var(--text)}
+.vs-compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.vs-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px}
+.vs-hdr{font-size:13px;font-weight:800;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}.back-link:hover{color:var(--gold)}
+@media(max-width:600px){.vs-compare{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html" class="active">Training</a><a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a>
+    </div>
+    <div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div>
+  </div>
+</nav>
+
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow" style="color:var(--gold)">7th Bomb Wing · B-1B Lancer · KDYS</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">RNAV / GPS <span>Approach Guide</span></h1>
+  <p class="hero-sub" style="font-size:15px">Non-precision GPS approach procedures for the B-1B. Key difference from ILS: use NAV HOLD not APR, and manage descent manually to MDA — there is no automatic glideslope.</p>
+</section>
+
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+
+  <div class="phase-nav">
+    <button class="phase-btn active" onclick="switchPhase('rnav','diff')">1 — RNAV vs ILS</button>
+    <button class="phase-btn" onclick="switchPhase('rnav','setup')">2 — FMS Setup</button>
+    <button class="phase-btn" onclick="switchPhase('rnav','descent')">3 — Descent to MDA</button>
+    <button class="phase-btn" onclick="switchPhase('rnav','seq')">4 — A/P Sequence</button>
+    <button class="phase-btn" onclick="switchPhase('rnav','errors')">5 — Student Errors</button>
+  </div>
+
+  <!-- PHASE 1 — RNAV vs ILS -->
+  <div id="rnav-diff" class="phase-panel active">
+    <div class="section">
+      <div class="section-label">Phase 1 — Critical differences between RNAV and ILS</div>
+      <div class="vs-compare">
+        <div class="vs-card">
+          <div class="vs-hdr" style="color:var(--gold)">RNAV / GPS Approach</div>
+          <ul class="cl">
+            <li>Lateral mode: <strong>NAV HOLD</strong></li>
+            <li>PFD softkey: <strong>GPS</strong></li>
+            <li>FMS NAV MODE: <strong>GPS</strong></li>
+            <li>Vertical: <strong>manual V/S descent</strong> — no glideslope</li>
+            <li>Minimum: <strong>MDA</strong> — level off and look</li>
+            <li>No APR button — pressing APR on an RNAV will fail</li>
+          </ul>
+        </div>
+        <div class="vs-card">
+          <div class="vs-hdr" style="color:var(--blue2)">ILS Approach (for comparison)</div>
+          <ul class="cl">
+            <li>Lateral mode: <strong>APR</strong></li>
+            <li>PFD softkey: <strong>ILS</strong></li>
+            <li>FMS NAV MODE: <strong>NAV</strong></li>
+            <li>Vertical: <strong>automatic glideslope capture</strong></li>
+            <li>Minimum: <strong>DH</strong> — decision at that exact altitude</li>
+            <li>APR arms LOC then G/S automatically</li>
+          </ul>
+        </div>
+      </div>
+      <div class="alert alert-error" style="margin-top:16px"><strong>Most common RNAV error:</strong> pressing APR instead of engaging NAV HOLD. APR will arm and sit there doing nothing — the aircraft will fly through the final approach course. Use <strong>NAV HOLD</strong> for RNAV, not APR.</div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 — FMS SETUP -->
+  <div id="rnav-setup" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 2 — FMS setup for RNAV</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-icon">1</div><div class="card-title">FMS NAV page — GPS mode</div></div>
+          <div class="card-body">
+            <div class="fms">FMS → NAV
+NAV1          [<span class="hi">0.000</span>] →   ← no ILS frequency needed
+NAV MODE      [<span class="hi">GPS</span>] →     ← must be GPS, not NAV</div>
+            <ul class="cl">
+              <li>No frequency to tune — RNAV uses GPS position, not a ground station</li>
+              <li>Confirm NAV MODE = <strong>GPS</strong></li>
+              <li>PFD softkey must also be set to <strong>GPS</strong></li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-icon">2</div><div class="card-title">FMS FPLN — load the approach</div></div>
+          <div class="card-body">
+            <div class="fms">FMS → FPLN
+DEST: <span class="hi">KDYS</span>
+APPR: <span class="hi">RNAV (GPS) RWY 34</span>
+TRANS: <span class="hi">VECTORS</span>
+[ACTIVATE?] → <span class="hi">YES</span></div>
+            <ul class="cl">
+              <li>Select the RNAV approach from the FPLN destination airport page</li>
+              <li>Choose transition — <strong>VECTORS</strong> if being radar vectored by ATC</li>
+              <li>Activate the approach — final approach waypoints load into the flight plan</li>
+              <li>Confirm FAF and MAP waypoints appear in the FPLN route</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card span-2">
+          <div class="card-header"><div class="card-icon">3</div><div class="card-title">FMS PERF → APPR — set MDA</div></div>
+          <div class="card-body">
+            <div class="fms">FMS → PERF → APPR PG
+FLAPS  --> <span class="hi">17°</span>
+VREF   --> <span class="hi">□□□ Kt</span>   ← auto-computes
+MDA/H  --> <span class="hi">□□□□</span>       ← enter MDA from approach plate
+LAND QNH --> <span class="hi">29.92</span>  ← update from ATIS</div>
+            <ul class="cl">
+              <li>Enter <strong>MDA from the RNAV approach plate</strong> — this is your level-off altitude</li>
+              <li>MDA is not a decision height — you fly level at MDA looking for the runway</li>
+              <li>Update QNH from current ATIS (KDYS ATIS: 269.175)</li>
+            </ul>
+            <div class="alert alert-warn" style="margin-top:10px">MDA values vary by aircraft category and approach. Always reference the current FAA approach plate for KDYS RNAV (GPS) RWY 16 or RWY 34. NOT FOR NAVIGATION.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 3 — DESCENT TO MDA -->
+  <div id="rnav-descent" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 3 — Descent management to MDA</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-icon">1</div><div class="card-title">Step-down descent profile</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li>At the <strong>FAF</strong>: initiate descent — set V/S selector to target descent rate</li>
+              <li>Typical descent rate: <strong>~700–900 ft/min</strong> at approach speed</li>
+              <li>Monitor altitude against each step-down fix on the approach plate</li>
+              <li>Do <strong>not</strong> descend below any step-down altitude until past that fix</li>
+              <li>At MDA: engage <strong>ALT HOLD</strong> — level off and transition to visual scan</li>
+            </ul>
+            <div class="alert alert-warn" style="margin-top:10px">Unlike ILS, the B-1B FMS will not automatically level off at MDA. You must manually engage ALT HOLD when you reach MDA or you will bust below the minimum altitude.</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-icon">2</div><div class="card-title">At MDA — visual transition</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li>Maintain MDA in ALT HOLD</li>
+              <li>Scan for runway environment: runway lights, approach lights, threshold markings</li>
+              <li>Runway in sight + landing assured → disengage AP, transition visual</li>
+              <li>Approaching MAP (missed approach point) with no visual → execute missed approach</li>
+            </ul>
+            <div class="alert alert-error" style="margin-top:10px">You cannot descend below MDA without the runway environment in sight. Unlike DH on an ILS, there is no brief window to continue — MDA is a hard floor.</div>
+          </div>
+        </div>
+        <div class="card span-2">
+          <div class="card-header"><div class="card-icon">!</div><div class="card-title">ATH cutoff — same as ILS</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li>ATH disengages automatically at <strong>2,500 ft AGL</strong> — at KDYS this is ~4,290 ft MSL</li>
+              <li>Take throttle manually at that point — hold VREF through the rest of the approach</li>
+              <li>Do not rely on ATH to maintain approach speed at or near MDA</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4 — A/P SEQUENCE -->
+  <div id="rnav-seq" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 4 — Full autopilot sequence for RNAV</div>
+      <div class="card">
+        <div class="card-body" style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Phase</th><th>AP</th><th>ALT</th><th>HDG</th><th>NAV</th><th>ATH</th><th>APR</th><th>What happens</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Vectors</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td>HDG holds ATC vector heading</td></tr>
+              <tr><td><strong>Intercept final</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">drops</span></td><td><span class="b-on">NAV</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td>Switch to NAV HOLD — tracks GPS course</td></tr>
+              <tr><td><strong>At FAF</strong></td><td><span class="b-on">ON</span></td><td><span class="b-arm">V/S</span></td><td><span class="b-off">—</span></td><td><span class="b-on">NAV</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td>Set V/S descent rate — descend to MDA</td></tr>
+              <tr><td><strong>At MDA</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ALT</span></td><td><span class="b-off">—</span></td><td><span class="b-on">NAV</span></td><td><span class="b-off">manual</span></td><td><span class="b-off">—</span></td><td>Engage ALT HOLD — level off, scan for runway</td></tr>
+              <tr><td><strong>Visual</strong></td><td><span class="b-off">OFF</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td>Disengage AP — land visually or go missed</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 5 — STUDENT ERRORS -->
+  <div id="rnav-errors" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 5 — Common student errors</div>
+      <div class="card">
+        <div class="card-body" style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Error</th><th>What happens</th><th>Coaching cue</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Pressing APR instead of NAV HOLD</strong></td><td>APR arms and waits for an ILS signal that never comes — aircraft flies through final</td><td>"This is RNAV — NAV HOLD, not APR"</td></tr>
+              <tr><td><strong>PFD softkey left on ILS</strong></td><td>NAV HOLD tracks nothing — deviation needle shows ILS which isn't tuned</td><td>"Check your PFD softkey — GPS for RNAV"</td></tr>
+              <tr><td><strong>NAV MODE left on NAV</strong></td><td>FMS tries to track a VOR radial, not GPS route</td><td>"FMS NAV page — what's your NAV MODE?"</td></tr>
+              <tr><td><strong>Not engaging ALT HOLD at MDA</strong></td><td>Aircraft continues descending below MDA — altitude bust</td><td>"That's MDA — ALT HOLD now"</td></tr>
+              <tr><td><strong>Descending below MDA without visual</strong></td><td>Below published minimums with no runway in sight — safety of flight</td><td>"Go missed — you're below MDA with no visual"</td></tr>
+              <tr><td><strong>Late V/S set at FAF</strong></td><td>Aircraft overshoots first step-down fix altitude</td><td>"Set your V/S as you cross the FAF, not after"</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p>
+  <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
+</footer>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
+function switchPhase(ns,id){
+  document.querySelectorAll('[id^="'+ns+'-"].phase-panel').forEach(p=>p.classList.remove('active'));
+  const t=document.getElementById(ns+'-'+id);if(t)t.classList.add('active');
+  if(event&&event.target){event.target.closest('.phase-nav')?.querySelectorAll('.phase-btn').forEach(b=>b.classList.toggle('active',b===event.target));}
+}
+</script>
+</body>
+</html>

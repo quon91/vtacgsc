@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOR Approach — B-1B Lancer — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.phase-nav{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:0}
+.phase-btn{padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;background:var(--card);border:1px solid var(--border);border-bottom:none;color:var(--text2);font-family:var(--sans);border-radius:8px 8px 0 0;transition:all .12s;white-space:nowrap}
+.phase-btn:hover{color:var(--text);background:var(--card2)}
+.phase-btn.active{background:var(--card2);color:var(--gold);border-color:var(--border2)}
+.phase-panel{display:none;padding:28px 0}.phase-panel.active{display:block}
+.fms{background:#050a08;border:1px solid #1a2e20;border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:12px;color:#5fe87a;line-height:1.8;margin-bottom:8px;white-space:pre;overflow-x:auto}
+.fms .hi{color:#ffe87a}
+.freq-row{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--card2);border-radius:6px;margin-bottom:4px;border-left:3px solid transparent}
+.freq-row.hi{border-left-color:var(--gold)}
+.freq-name{font-size:12px;color:var(--text2)}
+.freq-val{font-family:var(--mono);font-size:13px;color:var(--gold2);font-weight:600}
+.b-on{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#06241f;color:#4dffea;border:1px solid #1c8a76}
+.b-off{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:var(--card2);color:var(--text3);border:1px solid var(--border)}
+.b-arm{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#2a1a00;color:#ffdd00;border:1px solid #aa8800}
+.cl{list-style:none;padding:0}.cl li{font-size:13px;color:var(--text2);padding:3px 0;display:flex;gap:8px;line-height:1.6}.cl li::before{content:"▸";color:var(--gold);flex-shrink:0}.cl li strong{color:var(--text)}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}.back-link:hover{color:var(--gold)}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links">
+      <a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a>
+      <a href="/pages/training/index.html" class="active">Training</a><a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a>
+    </div>
+    <div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div>
+  </div>
+</nav>
+
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow" style="color:var(--gold)">7th Bomb Wing · B-1B Lancer · KDYS</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">VOR <span>Approach Guide</span></h1>
+  <p class="hero-sub" style="font-size:15px">Non-precision VOR/DME approach for the B-1B. Uses a ground-based VOR station for lateral guidance. Step-down altitudes to MDA — no automatic glideslope. Example: VOR/DME RWY 34 at KDYS using ABILENE VORTAC (ABI) 113.70.</p>
+</section>
+
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+
+  <div class="phase-nav">
+    <button class="phase-btn active" onclick="switchPhase('vor','navaids')">1 — KDYS Navaids</button>
+    <button class="phase-btn" onclick="switchPhase('vor','setup')">2 — FMS Setup</button>
+    <button class="phase-btn" onclick="switchPhase('vor','seq')">3 — A/P Sequence</button>
+    <button class="phase-btn" onclick="switchPhase('vor','errors')">4 — Student Errors</button>
+  </div>
+
+  <!-- PHASE 1 — NAVAIDS -->
+  <div id="vor-navaids" class="phase-panel active">
+    <div class="section">
+      <div class="section-label">Phase 1 — KDYS nearby navaids</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-icon">📡</div><div class="card-title">Navaids serving KDYS approaches</div></div>
+          <div class="card-body">
+            <div class="freq-row hi"><span class="freq-name">ABILENE VORTAC (ABI)</span><span class="freq-val">113.70</span></div>
+            <div class="freq-row"><span class="freq-name">ABI radial to KDYS</span><span class="freq-val">R-165 / 3.8 NM</span></div>
+            <div class="freq-row hi"><span class="freq-name">TUSCOLA VOR/DME (TQA)</span><span class="freq-val">114.85</span></div>
+            <div class="freq-row"><span class="freq-name">TQA radial to KDYS</span><span class="freq-val">R-340 / 11.1 NM</span></div>
+            <div class="freq-row"><span class="freq-name">TOMHI NDB (AB)</span><span class="freq-val">353 kHz</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-icon">!</div><div class="card-title">Published VOR/DME approaches at KDYS</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li><strong>VOR/DME RWY 16</strong> — published, uses ABI VORTAC</li>
+              <li><strong>VOR/DME RWY 34</strong> — published, uses ABI VORTAC</li>
+              <li>DME required for both approaches — distance-to-fix step-downs</li>
+              <li>Both approaches recently <strong>CHANGED</strong> per FAA — verify against current plate</li>
+            </ul>
+            <div class="alert alert-warn" style="margin-top:10px">The VOR/DME approach at KDYS is marked CHANGED on current FAA charts. Always reference the current published plate before flying. NOT FOR NAVIGATION.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 — FMS SETUP -->
+  <div id="vor-setup" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 2 — FMS setup for VOR approach</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-icon">1</div><div class="card-title">FMS NAV page — tune VOR</div></div>
+          <div class="card-body">
+            <div class="fms">FMS → NAV
+NAV1          [<span class="hi">113.70</span>] →
+ --->VORTAC   [<span class="hi">ABI</span>]
+CRS           [<span class="hi">345</span>] →   ← inbound course from plate
+NAV MODE      [<span class="hi">NAV</span>] →   ← NAV, not GPS</div>
+            <ul class="cl">
+              <li>Type <strong>113.70</strong> in scratch pad → line-select into NAV1</li>
+              <li>Confirm ident shows <strong>VORTAC — ABI</strong></li>
+              <li>Set CRS to the <strong>inbound course from the approach plate</strong></li>
+              <li>NAV MODE = <strong>NAV</strong> so NAV HOLD tracks the VOR radial</li>
+              <li>PFD softkey = <strong>NAV1</strong></li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-icon">2</div><div class="card-title">FMS PERF → APPR — set MDA</div></div>
+          <div class="card-body">
+            <div class="fms">FMS → PERF → APPR PG
+FLAPS  --> <span class="hi">17°</span>
+VREF   --> <span class="hi">□□□ Kt</span>
+MDA/H  --> <span class="hi">□□□□</span>   ← from VOR/DME plate
+LAND QNH --> <span class="hi">29.92</span></div>
+            <ul class="cl">
+              <li>Enter MDA from the VOR/DME approach plate</li>
+              <li>MDA is typically higher than an ILS DH — expect reduced ceiling margins</li>
+              <li>Update QNH from ATIS (KDYS ATIS: 269.175)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 3 — A/P SEQUENCE -->
+  <div id="vor-seq" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 3 — Full autopilot sequence for VOR approach</div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-body" style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Phase</th><th>AP</th><th>ALT</th><th>HDG</th><th>NAV</th><th>ATH</th><th>APR</th><th>What happens</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Vectors</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td>HDG holds ATC vector heading</td></tr>
+              <tr><td><strong>Intercept radial</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">drops</span></td><td><span class="b-on">NAV</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td>NAV HOLD tracks VOR inbound radial</td></tr>
+              <tr><td><strong>At FAF / step-down</strong></td><td><span class="b-on">ON</span></td><td><span class="b-arm">V/S</span></td><td><span class="b-off">—</span></td><td><span class="b-on">NAV</span></td><td><span class="b-on">ON</span></td><td><span class="b-off">—</span></td><td>Set V/S — descend toward next step-down fix</td></tr>
+              <tr><td><strong>At MDA</strong></td><td><span class="b-on">ON</span></td><td><span class="b-on">ALT</span></td><td><span class="b-off">—</span></td><td><span class="b-on">NAV</span></td><td><span class="b-off">manual</span></td><td><span class="b-off">—</span></td><td>ALT HOLD — level off, scan for runway</td></tr>
+              <tr><td><strong>Visual</strong></td><td><span class="b-off">OFF</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td><span class="b-off">—</span></td><td>Disengage AP — land or go missed</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-icon">!</div><div class="card-title">Step-down fixes and DME</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li>VOR/DME approaches use <strong>DME distance</strong> to define each step-down fix</li>
+              <li>Read the DME readout from the NAV display — cross-check against the plate</li>
+              <li>Do not descend below a step-down altitude until <strong>past that DME fix</strong></li>
+              <li>Final step down is to MDA — engage ALT HOLD at MDA</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-icon">!</div><div class="card-title">VOR station passage</div></div>
+          <div class="card-body">
+            <ul class="cl">
+              <li>If the VOR is on the field (overhead): expect a <strong>TO/FROM flag flip</strong> as you cross the station</li>
+              <li>Brief station passage in the approach brief — deviation needle will swing</li>
+              <li>NAV HOLD may briefly destabilize at station passage — normal</li>
+              <li>ABI is 3.8 NM from the field — you will pass close but not overhead</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4 — ERRORS -->
+  <div id="vor-errors" class="phase-panel">
+    <div class="section">
+      <div class="section-label">Phase 4 — Common student errors</div>
+      <div class="card">
+        <div class="card-body" style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Error</th><th>What happens</th><th>Coaching cue</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Wrong CRS set</strong></td><td>NAV HOLD tracks the wrong radial — aircraft diverges from approach course</td><td>"What does the plate show for inbound course? Set that in CRS."</td></tr>
+              <tr><td><strong>PFD softkey on GPS</strong></td><td>Deviation needle shows GPS track, not VOR radial</td><td>"PFD softkey needs to be NAV1 for a VOR approach"</td></tr>
+              <tr><td><strong>NAV MODE = GPS</strong></td><td>FMS follows GPS route, not the VOR — may diverge from final</td><td>"Check FMS NAV MODE — should be NAV for VOR"</td></tr>
+              <tr><td><strong>Descending early at step-down</strong></td><td>Below step-down altitude before the DME fix — altitude bust</td><td>"What's your DME? Don't descend until you're past the fix."</td></tr>
+              <tr><td><strong>No ALT HOLD at MDA</strong></td><td>Continues descending below MDA</td><td>"That's MDA — ALT HOLD now"</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p>
+  <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force. Navaid data from FAA AirNav — NOT FOR NAVIGATION.</p>
+</footer>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
+function switchPhase(ns,id){
+  document.querySelectorAll('[id^="'+ns+'-"].phase-panel').forEach(p=>p.classList.remove('active'));
+  const t=document.getElementById(ns+'-'+id);if(t)t.classList.add('active');
+  if(event&&event.target){event.target.closest('.phase-nav')?.querySelectorAll('.phase-btn').forEach(b=>b.classList.toggle('active',b===event.target));}
+}
+</script>
+</body>
+</html>

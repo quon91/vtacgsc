@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FMS Setup Guide — B-1B Lancer — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.phase-nav{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:0}
+.phase-btn{padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;background:var(--card);border:1px solid var(--border);border-bottom:none;color:var(--text2);font-family:var(--sans);border-radius:8px 8px 0 0;transition:all .12s;white-space:nowrap}
+.phase-btn:hover{color:var(--text);background:var(--card2)}
+.phase-btn.active{background:var(--card2);color:var(--gold);border-color:var(--border2)}
+.phase-panel{display:none;padding:28px 0}.phase-panel.active{display:block}
+.fms{background:#050a08;border:1px solid #1a2e20;border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:12px;color:#5fe87a;line-height:1.8;margin-bottom:8px;white-space:pre;overflow-x:auto}
+.fms .hi{color:#ffe87a}.fms .dim{color:#1a3a22}
+.cl{list-style:none;padding:0}.cl li{font-size:13px;color:var(--text2);padding:3px 0;display:flex;gap:8px;line-height:1.6}.cl li::before{content:"▸";color:var(--gold);flex-shrink:0}.cl li strong{color:var(--text)}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text3);text-decoration:none;margin-bottom:24px}.back-link:hover{color:var(--gold)}
+.page-pill{display:inline-block;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700;background:rgba(200,169,81,.15);color:var(--gold2);border:1px solid rgba(200,169,81,.3);font-family:var(--mono);margin-right:6px;margin-bottom:4px}
+</style>
+</head>
+<body>
+<nav class="site-nav"><div class="nav-inner"><a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a><div class="nav-links" id="nav-links"><a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a><a href="/pages/training/index.html" class="active">Training</a><a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a></div><div class="nav-right"><button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button></div></div></nav>
+
+<section class="hero" style="padding:48px 24px 36px">
+  <div class="hero-eyebrow" style="color:var(--gold)">7th Bomb Wing · B-1B Lancer</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,4vw,42px)">FMS <span>Setup Guide</span></h1>
+  <p class="hero-sub" style="font-size:15px">Every page in the B-1B Flight Management System — COMM, NAV, PERF, and FPLN. How to enter data, what each field does, and what trips students up.</p>
+</section>
+
+<div class="container page-body">
+  <a href="/pages/training/index.html" class="back-link">← Back to Training Center</a>
+
+  <div class="phase-nav">
+    <button class="phase-btn active" onclick="switchPhase('fms','method')">1 — Entry Method</button>
+    <button class="phase-btn" onclick="switchPhase('fms','comm')">2 — COMM Page</button>
+    <button class="phase-btn" onclick="switchPhase('fms','nav')">3 — NAV Page</button>
+    <button class="phase-btn" onclick="switchPhase('fms','perf')">4 — PERF Page</button>
+    <button class="phase-btn" onclick="switchPhase('fms','fpln')">5 — FPLN / DIR</button>
+  </div>
+
+  <!-- PHASE 1 — ENTRY METHOD -->
+  <div id="fms-method" class="phase-panel active">
+    <div class="section"><div class="section-label">Phase 1 — Scratch pad entry method</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon">1</div><div class="card-title">How to enter any value</div></div><div class="card-body">
+        <div class="fms">STEP 1: Type value on CDU keypad
+  → appears in scratch pad at bottom
+
+STEP 2: Press line-select key
+  → value loads into the field
+
+STEP 3: Confirm ident / value shown
+  → entry complete</div>
+        <ul class="cl">
+          <li>All FMS pages use the same scratch-pad + line-select method</li>
+          <li>Press <strong>CLR</strong> to clear a bad entry from the scratch pad</li>
+          <li>Press <strong>CLR</strong> while a field is highlighted to delete that field's value</li>
+          <li>Invalid entry shows <strong>INVALID INPUT</strong> — press CLR and retype</li>
+        </ul>
+      </div></div>
+      <div class="card"><div class="card-header"><div class="card-icon">2</div><div class="card-title">FMS pages overview</div></div><div class="card-body">
+        <div style="margin-bottom:8px"><span class="page-pill">COMM</span> Radio frequencies — VHF1, VHF2, ADF, transponder</div>
+        <div style="margin-bottom:8px"><span class="page-pill">NAV</span> Navigation radios — VOR1, VOR2, TACAN, NAV MODE</div>
+        <div style="margin-bottom:8px"><span class="page-pill">PERF</span> Performance — V-speeds, APPR page (DH/MDA, VREF, flaps)</div>
+        <div style="margin-bottom:8px"><span class="page-pill">FPLN</span> Flight plan — loaded from World Map, DIR-TO function</div>
+        <div><span class="page-pill">RNAV</span> GPS approach data — active once RNAV approach is loaded</div>
+      </div></div>
+    </div></div>
+  </div>
+
+  <!-- PHASE 2 — COMM -->
+  <div id="fms-comm" class="phase-panel">
+    <div class="section"><div class="section-label">Phase 2 — COMM page</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon">1</div><div class="card-title">COMM page layout</div></div><div class="card-body">
+        <div class="fms">          COMM
+VHF1            [<span class="hi">133.000</span>] →   ← Tower
+  AMASK T/R+G       PLAIN
+VHF2            [<span class="hi">125.000</span>] →   ← Approach
+  AMASK T/R+G       PLAIN
+ADF             [<span class="hi">353.00</span>] →    ← TOMHI NDB
+  USB               PLAIN
+XPNDR             [<span class="hi">7000</span>] →
+LINK           RADIO SET</div>
+        <ul class="cl">
+          <li>Enter frequency in scratch pad → line-select into VHF1 or VHF2</li>
+          <li>ADF accepts kHz frequencies (e.g. 353 for TOMHI NDB at KDYS)</li>
+          <li>XPNDR: enter squawk code from ATC clearance</li>
+        </ul>
+      </div></div>
+      <div class="card"><div class="card-header"><div class="card-icon">2</div><div class="card-title">KDYS radio frequencies</div></div><div class="card-body">
+        <div style="display:flex;justify-content:space-between;padding:5px 10px;background:var(--card2);border-radius:6px;margin-bottom:4px"><span style="font-size:12px;color:var(--text2)">ATIS</span><span style="font-family:var(--mono);font-size:13px;color:var(--gold2);font-weight:600">269.175</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 10px;background:var(--card2);border-radius:6px;margin-bottom:4px"><span style="font-size:12px;color:var(--text2)">Ground</span><span style="font-family:var(--mono);font-size:13px;color:var(--gold2);font-weight:600">118.35 / 275.8</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 10px;background:var(--card2);border-radius:6px;margin-bottom:4px"><span style="font-size:12px;color:var(--text2)">Tower</span><span style="font-family:var(--mono);font-size:13px;color:var(--gold2);font-weight:600">133.0 / 257.675</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 10px;background:var(--card2);border-radius:6px;margin-bottom:4px"><span style="font-size:12px;color:var(--text2)">Approach East</span><span style="font-family:var(--mono);font-size:13px;color:var(--gold2);font-weight:600">125.0</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 10px;background:var(--card2);border-radius:6px"><span style="font-size:12px;color:var(--text2)">Approach West</span><span style="font-family:var(--mono);font-size:13px;color:var(--gold2);font-weight:600">127.2</span></div>
+      </div></div>
+    </div></div>
+  </div>
+
+  <!-- PHASE 3 — NAV -->
+  <div id="fms-nav" class="phase-panel">
+    <div class="section"><div class="section-label">Phase 3 — NAV page</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon">1</div><div class="card-title">NAV page — ILS setup</div></div><div class="card-body">
+        <div class="fms">FMS → NAV
+NAV1          [<span class="hi">109.900</span>] →   ← ILS RWY 34
+ ---><span class="hi">LOC/ILS    [I-DYS]</span>
+CRS           [<span class="hi">340</span>] →          ← runway hdg
+NAV2          [0.000] →
+NAV MODE      [<span class="hi">NAV</span>] →         ← must be NAV</div>
+        <ul class="cl">
+          <li>NAV MODE must be <strong>NAV</strong> for ILS — not GPS</li>
+          <li>CRS must be the <strong>runway magnetic heading</strong>, not 000°</li>
+          <li>Confirm ident shows <strong>LOC/ILS</strong> and correct ident code</li>
+        </ul>
+      </div></div>
+      <div class="card"><div class="card-header"><div class="card-icon">2</div><div class="card-title">NAV page — VOR setup</div></div><div class="card-body">
+        <div class="fms">FMS → NAV
+NAV1          [<span class="hi">113.700</span>] →   ← ABI VORTAC
+ --->VORTAC   [<span class="hi">ABI</span>]
+CRS           [<span class="hi">345</span>] →          ← inbound radial
+NAV MODE      [<span class="hi">NAV</span>] →         ← must be NAV</div>
+        <ul class="cl">
+          <li>Enter the VOR frequency, confirm ident</li>
+          <li>Set CRS to the <strong>inbound course from the approach plate</strong></li>
+          <li>NAV MODE = NAV · PFD softkey = NAV1</li>
+        </ul>
+      </div></div>
+      <div class="card span-2"><div class="card-header"><div class="card-icon">!</div><div class="card-title">NAV MODE — the most important field on this page</div></div><div class="card-body">
+        <table class="data-table"><thead><tr><th>NAV MODE</th><th>What it does</th><th>Use for</th></tr></thead><tbody>
+          <tr><td><strong>NAV</strong></td><td>Tracks VOR/ILS frequencies tuned in NAV1/NAV2</td><td>ILS approach, VOR approach</td></tr>
+          <tr><td><strong>GPS</strong></td><td>Tracks the active GPS/RNAV flight plan</td><td>RNAV approach, GPS navigation, cruise</td></tr>
+        </tbody></table>
+        <div class="alert alert-error" style="margin-top:10px">Wrong NAV MODE is the #1 cause of approach failures in training. ILS with NAV MODE=GPS → APR won't capture. RNAV with NAV MODE=NAV → wrong track.</div>
+      </div></div>
+    </div></div>
+  </div>
+
+  <!-- PHASE 4 — PERF -->
+  <div id="fms-perf" class="phase-panel">
+    <div class="section"><div class="section-label">Phase 4 — PERF page</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon">1</div><div class="card-title">PERF main page — V-speeds</div></div><div class="card-body">
+        <div class="fms">FMS → PERF
+V1    --> [<span class="hi">□□□</span>]   ← computed
+VR    --> [<span class="hi">□□□</span>]   ← computed
+V2    --> [<span class="hi">□□□</span>]   ← computed
+TEMP  --> [<span class="hi">□□°C</span>]
+ZFW   --> [<span class="hi">□□□.□</span>]
+FOB   --> [<span class="hi">□□□.□</span>]
+GW    --> [<span class="hi">□□□.□</span>]   ← gross weight</div>
+        <ul class="cl">
+          <li>V1, VR, V2 auto-compute from gross weight and conditions</li>
+          <li>Review these before every takeoff — values change with fuel load</li>
+        </ul>
+      </div></div>
+      <div class="card"><div class="card-header"><div class="card-icon">2</div><div class="card-title">APPR page — set before every approach</div></div><div class="card-body">
+        <div class="fms">FMS → PERF → APPR PG
+FLAPS  --> [<span class="hi">17°</span>]
+VREF   --> [<span class="hi">□□□ Kt</span>]   ← auto-compute
+DH/MDA --> [<span class="hi">□□□□</span>]     ← from approach plate
+LAND QNH --> [<span class="hi">□□.□□</span>]  ← from ATIS</div>
+        <ul class="cl">
+          <li>DH field: use <strong>DH</strong> for ILS — use <strong>MDA</strong> for RNAV/VOR</li>
+          <li>VREF: click to auto-compute from current gross weight</li>
+          <li>QNH: update from ATIS before every approach — stale QNH = wrong altimeter</li>
+        </ul>
+        <div class="alert alert-warn" style="margin-top:10px">This page must be set before every approach. A missing DH/MDA means no FMS callout at your minimum altitude.</div>
+      </div></div>
+    </div></div>
+  </div>
+
+  <!-- PHASE 5 — FPLN -->
+  <div id="fms-fpln" class="phase-panel">
+    <div class="section"><div class="section-label">Phase 5 — FPLN page and DIR-TO</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-icon">1</div><div class="card-title">FPLN page</div></div><div class="card-body">
+        <div class="fms">FMS → FPLN
+KDYS → MUCHO → RWY34
+(waypoints from World Map plan)
+
+MUCHO   FAF   109NM
+RWY34         000NM</div>
+        <ul class="cl">
+          <li>FPLN loads from the <strong>World Map flight plan</strong> — cannot be typed in manually</li>
+          <li>Approach waypoints appear once an approach is selected from the FPLN destination page</li>
+          <li>No flight plan loaded shows <strong>NO FPL ACTIVATED</strong></li>
+        </ul>
+      </div></div>
+      <div class="card"><div class="card-header"><div class="card-icon">2</div><div class="card-title">DIR — Direct To</div></div><div class="card-body">
+        <div class="fms">FMS → DIR
+DIR TO: [<span class="hi">MUCHO</span>]
+DIST:   [<span class="hi">22.4NM</span>]
+
+[ACTIVATE?]
+←[YES]      [CANCEL]→</div>
+        <ul class="cl">
+          <li>Press the <strong>DIR</strong> key on the CDU keypad</li>
+          <li>Type the waypoint identifier → line-select</li>
+          <li>Confirm <strong>ACTIVATE? → YES</strong></li>
+          <li>Aircraft routes directly to that waypoint, bypassing all intermediate fixes</li>
+        </ul>
+        <div class="alert alert-info" style="margin-top:10px">Use DIR when ATC gives you direct routing — "B-1B, fly direct MUCHO, cleared ILS RWY 34".</div>
+      </div></div>
+    </div></div>
+  </div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p><p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p></footer>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
+function switchPhase(ns,id){document.querySelectorAll('[id^="'+ns+'-"].phase-panel').forEach(p=>p.classList.remove('active'));const t=document.getElementById(ns+'-'+id);if(t)t.classList.add('active');if(event&&event.target){event.target.closest('.phase-nav')?.querySelectorAll('.phase-btn').forEach(b=>b.classList.toggle('active',b===event.target));}}
+</script>
+</body>
+</html>
