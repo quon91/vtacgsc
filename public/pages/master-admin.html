@@ -345,21 +345,34 @@
 
     <div id="sec-slideshow" class="sec">
       <div class="sec-title">Homepage Slideshow</div>
-      <div class="sec-sub">Add and remove images shown in the homepage slideshow. Paste any image URL.</div>
+      <div class="sec-sub">Add images to the homepage slideshow — paste a hosted image link (e.g. a Discord CDN link) or upload a file from your computer.</div>
       <div class="card" style="margin-bottom:16px">
         <div class="card-header"><div class="card-icon">➕</div><div class="card-title">Add image</div></div>
         <div class="card-body">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Image URL</label>
-              <input type="url" id="slide-url" placeholder="https://...">
-            </div>
-            <div class="form-group">
-              <label>Caption (optional)</label>
-              <input type="text" id="slide-caption" placeholder="7th BW on final approach KDYS">
-            </div>
+          <div class="form-group">
+            <label>Caption (optional)</label>
+            <input type="text" id="slide-caption" placeholder="7th BW on final approach KDYS">
           </div>
-          <button class="btn btn-primary btn-sm" onclick="addSlide()">Add slide</button>
+
+          <div class="form-group">
+            <label>Image URL (Discord link, imgur, etc.)</label>
+            <div style="display:flex;gap:8px">
+              <input type="url" id="slide-url" placeholder="https://cdn.discordapp.com/attachments/..." style="flex:1">
+              <button class="btn btn-primary btn-sm" onclick="addSlideFromUrl()">Add from URL</button>
+            </div>
+            <div class="form-hint">Discord attachment links work great here. Right-click an image in Discord → Copy Link.</div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--text3);font-size:12px">
+            <div style="flex:1;height:1px;background:var(--border)"></div>OR<div style="flex:1;height:1px;background:var(--border)"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Upload from your computer</label>
+            <input type="file" id="slide-file" accept="image/*" style="display:none" onchange="uploadSlide(this)">
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('slide-file').click()">📁 Choose image &amp; upload</button>
+            <div id="slide-upload-status" style="font-size:12px;color:var(--text3);margin-top:8px"></div>
+          </div>
         </div>
       </div>
       <div id="slide-list"><div class="empty-state"><div class="icon">🖼</div><p>No slides yet</p></div></div>
@@ -922,20 +935,78 @@ function renderSlides(slides) {
   if (!slides.length) { el.innerHTML='<div class="empty-state"><div class="icon">🖼</div><p>No slides yet</p></div>'; return; }
   el.innerHTML = slides.map((s,i)=>`
     <div class="pilot-row">
-      <img src="${s.url}" style="width:80px;height:50px;object-fit:cover;border-radius:5px;flex-shrink:0" onerror="this.style.background='#333'">
-      <div class="pilot-row-info"><div class="pilot-row-name">${s.caption||'No caption'}</div><div class="pilot-row-meta" style="font-family:var(--mono)">${s.url}</div></div>
+      <img src="${s.url}" style="width:80px;height:50px;object-fit:cover;border-radius:5px;flex-shrink:0" onerror="this.style.background='#500';this.nextElementSibling.querySelector('.pilot-row-name').innerHTML='⚠️ Broken image — ' + (this.parentElement.querySelector('.pilot-row-name')?.textContent||'')">
+      <div class="pilot-row-info"><div class="pilot-row-name">${s.caption||'No caption'}</div><div class="pilot-row-meta" style="font-family:var(--mono);word-break:break-all">${s.url}</div></div>
       <button class="btn btn-danger btn-xs" onclick="removeSlide(${i})">Remove</button>
     </div>`).join('');
 }
-async function addSlide() {
+
+function resizeImageFileJPEG(file, maxW, maxH, quality) {
+  quality = quality || 0.88;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxW || h > maxH) {
+        const ratio = Math.min(maxW/w, maxH/h);
+        w = Math.round(w*ratio); h = Math.round(h*ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Resize failed')), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Load failed')); };
+    img.src = url;
+  });
+}
+
+async function addSlideFromUrl() {
   const url = document.getElementById('slide-url').value.trim();
   const cap = document.getElementById('slide-caption').value.trim();
-  if (!url) { toast('Enter an image URL','error'); return; }
-  const ref = db.collection('settings').doc('slideshow');
-  await ref.set({ slides: firebase.firestore.FieldValue.arrayUnion({url,caption:cap}) }, {merge:true});
-  document.getElementById('slide-url').value=''; document.getElementById('slide-caption').value='';
-  toast('Slide added!'); loadSlideshow();
+  if (!url) { toast('Paste an image URL first', 'error'); return; }
+  try {
+    await db.collection('settings').doc('slideshow').set(
+      { slides: firebase.firestore.FieldValue.arrayUnion({ url: url, caption: cap }) },
+      { merge: true }
+    );
+    document.getElementById('slide-url').value = '';
+    document.getElementById('slide-caption').value = '';
+    toast('Slide added!');
+    loadSlideshow();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
+
+async function uploadSlide(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Select an image file', 'error'); return; }
+  const cap = document.getElementById('slide-caption').value.trim();
+  const statusEl = document.getElementById('slide-upload-status');
+  statusEl.textContent = 'Uploading…';
+  try {
+    const blob = await resizeImageFileJPEG(file, 1600, 900, 0.85);
+    const fileName = 'slide-' + Date.now() + '.jpg';
+    const ref = storage.ref('slideshow/' + fileName);
+    await ref.put(blob, { contentType: 'image/jpeg' });
+    const url = await ref.getDownloadURL();
+    await db.collection('settings').doc('slideshow').set(
+      { slides: firebase.firestore.FieldValue.arrayUnion({ url: url, caption: cap }) },
+      { merge: true }
+    );
+    document.getElementById('slide-caption').value = '';
+    input.value = '';
+    statusEl.textContent = '';
+    toast('Slide uploaded!');
+    loadSlideshow();
+  } catch(e) {
+    statusEl.textContent = '';
+    toast('Upload failed: ' + e.message, 'error');
+  }
+}
+
 async function removeSlide(idx) {
   const doc = await db.collection('settings').doc('slideshow').get();
   const slides = doc.data()?.slides||[];
