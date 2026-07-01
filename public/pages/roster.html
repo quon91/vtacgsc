@@ -83,16 +83,16 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
 <script>
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
 
 let rosterPilots = [], activeWingFilter = null;
 
+// NOTE: nav.js (updateNavUI) now fully owns #nav-right-area — including
+// the My Profile button AND the pilot avatar. This function must NOT
+// touch the nav, or it erases the avatar (that was the old bug).
 function onAuthReady(user, pilot) {
-  const navArea = document.getElementById('nav-right-area');
-  if (user && pilot?.status === 'active') {
-    navArea.innerHTML = `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
-  }
   loadRoster();
 }
 
