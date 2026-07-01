@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  VTAC GLOBAL STRIKE COMMAND — FIREBASE CONFIG
+//  Replace the firebaseConfig object with YOUR Firebase project
+//  values from: console.firebase.google.com → Project Settings
 // ═══════════════════════════════════════════════════════════════
 
 const firebaseConfig = {
@@ -13,10 +15,18 @@ const firebaseConfig = {
   measurementId:     "G-W1D1VE7C29"
 };
 
+// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const auth    = firebase.auth();
 const db      = firebase.firestore();
 const storage = firebase.storage();
+
+// ── AUTH PERSISTENCE ─────────────────────────────────────────
+// Keep user logged in across page navigation and browser restarts.
+// Without this, Firebase may lose auth state between pages.
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(e => {
+  console.warn('Auth persistence error:', e);
+});
 
 // ── WING / SQUADRON STRUCTURE ────────────────────────────────
 const WINGS = {
@@ -75,7 +85,11 @@ const RANKS = [
 ];
 
 // ── USAF MEDALS & DECORATIONS CATALOG ───────────────────────────
+// Categorized real-world USAF decorations, matched against the official
+// AFPC "Decorations and Ribbons" reference chart. Master admin (and anyone
+// granted the 'award_medals' permission) can award these to pilots.
 const MEDALS_CATALOG = [
+  // ── Decorations ──
   { id:'medal_honor',        name:'Medal of Honor',                             category:'Decoration', tier:1,  stripes:['#5b92e5'] },
   { id:'afcross',            name:'Air Force Cross',                            category:'Decoration', tier:2,  stripes:['#002868','#bf0a30','#002868'] },
   { id:'def_dsm',            name:'Defense Distinguished Service Medal',        category:'Decoration', tier:3,  stripes:['#c9a04a','#002868','#c9a04a'] },
@@ -95,13 +109,17 @@ const MEDALS_CATALOG = [
   { id:'air_space_commendation', name:'Air and Space Commendation Medal',       category:'Decoration', tier:17, stripes:['#bf0a30','#002868','#ffffff','#002868','#bf0a30'] },
   { id:'joint_achievement',  name:'Joint Service Achievement Medal',            category:'Decoration', tier:18, stripes:['#5b92e5','#c9a04a','#5b92e5'] },
   { id:'air_space_achievement', name:'Air and Space Achievement Medal',         category:'Decoration', tier:19, stripes:['#002868','#c9a04a','#bf0a30'] },
-  { id:'combat_action',      name:'Combat Action Medal',                        category:'Decoration', tier:20, stripes:['#bf0a30','#002868','#bf0a30'] },
+  { id:'combat_action',      name:'Combat Action Medal',                       category:'Decoration', tier:20, stripes:['#bf0a30','#002868','#bf0a30'] },
+
+  // ── Unit Awards ──
   { id:'pres_unit',          name:'Presidential Unit Citation',                 category:'Unit Award', tier:1, stripes:['#5b3a78','#c9a04a'] },
   { id:'joint_meritorious_unit', name:'Joint Meritorious Unit Award',           category:'Unit Award', tier:2, stripes:['#5b92e5','#002868','#5b92e5'] },
   { id:'gallant_unit',       name:'Gallant Unit Citation',                      category:'Unit Award', tier:3, stripes:['#1a1a1a','#bf0a30'] },
   { id:'meritorious_unit',   name:'Meritorious Unit Award',                     category:'Unit Award', tier:4, stripes:['#bf0a30','#002868','#bf0a30'] },
   { id:'air_space_outstanding_unit', name:'Air and Space Outstanding Unit Award', category:'Unit Award', tier:5, stripes:['#5b92e5','#c9a04a','#5b92e5'] },
   { id:'air_space_org_excellence', name:'Air and Space Organizational Excellence Award', category:'Unit Award', tier:6, stripes:['#3c3b6e','#5b92e5','#3c3b6e'] },
+
+  // ── Service Awards ──
   { id:'pow_medal',          name:'Prisoner of War Medal',                      category:'Service Award', tier:1, stripes:['#bf0a30','#ffffff','#1a1a1a','#ffffff','#bf0a30'] },
   { id:'combat_readiness',   name:'Combat Readiness Medal',                     category:'Service Award', tier:2, stripes:['#bf0a30','#002868','#bf0a30'] },
   { id:'good_conduct',       name:'Air Force Good Conduct Medal',               category:'Service Award', tier:3, stripes:['#bf0a30','#5b92e5','#bf0a30'] },
@@ -110,15 +128,17 @@ const MEDALS_CATALOG = [
   { id:'reserve_meritorious', name:'Air Reserve Forces Meritorious Service Medal', category:'Service Award', tier:6, stripes:['#002868','#c9a04a','#002868'] },
   { id:'outstanding_airman', name:'Outstanding Airman of the Year Ribbon',      category:'Service Award', tier:7, stripes:['#5b92e5','#ffffff','#bf0a30'] },
   { id:'air_space_recognition', name:'Air and Space Recognition Ribbon',        category:'Service Award', tier:8, stripes:['#002868','#c9a04a'] },
-  { id:'amer_defense',       name:'American Defense Service Medal',             category:'Campaign / Service', tier:1,  stripes:['#ffd700','#bf0a30','#002868','#bf0a30','#ffd700'] },
-  { id:'amer_campaign',      name:'American Campaign Medal',                    category:'Campaign / Service', tier:2,  stripes:['#1a1a1a','#5b92e5','#bf0a30','#5b92e5','#1a1a1a'] },
-  { id:'asiatic_pacific',    name:'Asiatic-Pacific Campaign Medal',             category:'Campaign / Service', tier:3,  stripes:['#ffd700','#bf0a30','#ffd700','#002868','#ffd700'] },
-  { id:'euro_african_me',    name:'Euro-African-Middle Eastern Campaign Medal', category:'Campaign / Service', tier:4,  stripes:['#5b92e5','#1a1a1a','#bf0a30','#1a1a1a','#5b92e5'] },
-  { id:'wwii_victory',       name:'World War II Victory Medal',                 category:'Campaign / Service', tier:5,  stripes:['#bf0a30','#ffd700','#002868'] },
-  { id:'army_occupation',    name:'Army of Occupation Medal',                   category:'Campaign / Service', tier:6,  stripes:['#1a1a1a','#bf0a30','#1a1a1a'] },
-  { id:'humane_action',      name:'Medal for Humane Action',                    category:'Campaign / Service', tier:7,  stripes:['#5b92e5','#1a1a1a','#5b92e5'] },
-  { id:'natl_defense',       name:'National Defense Service Medal',             category:'Campaign / Service', tier:8,  stripes:['#bf0a30','#ffd700','#002868','#ffd700','#bf0a30'] },
-  { id:'korean_svc',         name:'Korean Service Medal',                       category:'Campaign / Service', tier:9,  stripes:['#002868','#ffffff','#bf0a30'] },
+
+  // ── Campaign / Service Medals ──
+  { id:'amer_defense',       name:'American Defense Service Medal',             category:'Campaign / Service', tier:1, stripes:['#ffd700','#bf0a30','#002868','#bf0a30','#ffd700'] },
+  { id:'amer_campaign',      name:'American Campaign Medal',                    category:'Campaign / Service', tier:2, stripes:['#1a1a1a','#5b92e5','#bf0a30','#5b92e5','#1a1a1a'] },
+  { id:'asiatic_pacific',    name:'Asiatic-Pacific Campaign Medal',             category:'Campaign / Service', tier:3, stripes:['#ffd700','#bf0a30','#ffd700','#002868','#ffd700'] },
+  { id:'euro_african_me',    name:'Euro-African-Middle Eastern Campaign Medal', category:'Campaign / Service', tier:4, stripes:['#5b92e5','#1a1a1a','#bf0a30','#1a1a1a','#5b92e5'] },
+  { id:'wwii_victory',       name:'World War II Victory Medal',                 category:'Campaign / Service', tier:5, stripes:['#bf0a30','#ffd700','#002868'] },
+  { id:'army_occupation',    name:'Army of Occupation Medal',                   category:'Campaign / Service', tier:6, stripes:['#1a1a1a','#bf0a30','#1a1a1a'] },
+  { id:'humane_action',      name:'Medal for Humane Action',                    category:'Campaign / Service', tier:7, stripes:['#5b92e5','#1a1a1a','#5b92e5'] },
+  { id:'natl_defense',       name:'National Defense Service Medal',             category:'Campaign / Service', tier:8, stripes:['#bf0a30','#ffd700','#002868','#ffd700','#bf0a30'] },
+  { id:'korean_svc',         name:'Korean Service Medal',                       category:'Campaign / Service', tier:9, stripes:['#002868','#ffffff','#bf0a30'] },
   { id:'antarctica_svc',     name:'Antarctica Service Medal',                   category:'Campaign / Service', tier:10, stripes:['#002868','#ffffff','#1a1a1a'] },
   { id:'afem',               name:'Armed Forces Expeditionary Medal',           category:'Campaign / Service', tier:11, stripes:['#3c3b6e','#ffffff','#bf0a30','#ffffff','#3c3b6e'] },
   { id:'vietnam_svc',        name:'Vietnam Service Medal',                      category:'Campaign / Service', tier:12, stripes:['#ffd700','#bf0a30','#2e8b57','#bf0a30','#ffd700'] },
@@ -136,38 +156,43 @@ const MEDALS_CATALOG = [
   { id:'remote_combat',      name:'Remote Combat Effects Campaign Medal',       category:'Campaign / Service', tier:24, stripes:['#1a1a1a','#5b92e5','#1a1a1a'] },
   { id:'air_space_campaign', name:'Air and Space Campaign Medal',               category:'Campaign / Service', tier:25, stripes:['#002868','#c9a04a','#bf0a30'] },
   { id:'nuclear_deterrence', name:'Nuclear Deterrence Operations Service Medal', category:'Campaign / Service', tier:26, stripes:['#1a1a1a','#5b92e5','#ffd700'] },
-  { id:'overseas_short',     name:'Air and Space Overseas Ribbon - Short Tour', category:'Service Ribbon', tier:1,  stripes:['#bf0a30','#5b92e5','#bf0a30'] },
-  { id:'overseas_long',      name:'Air and Space Overseas Ribbon - Long Tour',  category:'Service Ribbon', tier:2,  stripes:['#1a1a1a','#5b92e5','#1a1a1a'] },
-  { id:'expeditionary_svc',  name:'Air and Space Expeditionary Service Ribbon', category:'Service Ribbon', tier:3,  stripes:['#002868','#c9a04a','#bf0a30'] },
-  { id:'longevity',          name:'Air and Space Longevity Service Award',      category:'Service Ribbon', tier:4,  stripes:['#5b92e5','#ffffff','#5b92e5'] },
-  { id:'dev_special_duty',   name:'Developmental Special Duty Ribbon',          category:'Service Ribbon', tier:5,  stripes:['#bf0a30','#1a1a1a','#bf0a30'] },
+
+  // ── Service Ribbons & Training ──
+  { id:'overseas_short',     name:'Air and Space Overseas Ribbon - Short Tour', category:'Service Ribbon', tier:1, stripes:['#bf0a30','#5b92e5','#bf0a30'] },
+  { id:'overseas_long',      name:'Air and Space Overseas Ribbon - Long Tour',  category:'Service Ribbon', tier:2, stripes:['#1a1a1a','#5b92e5','#1a1a1a'] },
+  { id:'expeditionary_svc',  name:'Air and Space Expeditionary Service Ribbon', category:'Service Ribbon', tier:3, stripes:['#002868','#c9a04a','#bf0a30'] },
+  { id:'longevity',          name:'Air and Space Longevity Service Award',      category:'Service Ribbon', tier:4, stripes:['#5b92e5','#ffffff','#5b92e5'] },
+  { id:'dev_special_duty',   name:'Developmental Special Duty Ribbon',          category:'Service Ribbon', tier:5, stripes:['#bf0a30','#1a1a1a','#bf0a30'] },
   { id:'bmt_instructor',     name:'Air Force Basic Military Training Instructor Ribbon', category:'Service Ribbon', tier:6, stripes:['#5b92e5','#ffd700','#5b92e5'] },
-  { id:'recruiter_ribbon',   name:'Air Force Recruiter Ribbon',                 category:'Service Ribbon', tier:7,  stripes:['#002868','#ffffff','#2e8b57'] },
-  { id:'reserve_armed_forces', name:'Armed Forces Reserve Medal',               category:'Service Ribbon', tier:8,  stripes:['#3c3b6e','#bf0a30','#3c3b6e'] },
-  { id:'nco_pme_grad',       name:'USAF NCO PME Graduate Ribbon',               category:'Service Ribbon', tier:9,  stripes:['#bf0a30','#ffffff','#bf0a30'] },
+  { id:'recruiter_ribbon',   name:'Air Force Recruiter Ribbon',                 category:'Service Ribbon', tier:7, stripes:['#002868','#ffffff','#2e8b57'] },
+  { id:'reserve_armed_forces', name:'Armed Forces Reserve Medal',               category:'Service Ribbon', tier:8, stripes:['#3c3b6e','#bf0a30','#3c3b6e'] },
+  { id:'nco_pme_grad',       name:'USAF NCO PME Graduate Ribbon',               category:'Service Ribbon', tier:9, stripes:['#bf0a30','#ffffff','#bf0a30'] },
   { id:'bmt_honor_grad',     name:'Basic Military Training Honor Graduate Ribbon', category:'Service Ribbon', tier:10, stripes:['#5b92e5','#ffd700'] },
   { id:'small_arms',         name:'Small Arms Expert Marksmanship Ribbon',      category:'Service Ribbon', tier:11, stripes:['#3c3b6e','#ffd700'] },
   { id:'training_ribbon',    name:'Air and Space Training Ribbon',              category:'Service Ribbon', tier:12, stripes:['#5b92e5','#ffd700','#5b92e5'] },
-  { id:'philippine_defense', name:'Philippine Defense Medal',                   category:'Foreign / Allied', tier:1,  stripes:['#bf0a30','#002868','#bf0a30'] },
-  { id:'philippine_liberation', name:'Philippine Liberation Medal',             category:'Foreign / Allied', tier:2,  stripes:['#bf0a30','#002868','#ffd700','#002868','#bf0a30'] },
-  { id:'philippine_independence', name:'Philippine Independence Medal',         category:'Foreign / Allied', tier:3,  stripes:['#bf0a30','#002868'] },
-  { id:'philippine_pres_unit', name:'Philippine Presidential Unit Citation',    category:'Foreign / Allied', tier:4,  stripes:['#ffd700'] },
+
+  // ── Foreign & Allied Awards ──
+  { id:'philippine_defense', name:'Philippine Defense Medal',                   category:'Foreign / Allied', tier:1, stripes:['#bf0a30','#002868','#bf0a30'] },
+  { id:'philippine_liberation', name:'Philippine Liberation Medal',             category:'Foreign / Allied', tier:2, stripes:['#bf0a30','#002868','#ffd700','#002868','#bf0a30'] },
+  { id:'philippine_independence', name:'Philippine Independence Medal',         category:'Foreign / Allied', tier:3, stripes:['#bf0a30','#002868'] },
+  { id:'philippine_pres_unit', name:'Philippine Presidential Unit Citation',    category:'Foreign / Allied', tier:4, stripes:['#ffd700'] },
   { id:'rok_pres_unit',      name:'Republic of Korea Presidential Unit Citation', category:'Foreign / Allied', tier:5, stripes:['#5b92e5','#bf0a30','#5b92e5'] },
-  { id:'rvn_gallantry',      name:'RVN Gallantry Cross with Palm',              category:'Foreign / Allied', tier:6,  stripes:['#bf0a30','#ffffff','#bf0a30','#ffffff','#bf0a30'] },
-  { id:'un_service',         name:'United Nations Service Medal',               category:'Foreign / Allied', tier:7,  stripes:['#5b92e5'] },
-  { id:'un_medal',           name:'United Nations Medal',                       category:'Foreign / Allied', tier:8,  stripes:['#5b92e5','#ffffff'] },
-  { id:'nato_meritorious',   name:'NATO Meritorious Service Medal',             category:'Foreign / Allied', tier:9,  stripes:['#1a1a1a','#5b92e5','#1a1a1a'] },
+  { id:'rvn_gallantry',      name:'RVN Gallantry Cross with Palm',              category:'Foreign / Allied', tier:6, stripes:['#bf0a30','#ffffff','#bf0a30','#ffffff','#bf0a30'] },
+  { id:'un_service',         name:'United Nations Service Medal',               category:'Foreign / Allied', tier:7, stripes:['#5b92e5'] },
+  { id:'un_medal',           name:'United Nations Medal',                       category:'Foreign / Allied', tier:8, stripes:['#5b92e5','#ffffff'] },
+  { id:'nato_meritorious',   name:'NATO Meritorious Service Medal',             category:'Foreign / Allied', tier:9, stripes:['#1a1a1a','#5b92e5','#1a1a1a'] },
   { id:'nato_yugoslavia',    name:'NATO Medal for Yugoslavia',                  category:'Foreign / Allied', tier:10, stripes:['#5b92e5','#1a1a1a','#5b92e5'] },
   { id:'nato_kosovo',        name:'NATO Medal for Kosovo',                      category:'Foreign / Allied', tier:11, stripes:['#5b92e5','#ffd700','#5b92e5'] },
   { id:'nato_eagle_assist',  name:'Article 5 NATO Medal - Eagle Assist',        category:'Foreign / Allied', tier:12, stripes:['#5b3a78','#1a1a1a','#5b3a78'] },
   { id:'nato_active_endeavour', name:'Article 5 NATO Medal - Active Endeavour', category:'Foreign / Allied', tier:13, stripes:['#5b3a78','#5b92e5','#5b3a78'] },
   { id:'nato_balkans',       name:'Non Article 5 NATO Medal - Balkans',         category:'Foreign / Allied', tier:14, stripes:['#5b92e5','#bf0a30','#5b92e5'] },
-  { id:'nato_isaf',          name:'Non Article 5 NATO Medal - ISAF',            category:'Foreign / Allied', tier:15, stripes:['#5b92e5','#1a1a1a','#ffd700'] },
+  { id:'nato_isaf',          name:'Non Article 5 NATO Medal - International Security Assistance Force', category:'Foreign / Allied', tier:15, stripes:['#5b92e5','#1a1a1a','#ffd700'] },
   { id:'rvn_campaign',       name:'Republic of Vietnam Campaign Medal',         category:'Foreign / Allied', tier:16, stripes:['#bf0a30','#2e8b57','#bf0a30'] },
-  { id:'kuwait_lib_ksa',     name:'Kuwait Liberation Medal (Saudi Arabia)',     category:'Foreign / Allied', tier:17, stripes:['#2e8b57','#ffffff','#1a1a1a','#bf0a30'] },
-  { id:'kuwait_lib_kuwait',  name:'Kuwait Liberation Medal (Kuwait)',           category:'Foreign / Allied', tier:18, stripes:['#bf0a30','#1a1a1a','#5b92e5'] },
+  { id:'kuwait_lib_ksa',     name:'Kuwait Liberation Medal (Kingdom of Saudi Arabia)', category:'Foreign / Allied', tier:17, stripes:['#2e8b57','#ffffff','#1a1a1a','#bf0a30'] },
+  { id:'kuwait_lib_kuwait',  name:'Kuwait Liberation Medal (Government of Kuwait)', category:'Foreign / Allied', tier:18, stripes:['#bf0a30','#1a1a1a','#5b92e5'] },
   { id:'rok_war_svc',        name:'Republic of Korea Korean War Service Medal', category:'Foreign / Allied', tier:19, stripes:['#002868','#bf0a30','#ffffff'] },
 ];
+
 
 // ── PILOT / AIRCREW WINGS TIERS ──────────────────────────────────
 const WINGS_BADGES = [
@@ -176,6 +201,9 @@ const WINGS_BADGES = [
   { id:'wings_command', name:'Command Pilot Wings', tier:3, desc:'The highest pilot rating, awarded for extensive flight leadership and experience.' },
 ];
 
+// ── RIBBON & WINGS SVG RENDERING ─────────────────────────────────
+// Renders an authentic-style ribbon bar (small rectangle with vertical stripes)
+// matching real USAF ribbon color patterns. Returns an <svg> string.
 function renderRibbonSVG(medalId, w, h) {
   w = w || 44; h = h || 16;
   const medal = MEDALS_CATALOG.find(m => m.id === medalId);
@@ -190,6 +218,10 @@ function renderRibbonSVG(medalId, w, h) {
   </svg>`;
 }
 
+// Renders a pilot wings badge using the authentic USAF Pilot Badge artwork
+// (Basic / Senior / Command), served as static SVG assets under
+// /assets/wings/. These are real badge vector files, not hand-drawn
+// approximations — see public/assets/wings/ for the source SVGs.
 const WINGS_BADGE_FILES = {
   1: '/assets/wings/wings_basic.svg',
   2: '/assets/wings/wings_senior.svg',
@@ -199,11 +231,12 @@ function renderWingsBadgeSVG(badgeId, size) {
   size = size || 32;
   const tier = WINGS_BADGES.find(w => w.id === badgeId)?.tier || 1;
   const src = WINGS_BADGE_FILES[tier] || WINGS_BADGE_FILES[1];
+  // Real badge artwork is ~3.1:1 aspect ratio (basic) to ~2:1 (command, taller due to wreath)
   const aspect = tier >= 3 ? 0.5 : tier === 2 ? 0.4 : 0.32;
   return `<img src="${src}" width="${size}" height="${Math.round(size*aspect)}" style="display:block;object-fit:contain" alt="${(WINGS_BADGES.find(w=>w.id===badgeId)?.name)||'Pilot Wings'}"/>`;
 }
 
-// ── PERMISSIONS ───────────────────────────────────────────────
+
 const ALL_PERMISSIONS = [
   { id: 'approve_pilots',    label: 'Approve / deny pilot applications' },
   { id: 'edit_ranks',        label: 'Edit pilot ranks & roles' },
@@ -220,85 +253,42 @@ const ALL_PERMISSIONS = [
   { id: 'award_medals',      label: 'Award medals, ribbons & pilot wings' },
 ];
 
-// ── TRAINING QUALIFICATION STATUS ────────────────────────────
-const QUAL_STATUS = [
-  { id:'iqt',  name:'Initial Qualification Training', abbr:'IQT',   color:'#9aa0b8', desc:'Currently in IQT. Under full IP supervision.' },
-  { id:'bmc',  name:'Basic Mission Capable',          abbr:'BMC',   color:'#4a90d9', desc:'Completed IQT and MQT. Qualified in some mission aspects.' },
-  { id:'cmr',  name:'Combat Mission Ready',           abbr:'CMR',   color:'#3dba6e', desc:'Fully mission qualified in all assigned areas.' },
-  { id:'ncmr', name:'Non-Combat Mission Ready',       abbr:'N-CMR', color:'#e09030', desc:'Was CMR; regressed due to time/currency.' },
-  { id:'ip',   name:'Instructor Pilot',               abbr:'IP',    color:'#c8a951', desc:'Certified to instruct student pilots.' },
-];
-
-// ── TRAINING CERTIFICATIONS CATALOG ─────────────────────────
-const TRAINING_CERTS = [
-  // B-1B
-  { id:'b1b_module100', aircraft:'B-1B', wing:'7bw',   phase:'Module 100', name:'Local Area Orientation & Aircraft Familiarization', abbr:'LAO/BMC',   color:'#c8a951', awardsQual:'bmc',  desc:'Completion of Module 100. Awards BMC status.' },
-  { id:'b1b_instruments',aircraft:'B-1B',wing:'7bw',   phase:'Phase 1',    name:'Instrument Qualification',                          abbr:'INST QUAL',  color:'#c8a951', awardsQual:null,   desc:'IFR proficiency, ILS, RNAV/VOR at KDYS.' },
-  { id:'b1b_ils_cert',  aircraft:'B-1B', wing:'7bw',   phase:'Phase 1',    name:'ILS Approach Certification',                        abbr:'ILS CERT',   color:'#c8a951', awardsQual:null,   desc:'Precision ILS at KDYS. Full APR sequence demonstrated.' },
-  { id:'b1b_rnav_cert', aircraft:'B-1B', wing:'7bw',   phase:'Phase 1',    name:'RNAV/GPS Approach Certification',                   abbr:'RNAV CERT',  color:'#c8a951', awardsQual:null,   desc:'GPS/RNAV approach. NAV HOLD, MDA level-off.' },
-  { id:'b1b_night',     aircraft:'B-1B', wing:'7bw',   phase:'Phase 2',    name:'Night Currency Qualification',                      abbr:'NIGHT QUAL', color:'#c8a951', awardsQual:null,   desc:'Night VFR/IFR departure, pattern, and landing.' },
-  { id:'b1b_ar',        aircraft:'B-1B', wing:'7bw',   phase:'Phase 2',    name:'Air Refueling Qualification',                       abbr:'AR QUAL',    color:'#c8a951', awardsQual:null,   desc:'Tanker rejoin, precontact, contact, and breakaway.' },
-  { id:'b1b_lowlevel',  aircraft:'B-1B', wing:'7bw',   phase:'Phase 2',    name:'Low-Level Navigation Qualification',                abbr:'LL QUAL',    color:'#c8a951', awardsQual:null,   desc:'Low-level route 500–1,000 ft AGL.' },
-  { id:'b1b_sat',       aircraft:'B-1B', wing:'7bw',   phase:'Phase 3',    name:'Surface Attack Certification',                      abbr:'SAT CERT',   color:'#c8a951', awardsQual:null,   desc:'Surface attack with TOT ±30 sec. Grade 3 standard.' },
-  { id:'b1b_cmr',       aircraft:'B-1B', wing:'7bw',   phase:'CMR',        name:'Combat Mission Ready — B-1B',                       abbr:'B-1B CMR',   color:'#c8a951', awardsQual:'cmr',  desc:'Full CMR on B-1B. All phases complete.' },
-  { id:'b1b_ip',        aircraft:'B-1B', wing:'7bw',   phase:'IP',         name:'Instructor Pilot — B-1B',                           abbr:'B-1B IP',    color:'#f0cc72', awardsQual:'ip',   desc:'Certified IP on B-1B. Sq/CC certified.' },
-  // B-2
-  { id:'b2_iqt',        aircraft:'B-2',  wing:'509bw', phase:'IQT',        name:'B-2 Initial Qualification Training',                abbr:'B-2 IQT',    color:'#4a90d9', awardsQual:'iqt',  desc:'Initial qualification on B-2 Spirit.' },
-  { id:'b2_cockpit',    aircraft:'B-2',  wing:'509bw', phase:'Phase 1',    name:'Cockpit Systems Certification',                     abbr:'SYS CERT',   color:'#4a90d9', awardsQual:null,   desc:'All 8 MFD sub-pages, FMS, stealth mode, doors.' },
-  { id:'b2_ils_cert',   aircraft:'B-2',  wing:'509bw', phase:'Phase 1',    name:'ILS Approach Certification — B-2',                  abbr:'ILS CERT',   color:'#4a90d9', awardsQual:null,   desc:'Precision ILS on B-2. APP capture sequence.' },
-  { id:'b2_weapons',    aircraft:'B-2',  wing:'509bw', phase:'Phase 2',    name:'Weapon Delivery Certification',                     abbr:'WPN CERT',   color:'#4a90d9', awardsQual:null,   desc:'Release criteria met, STATS READY, door sequence.' },
-  { id:'b2_bmc',        aircraft:'B-2',  wing:'509bw', phase:'BMC',        name:'Basic Mission Capable — B-2',                       abbr:'B-2 BMC',    color:'#4a90d9', awardsQual:'bmc',  desc:'BMC on B-2 Spirit. Phase 1 complete.' },
-  { id:'b2_cmr',        aircraft:'B-2',  wing:'509bw', phase:'CMR',        name:'Combat Mission Ready — B-2',                        abbr:'B-2 CMR',    color:'#7ab8ff', awardsQual:'cmr',  desc:'Full CMR on B-2 Spirit.' },
-  { id:'b2_ip',         aircraft:'B-2',  wing:'509bw', phase:'IP',         name:'Instructor Pilot — B-2',                            abbr:'B-2 IP',     color:'#f0cc72', awardsQual:'ip',   desc:'Certified IP on B-2 Spirit.' },
-  // B-52H
-  { id:'b52_p1',        aircraft:'B-52H',wing:'2bw',   phase:'Phase 1',    name:'Transition & Aircraft Familiarization',             abbr:'TRANS CERT', color:'#3dba6e', awardsQual:null,   desc:'Ground ops, engine start, taxi, takeoff, pattern, landing.' },
-  { id:'b52_inst',      aircraft:'B-52H',wing:'2bw',   phase:'Phase 2',    name:'Instrument Qualification — B-52H',                  abbr:'INST QUAL',  color:'#3dba6e', awardsQual:null,   desc:'IFR departure, holding, ILS to DA, missed approach.' },
-  { id:'b52_ar',        aircraft:'B-52H',wing:'2bw',   phase:'Phase 2',    name:'Air Refueling Qualification — B-52H',               abbr:'AR QUAL',    color:'#3dba6e', awardsQual:null,   desc:'Rejoin 270–290 KIAS, contact, CG monitoring, breakaway.' },
-  { id:'b52_ll',        aircraft:'B-52H',wing:'2bw',   phase:'Phase 3',    name:'Low-Level Navigation Qualification — B-52H',        abbr:'LL QUAL',    color:'#3dba6e', awardsQual:null,   desc:'Low-level 500–1,000 ft AGL / 300–360 KCAS.' },
-  { id:'b52_tot',       aircraft:'B-52H',wing:'2bw',   phase:'Phase 3',    name:'Surface Attack / TOT Certification — B-52H',        abbr:'SAT/TOT',    color:'#3dba6e', awardsQual:null,   desc:'TOT ±30 sec, safe escape maneuver. Grade 3 standard.' },
-  { id:'b52_night',     aircraft:'B-52H',wing:'2bw',   phase:'Phase 3',    name:'Night Currency Qualification — B-52H',              abbr:'NIGHT QUAL', color:'#3dba6e', awardsQual:null,   desc:'Night lighting, departure, approach, and landing.' },
-  { id:'b52_bmc',       aircraft:'B-52H',wing:'2bw',   phase:'BMC',        name:'Basic Mission Capable — B-52H',                     abbr:'B-52 BMC',   color:'#3dba6e', awardsQual:'bmc',  desc:'BMC on B-52H. Phase 1 and 2 complete.' },
-  { id:'b52_cmr',       aircraft:'B-52H',wing:'2bw',   phase:'CMR',        name:'Combat Mission Ready — B-52H',                      abbr:'B-52 CMR',   color:'#6ddea0', awardsQual:'cmr',  desc:'Full CMR on B-52H. All three phases complete.' },
-  { id:'b52_ip',        aircraft:'B-52H',wing:'2bw',   phase:'IP',         name:'Instructor Pilot — B-52H',                          abbr:'B-52 IP',    color:'#f0cc72', awardsQual:'ip',   desc:'Certified IP on B-52H Stratofortress.' },
-];
-
-function getCertsForAircraft(aircraft) { return TRAINING_CERTS.filter(c => c.aircraft === aircraft); }
-function getCertsForWing(wingId) { return TRAINING_CERTS.filter(c => c.wing === wingId); }
-function renderCertBadge(certId) {
-  const cert = TRAINING_CERTS.find(c => c.id === certId);
-  if (!cert) return '';
-  return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:${cert.color}22;color:${cert.color};border:1px solid ${cert.color}55;white-space:nowrap">${cert.abbr}</span>`;
-}
-function renderQualBadge(qualId) {
-  const qual = QUAL_STATUS.find(q => q.id === qualId);
-  if (!qual) return '';
-  return `<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:800;background:${qual.color}22;color:${qual.color};border:1px solid ${qual.color}55">${qual.abbr}</span>`;
-}
-
-// ── ROLES ─────────────────────────────────────────────────────
+// ── ROLES — defaults used until Firestore overrides are loaded ─────────
+// isMasterAdmin / isHidden are special: master_admin grants ALL permissions
+// silently without showing "Master Admin" anywhere in the UI.
 const DEFAULT_ROLES = {
-  master_admin:   { name: 'Wing Commander',     level: 99, color: '#c8a951', isMasterAdmin: true, permissions: [] },
-  wing_commander: { name: 'Wing Commander',     level: 10, color: '#c8a951', permissions: ['edit_ranks','edit_own_wing','manage_training','award_medals'] },
-  sq_commander:   { name: 'Squadron Commander', level: 8,  color: '#f0cc72', permissions: ['edit_own_wing'] },
-  instructor:     { name: 'Instructor',         level: 5,  color: '#4a90d9', permissions: ['manage_training','award_medals'] },
-  pilot:          { name: 'Pilot',              level: 2,  color: '#3dba6e', permissions: [] },
-  trainee:        { name: 'Trainee',            level: 1,  color: '#9aa0b8', permissions: [] },
-  pending:        { name: 'Pending Approval',   level: 0,  color: '#e09030', permissions: [] },
+  master_admin:   { name: 'Wing Commander', level: 99, color: '#c8a951', isMasterAdmin: true, permissions: [] },
+  wing_commander: { name: 'Wing Commander',      level: 10, color: '#c8a951', permissions: ['edit_ranks','edit_own_wing','manage_training'] },
+  sq_commander:   { name: 'Squadron Commander',  level: 8,  color: '#f0cc72', permissions: ['edit_own_wing'] },
+  instructor:     { name: 'Instructor',          level: 5,  color: '#4a90d9', permissions: ['manage_training'] },
+  pilot:          { name: 'Pilot',               level: 2,  color: '#3dba6e', permissions: [] },
+  trainee:        { name: 'Trainee',             level: 1,  color: '#9aa0b8', permissions: [] },
+  pending:        { name: 'Pending Approval',    level: 0,  color: '#e09030', permissions: [] },
 };
 
+// ROLES starts as the defaults; gets overwritten once Firestore loads (see below)
 let ROLES = JSON.parse(JSON.stringify(DEFAULT_ROLES));
 
+// Load custom roles from Firestore — merges with/overrides defaults
 async function loadRolesFromFirestore() {
   try {
     const snap = await db.collection('settings').doc('roles').get();
     if (snap.exists && snap.data().roles) {
       const customRoles = snap.data().roles;
       ROLES = { ...DEFAULT_ROLES, ...customRoles };
-      ROLES.master_admin = { ...(ROLES.master_admin || DEFAULT_ROLES.master_admin), isMasterAdmin: true };
+      // master_admin always stays hidden + has every permission, regardless of edits
+      ROLES.master_admin = {
+        ...(ROLES.master_admin || DEFAULT_ROLES.master_admin),
+        isMasterAdmin: true,
+      };
     }
   } catch(e) { console.warn('Could not load custom roles, using defaults', e); }
 }
 
+// ── MULTI-ROLE SUPPORT ──────────────────────────────────────────
+// Pilots can hold multiple roles (e.g. Wing Commander + Instructor).
+// pilot.roles is an array of role IDs. Falls back to legacy pilot.role
+// (single string) for older accounts that haven't been migrated yet.
 function getPilotRoleIds(pilot) {
   if (!pilot) return ['pending'];
   if (Array.isArray(pilot.roles) && pilot.roles.length) return pilot.roles;
@@ -306,13 +296,14 @@ function getPilotRoleIds(pilot) {
   return ['pending'];
 }
 
+// Check if a pilot has a specific permission across ANY of their roles
 function hasPermission(pilot, permId) {
   if (!pilot) return false;
   const roleIds = getPilotRoleIds(pilot);
   for (const rid of roleIds) {
     const role = ROLES[rid];
     if (!role) continue;
-    if (role.isMasterAdmin) return true;
+    if (role.isMasterAdmin) return true; // master admin silently has everything
     if ((role.permissions || []).includes(permId)) return true;
   }
   return false;
@@ -322,12 +313,19 @@ function isMasterAdminPilot(pilot) {
   return getPilotRoleIds(pilot).some(rid => ROLES[rid]?.isMasterAdmin);
 }
 
+// Get the SINGLE highest-authority role to display as primary (hides master_admin identity)
 function getDisplayRole(pilot) {
   if (!pilot) return ROLES.pending;
   const roleIds = getPilotRoleIds(pilot);
+  // If they hold the hidden master_admin role, show their chosen public title instead
   if (roleIds.some(rid => ROLES[rid]?.isMasterAdmin)) {
-    return { name: pilot.publicTitle || 'Wing Commander', color: pilot.publicColor || '#c8a951', level: 99 };
+    return {
+      name:  pilot.publicTitle || 'Wing Commander',
+      color: pilot.publicColor || '#c8a951',
+      level: 99,
+    };
   }
+  // Otherwise show whichever held role has the highest authority level
   let best = null;
   for (const rid of roleIds) {
     const role = ROLES[rid];
@@ -337,6 +335,7 @@ function getDisplayRole(pilot) {
   return best || ROLES.pending;
 }
 
+// Get ALL display roles for a pilot (for showing multiple badges, e.g. "Wing Commander" + "Instructor")
 function getAllDisplayRoles(pilot) {
   if (!pilot) return [ROLES.pending];
   const roleIds = getPilotRoleIds(pilot);
@@ -354,17 +353,18 @@ function getAllDisplayRoles(pilot) {
 }
 
 // ── AUTH STATE WATCHER ───────────────────────────────────────
-let currentUser  = null;
-let currentPilot = null;
+let currentUser   = null;
+let currentPilot  = null;
 
 auth.onAuthStateChanged(async (user) => {
-  await loadRolesFromFirestore();
+  await loadRolesFromFirestore(); // ensure custom roles/permissions are loaded first
   if (user) {
     currentUser = user;
     try {
       const doc = await db.collection('pilots').doc(user.uid).get();
       if (doc.exists) {
         currentPilot = { uid: user.uid, ...doc.data() };
+        // Redirect pending users away from protected pages
         if (currentPilot.status === 'pending' && !isPendingPage()) {
           window.location.href = '/pages/pending.html';
           return;
@@ -390,6 +390,7 @@ function isPendingPage() {
          window.location.pathname.includes('register');
 }
 
+// Override in each page
 function onAuthReady(user, pilot) {}
 
 // ── HELPERS ──────────────────────────────────────────────────
@@ -407,28 +408,12 @@ function requireMasterAdmin() {
   if (!isMasterAdminPilot(currentPilot)) window.location.href = '/index.html';
 }
 
-// Guard functions — call INSIDE onAuthReady() only
-function guardAuth(user, redirectTo) {
-  redirectTo = redirectTo || '/pages/login.html';
-  if (!user) { window.location.href = redirectTo; return false; }
-  return true;
+function getRankName(rankId) {
+  return RANKS.find(r => r.id === rankId)?.name || rankId;
 }
-function guardRole(pilot, minLevel, redirectTo) {
-  redirectTo = redirectTo || '/index.html';
-  if (!pilot) { window.location.href = redirectTo; return false; }
-  const roleIds = getPilotRoleIds(pilot);
-  const maxLevel = Math.max(0, ...roleIds.map(rid => ROLES[rid]?.level || 0));
-  if (maxLevel < minLevel) { window.location.href = redirectTo; return false; }
-  return true;
+function getRankAbbr(rankId) {
+  return RANKS.find(r => r.id === rankId)?.abbr || rankId;
 }
-function guardPermission(pilot, permId, redirectTo) {
-  redirectTo = redirectTo || '/index.html';
-  if (!hasPermission(pilot, permId)) { window.location.href = redirectTo; return false; }
-  return true;
-}
-
-function getRankName(rankId) { return RANKS.find(r => r.id === rankId)?.name || rankId; }
-function getRankAbbr(rankId) { return RANKS.find(r => r.id === rankId)?.abbr || rankId; }
 function getWingName(wingId) { return WINGS[wingId]?.name || wingId; }
 function getSqName(wingId, sqId) { return WINGS[wingId]?.squadrons[sqId]?.name || sqId; }
 
@@ -472,211 +457,4 @@ function showLoading(msg='Loading...') {
 function hideLoading() {
   const o = document.getElementById('loading-overlay');
   if (o) o.remove();
-}
-
-function showAuthLoading() {
-  const el = document.createElement('div');
-  el.id = 'auth-loading';
-  el.style.cssText = 'position:fixed;inset:0;background:var(--bg,#080a0f);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:9999';
-  el.innerHTML = '<div style="width:36px;height:36px;border:3px solid #1e2440;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite"></div><div style="color:#404860;font-size:13px;font-family:sans-serif">Authenticating\u2026</div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
-  document.body.appendChild(el);
-}
-function hideAuthLoading() {
-  const el = document.getElementById('auth-loading');
-  if (el) el.remove();
-}
-// ═══════════════════════════════════════════════════════════════
-//  VTAC GSC — AUDIT LOG + DISCORD WEBHOOK SYSTEM
-//  Paste this entire block at the bottom of firebase-config.js
-//
-//  HOW IT WORKS:
-//  1. Every admin/flight action calls logAudit() → writes to Firestore
-//  2. logAudit() also fires any matching Discord webhooks from Firestore
-//  3. Webhooks are managed in admin panel → never hardcoded
-//
-//  FIRESTORE COLLECTIONS:
-//  auditLog/{docId}       — every action ever taken on the site
-//  settings/webhooks      — webhook config managed from admin panel
-// ═══════════════════════════════════════════════════════════════
-
-// ── AUDIT EVENT TYPES ─────────────────────────────────────────
-// Use these constants everywhere so webhook routing is consistent
-const AUDIT = {
-  // Flights
-  FLIGHT_LOGGED:    'flight_logged',
-  FLIGHT_DELETED:   'flight_deleted',
-  FLIGHT_PLAN_SAVED:'flight_plan_saved',
-  // Pilots
-  PILOT_APPROVED:   'pilot_approved',
-  PILOT_DENIED:     'pilot_denied',
-  PILOT_RANK_CHANGED:'pilot_rank_changed',
-  PILOT_ROLE_CHANGED:'pilot_role_changed',
-  PILOT_DELETED:    'pilot_deleted',
-  // Training
-  CERT_AWARDED:     'cert_awarded',
-  CERT_REVOKED:     'cert_revoked',
-  QUAL_UPDATED:     'qual_updated',
-  // Site
-  NEWS_POSTED:      'news_posted',
-  NEWS_DELETED:     'news_deleted',
-  TRAINING_EDITED:  'training_edited',
-  ROLE_EDITED:      'role_edited',
-  WEBHOOK_ADDED:    'webhook_added',
-  WEBHOOK_DELETED:  'webhook_deleted',
-  // Wings
-  WING_EDITED:      'wing_edited',
-};
-
-// Which audit events map to which webhook "channel" key
-// Admin panel lets you set a URL per channel key
-const WEBHOOK_CHANNELS = {
-  // Wing flight channels — one per wing
-  flights_7bw:     { label: '7th BW Flight Log',         events: [AUDIT.FLIGHT_LOGGED, AUDIT.FLIGHT_DELETED] },
-  flights_509bw:   { label: '509th BW Flight Log',        events: [AUDIT.FLIGHT_LOGGED, AUDIT.FLIGHT_DELETED] },
-  flights_2bw:     { label: '2nd BW Flight Log',          events: [AUDIT.FLIGHT_LOGGED, AUDIT.FLIGHT_DELETED] },
-  // Flight plans
-  flight_plans:    { label: 'Flight Plans',               events: [AUDIT.FLIGHT_PLAN_SAVED] },
-  // Admin channels
-  admin_pilots:    { label: 'Admin — Pilot Actions',      events: [AUDIT.PILOT_APPROVED, AUDIT.PILOT_DENIED, AUDIT.PILOT_RANK_CHANGED, AUDIT.PILOT_ROLE_CHANGED, AUDIT.PILOT_DELETED] },
-  admin_training:  { label: 'Admin — Training & Certs',   events: [AUDIT.CERT_AWARDED, AUDIT.CERT_REVOKED, AUDIT.QUAL_UPDATED, AUDIT.TRAINING_EDITED] },
-  admin_site:      { label: 'Admin — Site Changes',       events: [AUDIT.NEWS_POSTED, AUDIT.NEWS_DELETED, AUDIT.ROLE_EDITED, AUDIT.WING_EDITED, AUDIT.WEBHOOK_ADDED, AUDIT.WEBHOOK_DELETED] },
-  // Catch-all — receives everything
-  admin_all:       { label: 'Admin — All Events (audit)', events: Object.values(AUDIT) },
-};
-
-// ── WEBHOOK CONFIG CACHE ──────────────────────────────────────
-let _webhookConfig = null; // cached from Firestore
-
-async function getWebhookConfig() {
-  if (_webhookConfig) return _webhookConfig;
-  try {
-    const snap = await db.collection('settings').doc('webhooks').get();
-    _webhookConfig = snap.exists ? (snap.data().channels || {}) : {};
-  } catch(e) { _webhookConfig = {}; }
-  return _webhookConfig;
-}
-
-function clearWebhookCache() { _webhookConfig = null; }
-
-// ── CORE AUDIT LOG FUNCTION ───────────────────────────────────
-// Call this everywhere an action is taken.
-// actor: { uid, callsign } — the person doing the action
-// eventType: one of the AUDIT.* constants
-// details: plain object with any relevant data
-async function logAudit(eventType, details = {}, actor = null) {
-  // Resolve actor from currentPilot if not provided
-  const resolvedActor = actor || (currentPilot ? {
-    uid:      currentPilot.uid,
-    callsign: currentPilot.callsign || currentPilot.displayName || 'Unknown',
-    role:     getDisplayRole(currentPilot)?.name || 'Unknown',
-  } : { uid: 'system', callsign: 'System', role: 'System' });
-
-  const entry = {
-    eventType,
-    actor:     resolvedActor,
-    details,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-    page:      window.location.pathname,
-  };
-
-  // Write to Firestore audit log (fire-and-forget — never block the UI)
-  db.collection('auditLog').add(entry).catch(e => console.warn('Audit log write failed:', e));
-
-  // Fire Discord webhooks
-  fireWebhooks(eventType, entry).catch(() => {});
-}
-
-// ── DISCORD WEBHOOK DISPATCHER ────────────────────────────────
-async function fireWebhooks(eventType, entry) {
-  const config = await getWebhookConfig();
-  if (!config || !Object.keys(config).length) return;
-
-  // Find all channels that should receive this event type
-  const matchingChannels = Object.entries(WEBHOOK_CHANNELS)
-    .filter(([key, ch]) => ch.events.includes(eventType) && config[key]?.url)
-    .map(([key]) => config[key].url);
-
-  if (!matchingChannels.length) return;
-
-  const embed = buildDiscordEmbed(eventType, entry);
-  const payload = JSON.stringify({ embeds: [embed] });
-
-  // POST to all matching webhooks in parallel
-  await Promise.allSettled(
-    matchingChannels.map(url =>
-      fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload })
-    )
-  );
-}
-
-// ── DISCORD EMBED BUILDER ─────────────────────────────────────
-function buildDiscordEmbed(eventType, entry) {
-  const actor    = entry.actor || {};
-  const details  = entry.details || {};
-  const ts       = new Date().toISOString();
-
-  // Color per event category
-  const colors = {
-    flight_logged:      0x3dba6e, flight_deleted:    0xd04040,
-    flight_plan_saved:  0x4a90d9,
-    pilot_approved:     0x3dba6e, pilot_denied:      0xd04040,
-    pilot_rank_changed: 0xc8a951, pilot_role_changed:0xc8a951, pilot_deleted: 0xd04040,
-    cert_awarded:       0xc8a951, cert_revoked:      0xe09030, qual_updated:  0x4a90d9,
-    news_posted:        0x4a90d9, news_deleted:      0xd04040,
-    training_edited:    0x9aa0b8, role_edited:       0xe09030,
-    wing_edited:        0x9aa0b8, webhook_added:     0x3dba6e, webhook_deleted: 0xd04040,
-    admin_all:          0xc8a951,
-  };
-
-  // Human-readable titles
-  const titles = {
-    flight_logged:      '✈ Flight Logged',
-    flight_deleted:     '🗑 Flight Deleted',
-    flight_plan_saved:  '📋 Flight Plan Saved',
-    pilot_approved:     '✅ Pilot Approved',
-    pilot_denied:       '❌ Pilot Application Denied',
-    pilot_rank_changed: '🎖 Rank Changed',
-    pilot_role_changed: '🔑 Role Changed',
-    pilot_deleted:      '🗑 Pilot Removed',
-    cert_awarded:       '🏅 Certification Awarded',
-    cert_revoked:       '⚠️ Certification Revoked',
-    qual_updated:       '📊 Qualification Status Updated',
-    news_posted:        '📰 News Posted',
-    news_deleted:       '🗑 News Deleted',
-    training_edited:    '📚 Training Module Edited',
-    role_edited:        '🔑 Role/Permissions Edited',
-    wing_edited:        '🦅 Wing Data Edited',
-    webhook_added:      '🔗 Webhook Added',
-    webhook_deleted:    '🔗 Webhook Deleted',
-  };
-
-  // Build fields from details dynamically
-  const fields = [];
-
-  // Actor always shown
-  fields.push({ name: 'By', value: `**${actor.callsign}** (${actor.role || ''})`, inline: true });
-
-  // Event-specific fields
-  if (details.pilotCallsign) fields.push({ name: 'Pilot', value: details.pilotCallsign, inline: true });
-  if (details.departure && details.arrival) fields.push({ name: 'Route', value: `\`${details.departure} → ${details.arrival}\``, inline: false });
-  if (details.aircraft)   fields.push({ name: 'Aircraft',  value: details.aircraft,   inline: true });
-  if (details.durationMins) fields.push({ name: 'Duration', value: `${Math.floor(details.durationMins/60)}h ${details.durationMins%60}m`, inline: true });
-  if (details.wing)       fields.push({ name: 'Wing',      value: getWingName(details.wing) || details.wing, inline: true });
-  if (details.fromRank)   fields.push({ name: 'From Rank', value: details.fromRank, inline: true });
-  if (details.toRank)     fields.push({ name: 'To Rank',   value: details.toRank,   inline: true });
-  if (details.certName)   fields.push({ name: 'Cert',      value: details.certName, inline: true });
-  if (details.qualStatus) fields.push({ name: 'Qual Status', value: details.qualStatus, inline: true });
-  if (details.newsTitle)  fields.push({ name: 'Title',     value: details.newsTitle, inline: false });
-  if (details.distance)   fields.push({ name: 'Distance',  value: details.distance, inline: true });
-  if (details.estTime)    fields.push({ name: 'Est. Time', value: details.estTime,  inline: true });
-  if (details.notes)      fields.push({ name: 'Notes',     value: details.notes.slice(0,200), inline: false });
-  if (details.channelName) fields.push({ name: 'Channel',  value: details.channelName, inline: true });
-
-  return {
-    color:     colors[eventType] || 0xc8a951,
-    title:     titles[eventType] || eventType,
-    fields,
-    footer:    { text: 'VTAC Global Strike Command' },
-    timestamp: ts,
-  };
 }
