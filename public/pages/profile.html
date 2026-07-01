@@ -472,50 +472,127 @@ async function saveProfile() {
 }
 
 // ── AVATAR UPLOAD ─────────────────────────────────────────────
+function resizeImageFile(file, maxW, maxH, quality) {
+  quality = quality || 0.90;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxW || h > maxH) {
+        const ratio = Math.min(maxW/w, maxH/h);
+        w = Math.round(w*ratio); h = Math.round(h*ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Resize failed')), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Load failed')); };
+    img.src = url;
+  });
+}
+function resizeImageFilePNG(file, maxW, maxH) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxW || h > maxH) {
+        const ratio = Math.min(maxW/w, maxH/h);
+        w = Math.round(w*ratio); h = Math.round(h*ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('PNG resize failed')), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Load failed')); };
+    img.src = url;
+  });
+}
+// ── AVATAR UPLOAD — auto-resize to 256x256 JPEG ──────────────
 async function uploadAvatar(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 2*1024*1024) { toast('Image must be under 2MB','error'); return; }
-  toast('Uploading avatar...','info');
+  if (!file.type.startsWith('image/')) { toast('Select an image file','error'); return; }
+  const prev = URL.createObjectURL(file);
+  document.getElementById('profile-avatar').src = prev;
+  toast('Resizing & uploading avatar\u2026');
   try {
-    const ref  = storage.ref(`avatars/${currentUser.uid}`);
-    await ref.put(file);
-    const url  = await ref.getDownloadURL();
+    const blob = await resizeImageFile(file, 256, 256, 0.90);
+    const origKB = Math.round(file.size/1024), newKB = Math.round(blob.size/1024);
+    const ref = storage.ref('avatars/' + currentUser.uid + '.jpg');
+    await ref.put(blob, { contentType: 'image/jpeg' });
+    const url = await ref.getDownloadURL();
+    URL.revokeObjectURL(prev);
     await db.collection('pilots').doc(currentUser.uid).update({ avatarUrl: url });
     document.getElementById('profile-avatar').src = url;
-    toast('Avatar updated!');
-  } catch(e) { toast('Upload failed: '+e.message,'error'); }
+    const nav = document.getElementById('nav-avatar'); if (nav) nav.src = url;
+    toast('Avatar updated! (' + origKB + 'KB \u2192 ' + newKB + 'KB)');
+  } catch(e) { URL.revokeObjectURL(prev); toast('Upload failed: '+e.message,'error'); }
 }
-
-// ── PILOT WINGS ────────────────────────────────────────────────
+// ── WINGS UPLOAD — auto-resize to 400x200 PNG, transparent ───
 async function uploadWings(input) {
   const file = input.files[0];
   if (!file) return;
-  toast('Uploading pilot wings...','info');
+  if (!file.type.startsWith('image/')) { toast('Select an image file','error'); return; }
+  const prev = URL.createObjectURL(file);
+  document.getElementById('wings-preview').src = prev;
+  document.getElementById('wings-preview').style.display = 'block';
+  document.getElementById('wings-placeholder').style.display = 'none';
+  toast('Resizing & uploading wings\u2026');
   try {
-    const ref = storage.ref(`wings/${currentUser.uid}`);
-    await ref.put(file);
+    const blob = await resizeImageFilePNG(file, 400, 200);
+    const origKB = Math.round(file.size/1024), newKB = Math.round(blob.size/1024);
+    const ref = storage.ref('wings/' + currentUser.uid + '.png');
+    await ref.put(blob, { contentType: 'image/png' });
     const url = await ref.getDownloadURL();
+    URL.revokeObjectURL(prev);
     await db.collection('pilots').doc(currentUser.uid).update({ pilotWingsUrl: url });
     document.getElementById('wings-preview').src = url;
     document.getElementById('wings-preview').style.display = 'block';
     document.getElementById('wings-placeholder').style.display = 'none';
     document.getElementById('remove-wings-btn').style.display = 'block';
-    document.getElementById('disp-wings').src = url;
-    document.getElementById('disp-wings').style.display = 'block';
-    document.getElementById('wings-status').textContent = 'Wings uploaded successfully';
-    toast('Pilot wings updated!');
-  } catch(e) { toast('Upload failed: '+e.message,'error'); }
+    const dw = document.getElementById('disp-wings'); if (dw) { dw.src=url; dw.style.display='block'; }
+    document.getElementById('wings-status').textContent = 'Uploaded (' + origKB + 'KB \u2192 ' + newKB + 'KB)';
+    toast('Wings updated! (' + origKB + 'KB \u2192 ' + newKB + 'KB)');
+  } catch(e) { URL.revokeObjectURL(prev); toast('Upload failed: '+e.message,'error'); }
 }
-async function removeWings() {
-  if (!confirm('Remove your pilot wings image?')) return;
-  await db.collection('pilots').doc(currentUser.uid).update({ pilotWingsUrl: null });
-  document.getElementById('wings-preview').style.display = 'none';
-  document.getElementById('wings-placeholder').style.display = 'block';
-  document.getElementById('remove-wings-btn').style.display = 'none';
-  document.getElementById('disp-wings').style.display = 'none';
-  toast('Wings removed');
-}
+// ── DRAG & DROP ───────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const aw = document.querySelector('.avatar-wrap');
+  if (aw) {
+    aw.title = 'Drag & drop an image here, or click the camera button';
+    aw.addEventListener('dragover', e => { e.preventDefault(); aw.style.opacity='.7'; });
+    aw.addEventListener('dragleave', () => aw.style.opacity='1');
+    aw.addEventListener('drop', e => {
+      e.preventDefault(); aw.style.opacity='1';
+      const f = e.dataTransfer.files[0];
+      if (f && f.type.startsWith('image/')) {
+        const dt = new DataTransfer(); dt.items.add(f);
+        const el = document.getElementById('avatar-file'); el.files=dt.files; uploadAvatar(el);
+      }
+    });
+  }
+  const wd = document.getElementById('wings-drop');
+  if (wd) {
+    wd.addEventListener('dragover', e => { e.preventDefault(); wd.style.borderColor='var(--gold)'; wd.style.background='rgba(200,169,81,.05)'; });
+    wd.addEventListener('dragleave', () => { wd.style.borderColor=''; wd.style.background=''; });
+    wd.addEventListener('drop', e => {
+      e.preventDefault(); wd.style.borderColor=''; wd.style.background='';
+      const f = e.dataTransfer.files[0];
+      if (f && f.type.startsWith('image/')) {
+        const dt = new DataTransfer(); dt.items.add(f);
+        const el = document.getElementById('wings-file'); el.files=dt.files; uploadWings(el);
+      }
+    });
+  }
+});
 
 // ── APPEARANCE ────────────────────────────────────────────────
 function pickAccent(hex, el) {
