@@ -52,7 +52,6 @@
 .detail-lbl { font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px; }
 .detail-val { font-size:13px;color:var(--text); }
 
-/* customize panel */
 .color-row { display:flex;gap:8px;flex-wrap:wrap;margin:8px 0; }
 .color-swatch { width:34px;height:34px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all .12s; }
 .color-swatch:hover { transform:scale(1.12); }
@@ -108,7 +107,6 @@
 
   <div class="admin-main">
 
-    <!-- ── DASHBOARD ── -->
     <div id="sec-dashboard" class="sec active">
       <div class="sec-title">Master Admin Dashboard</div>
       <div class="sec-sub">Full command overview — VTAC Global Strike Command</div>
@@ -130,14 +128,12 @@
       </div>
     </div>
 
-    <!-- ── APPLICATIONS ── -->
     <div id="sec-applications" class="sec">
       <div class="sec-title">Pilot Access Requests</div>
       <div class="sec-sub">Review and approve or deny incoming pilot applications. Approved pilots are assigned a wing and squadron.</div>
       <div id="applications-list"><div class="empty-state"><div class="icon">📋</div><p>No pending applications</p></div></div>
     </div>
 
-    <!-- ── ALL PILOTS ── -->
     <div id="sec-pilots" class="sec">
       <div class="sec-title">All Pilots</div>
       <div class="sec-sub">Manage all personnel across all wings.</div>
@@ -160,7 +156,6 @@
       <div id="pilots-list"><div class="empty-state"><div class="icon">👨‍✈️</div><p>Loading pilots...</p></div></div>
     </div>
 
-    <!-- ── ROSTERS ── -->
     <div id="sec-rosters" class="sec">
       <div class="sec-title">Squadron Rosters</div>
       <div class="sec-sub">View and manage rosters for all wings and squadrons.</div>
@@ -172,7 +167,6 @@
       <div id="roster-content"></div>
     </div>
 
-    <!-- ── RANKS ── -->
     <div id="sec-ranks" class="sec">
       <div class="sec-title">Ranks & Roles</div>
       <div class="sec-sub">Promote, demote, or change roles for any pilot. Search for a pilot to manage their rank.</div>
@@ -182,21 +176,18 @@
       <div id="rank-results"></div>
     </div>
 
-    <!-- ── FLIGHTS ── -->
     <div id="sec-flights" class="sec">
       <div class="sec-title">Flight Logs</div>
       <div class="sec-sub">All flight logs across every pilot and wing.</div>
       <div id="all-flights-list"><div class="empty-state"><div class="icon">✈️</div><p>No flights logged yet</p></div></div>
     </div>
 
-    <!-- ── TRAINING ── -->
     <div id="sec-training" class="sec">
       <div class="sec-title">Training Records</div>
       <div class="sec-sub">View training progress and certifications for all pilots.</div>
       <div id="training-list"><div class="empty-state"><div class="icon">🎓</div><p>No training records yet</p></div></div>
     </div>
 
-    <!-- ── MEDALS & AWARDS ── -->
     <div id="sec-medals" class="sec">
       <div class="sec-title">Medals &amp; Awards</div>
       <div class="sec-sub">Award USAF decorations and pilot wings to any pilot. Awards appear on their profile and the GSC roster.</div>
@@ -233,7 +224,6 @@
       </div>
     </div>
 
-    <!-- ── ROLES & PERMISSIONS ── -->
     <div id="sec-roles" class="sec">
       <div class="sec-title">Roles &amp; Permissions</div>
       <div class="sec-sub">Create custom roles, edit existing ones, and control exactly what each role can do — no coding needed.</div>
@@ -279,7 +269,6 @@
       </div>
     </div>
 
-    <!-- ── CUSTOMIZE ── -->
     <div id="sec-customize" class="sec">
       <div class="sec-title">Customize Site</div>
       <div class="sec-sub">Change colors, squadron names, callsigns, and site text. All changes save to Firebase and appear site-wide instantly.</div>
@@ -336,7 +325,6 @@
       </div>
     </div>
 
-    <!-- ── SLIDESHOW ── -->
     <div id="sec-slideshow" class="sec">
       <div class="sec-title">Homepage Slideshow</div>
       <div class="sec-sub">Add and remove images shown in the homepage slideshow. Paste any image URL.</div>
@@ -359,7 +347,6 @@
       <div id="slide-list"><div class="empty-state"><div class="icon">🖼</div><p>No slides yet</p></div></div>
     </div>
 
-    <!-- ── NEWS ── -->
     <div id="sec-news" class="sec">
       <div class="sec-title">News & Announcements</div>
       <div class="sec-sub">Post news items that appear on the homepage.</div>
@@ -374,17 +361,44 @@
       <div id="news-list-admin"><div class="empty-state"><div class="icon">📢</div><p>No announcements yet</p></div></div>
     </div>
 
-    <!-- ── WINGS ── -->
     <div id="sec-wings" class="sec">
       <div class="sec-title">Wing Settings</div>
       <div class="sec-sub">Configure wing commanders, colors, base info, and aircraft for each wing.</div>
       <div id="wing-settings-content"></div>
     </div>
 
+    <div id="sec-webhooks" class="sec">
+      <div class="sec-title">Discord Webhooks</div>
+      <div class="sec-sub">Configure a Discord webhook URL per event channel. Each fires to a different Discord channel of your choice.</div>
+      <div class="alert alert-info" style="margin-bottom:18px;font-size:12px"><strong>How to create a webhook:</strong> Discord → Channel Settings → Integrations → Webhooks → New Webhook → Copy URL → paste below.</div>
+      <div id="admin-webhook-cards"></div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="adminSaveWebhooks()">💾 Save All Webhooks</button>
+    </div>
+
+    <div id="sec-auditlog" class="sec">
+      <div class="sec-title">Site Audit Log</div>
+      <div class="sec-sub">Every action taken on the site — approvals, rank changes, cert awards, deletions. Timestamped and attributed.</div>
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+        <select id="admin-audit-filter" onchange="adminLoadAudit()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--sans)">
+          <option value="">All events</option>
+          <option value="pilot_approved">Pilot Approved</option>
+          <option value="pilot_denied">Pilot Denied</option>
+          <option value="pilot_rank_changed">Rank Changed</option>
+          <option value="flight_logged">Flight Logged</option>
+          <option value="flight_deleted">Flight Deleted</option>
+          <option value="cert_awarded">Cert Awarded</option>
+          <option value="news_posted">News Posted</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="adminLoadAudit()">🔄 Refresh</button>
+        <span id="admin-audit-count" style="font-size:12px;color:var(--text2)"></span>
+      </div>
+      <div class="card"><div class="card-body" style="padding:0"><div id="admin-audit-list" style="padding:16px"><div class="empty-state"><p>Loading…</p></div></div></div></div>
+      <button class="btn btn-outline btn-sm" id="admin-audit-more" style="margin-top:10px;display:none" onclick="adminLoadMoreAudit()">Load more</button>
+    </div>
+
   </div>
 </div>
 
-<!-- APPROVE MODAL -->
 <div class="modal-overlay" id="approve-modal">
   <div class="modal">
     <div class="modal-title">Approve Pilot</div>
@@ -425,7 +439,6 @@
   </div>
 </div>
 
-<!-- DENY MODAL -->
 <div class="modal-overlay" id="deny-modal">
   <div class="modal">
     <div class="modal-title">Deny Application</div>
@@ -441,7 +454,6 @@
   </div>
 </div>
 
-<!-- EDIT ROLE MODAL -->
 <div class="modal-overlay" id="role-edit-modal">
   <div class="modal" style="max-width:520px">
     <div class="modal-title">Edit Role</div>
@@ -464,7 +476,6 @@
   </div>
 </div>
 
-<!-- EDIT RANK MODAL -->
 <div class="modal-overlay" id="rank-modal">
   <div class="modal">
     <div class="modal-title">Edit Pilot Rank & Role</div>
@@ -472,7 +483,6 @@
     <div class="form-group">
       <label>Rank</label>
       <select id="rank-modal-rank">
-        <!-- populated dynamically -->
       </select>
     </div>
     <div class="form-group">
@@ -511,30 +521,24 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-<script src="/js/nav.js"></script>
-<script src="/js/nav.js"></script>
 <script src="/js/firebase-config.js?v=2"></script>
+<script src="/js/nav.js"></script>
 <script>
-// ── SAFETY NET: guarantees the medal/wings SVG renderers exist even if
-// firebase-config.js failed to load, was cached stale, or is missing the
-// functions in a given deploy. Prevents a silent ReferenceError from
-// blanking the whole Medals & Awards panel.
 if (typeof renderRibbonSVG !== 'function') {
-  console.error('[VTAC] renderRibbonSVG missing from firebase-config.js — using fallback. Check /js/firebase-config.js deployed correctly.');
+  console.error('[VTAC] renderRibbonSVG missing from firebase-config.js — using fallback.');
   window.renderRibbonSVG = function(medalId, w, h) {
     w = w || 44; h = h || 16;
-    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:1px;background:#888"></svg>`;
+    return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:1px;background:#888"></svg>';
   };
 }
 if (typeof renderWingsBadgeSVG !== 'function') {
-  console.error('[VTAC] renderWingsBadgeSVG missing from firebase-config.js — using fallback. Check /js/firebase-config.js deployed correctly.');
+  console.error('[VTAC] renderWingsBadgeSVG missing from firebase-config.js — using fallback.');
   window.renderWingsBadgeSVG = function(badgeId, size) {
     size = size || 32;
-    return `<svg width="${size}" height="${size*0.5}" viewBox="0 0 64 32" xmlns="http://www.w3.org/2000/svg" style="display:block;background:#888"></svg>`;
+    return '<svg width="' + size + '" height="' + (size*0.5) + '" viewBox="0 0 64 32" xmlns="http://www.w3.org/2000/svg" style="display:block;background:#888"></svg>';
   };
 }
 
-// ── AUTH GUARD ────────────────────────────────────────────────
 function onAuthReady(user, pilot) {
   if (!user) { window.location.href = '/pages/login.html'; return; }
   if (!isMasterAdminPilot(pilot)) { window.location.href = '/index.html'; return; }
@@ -550,12 +554,12 @@ function onAuthReady(user, pilot) {
   loadAll();
 }
 
-// ── SECTION SWITCHING ─────────────────────────────────────────
 function showSec(id) {
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.remove('active'));
-  document.getElementById('sec-'+id).classList.add('active');
-  event.currentTarget.classList.add('active');
+  const target = document.getElementById('sec-'+id);
+  if (target) target.classList.add('active');
+  if (event && event.currentTarget) event.currentTarget.classList.add('active');
   if (id==='applications') loadApplications();
   if (id==='pilots')       loadAllPilots();
   if (id==='rosters')      loadRosters('7bw');
@@ -566,6 +570,8 @@ function showSec(id) {
   if (id==='customize')    loadCustomizeSettings();
   if (id==='roles')        loadRolesManager();
   if (id==='medals')       { if (!allPilots.length) loadAllPilots(); }
+  if (id==='webhooks')     adminLoadWebhooks();
+  if (id==='auditlog')     adminLoadAudit();
 }
 
 let allPilots = [], pendingApps = [];
@@ -604,7 +610,6 @@ function renderDashPending() {
     </div>`).join('');
 }
 
-// ── APPLICATIONS ──────────────────────────────────────────────
 async function loadApplications() {
   const snap = await db.collection('pilots').where('status','==','pending').orderBy('appliedAt','desc').get();
   const list = document.getElementById('applications-list');
@@ -640,7 +645,6 @@ async function loadApplications() {
   });
 }
 
-// ── APPROVE / DENY ────────────────────────────────────────────
 function openApproveModal(uid) {
   editingPilotUid = uid;
   const pilot = allPilots.find(p=>p.uid===uid) || pendingApps.find(p=>p.uid===uid);
@@ -698,7 +702,6 @@ async function confirmDeny() {
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
-// ── ALL PILOTS ────────────────────────────────────────────────
 async function loadAllPilots() {
   const snap = await db.collection('pilots').orderBy('displayName').get();
   allPilots = snap.docs.map(d=>({uid:d.id,...d.data()}));
@@ -732,7 +735,6 @@ function filterPilots() {
   ));
 }
 
-// ── RANK MODAL ────────────────────────────────────────────────
 function openRankModal(uid) {
   editingPilotUid = uid;
   const p = allPilots.find(x=>x.uid===uid);
@@ -754,7 +756,7 @@ function renderRankModalRoles(selectedRoleIds) {
       <input type="checkbox" value="${roleId}" class="rank-modal-role-cb" ${selectedRoleIds.includes(roleId)?'checked':''}>
       <span style="display:inline-flex;align-items:center;gap:6px">
         <span style="width:10px;height:10px;border-radius:50%;background:${role.color||'#888'};display:inline-block"></span>
-        ${role.isMasterAdmin ? 'Master Admin (hidden — shows pilot\'s own public title)' : role.name}
+        ${role.isMasterAdmin ? 'Master Admin (hidden)' : role.name}
       </span>
     </label>`).join('');
 }
@@ -771,8 +773,8 @@ async function saveRankChange() {
   try {
     await db.collection('pilots').doc(editingPilotUid).update({
       rank:     document.getElementById('rank-modal-rank').value,
-      role:     selectedRoles[0],   // legacy field kept in sync for backward compatibility
-      roles:    selectedRoles,      // new multi-role field
+      role:     selectedRoles[0],
+      roles:    selectedRoles,
       wing:     document.getElementById('rank-modal-wing').value||null,
       squadron: document.getElementById('rank-modal-sq').value||null,
       status:   document.getElementById('rank-modal-status').value,
@@ -783,7 +785,6 @@ async function saveRankChange() {
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
-// ── RANK SEARCH ───────────────────────────────────────────────
 function searchForRank() {
   const q = document.getElementById('rank-search').value.toLowerCase();
   const res = document.getElementById('rank-results');
@@ -800,14 +801,12 @@ function searchForRank() {
     </div>`).join('');
 }
 
-// ── ROSTERS ───────────────────────────────────────────────────
 async function loadRosters(wingId) {
   const sqs  = WINGS[wingId]?.squadrons||{};
   const snap = await db.collection('pilots').where('wing','==',wingId).where('status','==','active').get();
   const pilots = snap.docs.map(d=>({uid:d.id,...d.data()}));
   const el   = document.getElementById('roster-content');
 
-  // Find the wing commander (role === wing_commander, assigned to this wing)
   const commander = pilots.find(p => getPilotRoleIds(p).includes('wing_commander'));
   const deputy     = pilots.filter(p => getPilotRoleIds(p).includes('sq_commander'));
 
@@ -872,8 +871,6 @@ async function loadRosters(wingId) {
 
 function openAssignCommanderModal(wingId) {
   editingPilotUid = null;
-  document.getElementById('rank-modal-title') && (document.getElementById('rank-modal-title').textContent = 'Assign Wing Commander');
-  // Reuse the rank search to find and assign
   showSec('ranks');
   document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.remove('active'));
   document.querySelector('[onclick*="ranks"]')?.classList.add('active');
@@ -888,7 +885,6 @@ function showRosterTab(wingId, btn) {
   loadRosters(wingId);
 }
 
-// ── FLIGHTS ───────────────────────────────────────────────────
 async function loadAllFlights() {
   const snap = await db.collection('flights').orderBy('loggedAt','desc').limit(50).get();
   const el = document.getElementById('all-flights-list');
@@ -898,7 +894,6 @@ async function loadAllFlights() {
     '</tbody></table></div>';
 }
 
-// ── SLIDESHOW ─────────────────────────────────────────────────
 async function loadSlideshow() {
   const doc = await db.collection('settings').doc('slideshow').get();
   const slides = doc.exists ? (doc.data().slides||[]) : [];
@@ -931,7 +926,6 @@ async function removeSlide(idx) {
   toast('Slide removed'); loadSlideshow();
 }
 
-// ── NEWS ──────────────────────────────────────────────────────
 async function loadNews() {
   const snap = await db.collection('news').orderBy('createdAt','desc').get();
   const el = document.getElementById('news-list-admin');
@@ -962,7 +956,6 @@ async function deleteNews(id) {
   toast('Deleted'); loadNews();
 }
 
-// ── CUSTOMIZE ────────────────────────────────────────────────
 async function loadCustomizeSettings() {
   try {
     const doc = await db.collection('settings').doc('site').get();
@@ -979,7 +972,6 @@ async function loadCustomizeSettings() {
 
 let liveWingsData = {};
 async function buildWingNameEditor() {
-  // Load real wing data (merging defaults with any Firestore overrides)
   liveWingsData = JSON.parse(JSON.stringify(WINGS));
   try {
     const snap = await db.collection('wings').get();
@@ -1004,7 +996,7 @@ async function buildWingNameEditor() {
               <input type="text" id="sq-call-${sqId}" value="${sq.callsign||''}" placeholder="e.g. BONE">
             </div>
           </div>
-          <label style="font-size:10px">Flight callsign pool (e.g. BONE 01, BONE 02, BONE 03)</label>
+          <label style="font-size:10px">Flight callsign pool</label>
           <div id="pool-list-${sqId}" style="margin:6px 0"></div>
           <div style="display:flex;gap:8px">
             <input type="text" id="pool-new-${sqId}" placeholder="e.g. ${sq.callsign||'BONE'} 0${(sq.callsignPool||[]).length+1}" style="flex:1;font-size:13px" maxlength="20">
@@ -1013,7 +1005,6 @@ async function buildWingNameEditor() {
         </div>`).join('')}
     </div>`).join('');
 
-  // Render each squadron's pool list
   Object.entries(liveWingsData).forEach(([wingId,wing])=>{
     Object.entries(wing.squadrons||{}).forEach(([sqId,sq])=>{
       renderCallsignPool(wingId, sqId);
@@ -1073,7 +1064,6 @@ async function saveSiteSettings() {
   toast('Site settings saved!');
 }
 async function saveWingSettings() {
-  const updates = {};
   for (const [wingId,wing] of Object.entries(liveWingsData)) {
     const sqUpdates = {};
     for (const sqId of Object.keys(wing.squadrons||{})) {
@@ -1097,12 +1087,10 @@ function pickColor(hex, el) {
   toast('Color saved! Reload pages to see it.');
 }
 
-// ── ROLES & PERMISSIONS MANAGER ──────────────────────────────
 let selectedRoleColor = '#c8a951';
 let liveRoles = {};
 
 async function loadRolesManager() {
-  // Pull whatever is currently active (already merged with defaults by firebase-config.js)
   liveRoles = JSON.parse(JSON.stringify(ROLES));
   renderPermissionCheckboxes();
   renderRolesList();
@@ -1163,7 +1151,7 @@ function renderRolesList() {
           <button class="btn btn-outline btn-xs" onclick="openEditRoleModal('${roleId}')">Edit</button>
           ${!isBuiltIn ? `<button class="btn btn-danger btn-xs" onclick="deleteRole('${roleId}')">Delete</button>` : ''}
         </div>
-        ${role.isMasterAdmin ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">This role silently has ALL permissions. Its name is never shown publicly — pilots with this role choose their own public title in their profile.</div>' : ''}
+        ${role.isMasterAdmin ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">This role silently has ALL permissions.</div>' : ''}
         ${permTags ? `<div class="role-perm-tags">${permTags}</div>` : (!role.isMasterAdmin ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">No special permissions</div>' : '')}
       </div>`;
   }).join('');
@@ -1200,7 +1188,7 @@ async function saveRoleEdit() {
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
 async function deleteRole(roleId) {
-  if (!confirm(`Delete the "${liveRoles[roleId].name}" role? Pilots currently assigned this role will need to be reassigned.`)) return;
+  if (!confirm(`Delete the "${liveRoles[roleId].name}" role?`)) return;
   delete liveRoles[roleId];
   try {
     await db.collection('settings').doc('roles').set({ roles: liveRoles });
@@ -1210,7 +1198,6 @@ async function deleteRole(roleId) {
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
 
-// ── MEDALS & AWARDS MANAGER ──────────────────────────────────
 let medalTargetPilot = null;
 
 function searchPilotForMedal() {
@@ -1339,7 +1326,6 @@ async function revokeWingsBadge(wingId) {
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
-// ── WING SETTINGS ─────────────────────────────────────────────
 async function loadWingSettings() {
   const el = document.getElementById('wing-settings-content');
   el.innerHTML = Object.entries(WINGS).map(([wingId,wing])=>`
@@ -1354,11 +1340,7 @@ async function loadWingSettings() {
     </div>`).join('');
 }
 
-// close modals on backdrop
-
-// ── DISCORD PING — ACCESS REQUEST ────────────────────────────
 async function pingDiscordAccess(uid, name) {
-  // Get webhook URL from Firestore settings
   let webhookUrl = '';
   try {
     const s = await db.collection('settings').doc('webhooks').get();
@@ -1370,7 +1352,7 @@ async function pingDiscordAccess(uid, name) {
   } catch(e) {}
 
   if (!webhookUrl) {
-    toast('No admin Discord webhook configured. Set one in Admin → Discord Webhooks.', 'warn');
+    toast('No admin Discord webhook configured. Set one in Discord Webhooks tab.', 'warn');
     return;
   }
 
@@ -1384,14 +1366,14 @@ async function pingDiscordAccess(uid, name) {
     embeds: [{
       color: 0xe09030,
       title: '🔔 Access Request — Pending Review',
-      description: `A new access request is awaiting approval in the VTAC GSC Admin Panel.`,
+      description: 'A new access request is awaiting approval in the VTAC GSC Admin Panel.',
       fields: [
-        { name: 'Applicant',       value: `**${callsign}**`,  inline: true  },
+        { name: 'Applicant',       value: '**' + callsign + '**',  inline: true  },
         { name: 'Preferred Wing',  value: wing,               inline: true  },
         { name: 'Simulator',       value: sim,                inline: true  },
         { name: 'Contact',         value: discord,            inline: false },
       ],
-      footer: { text: `Pinged by ${currentPilot?.callsign || 'Admin'} · VTAC Global Strike Command` },
+      footer: { text: 'Pinged by ' + (currentPilot?.callsign || 'Admin') + ' · VTAC Global Strike Command' },
       timestamp: new Date().toISOString(),
     }]
   };
@@ -1403,14 +1385,174 @@ async function pingDiscordAccess(uid, name) {
       body: JSON.stringify(payload),
     });
     if (resp.ok || resp.status === 204) {
-      toast(`Discord ping sent for ${callsign} ✓`);
+      toast('Discord ping sent for ' + callsign + ' ✓');
     } else {
-      toast(`Discord returned ${resp.status} — check your webhook URL`, 'error');
+      toast('Discord returned ' + resp.status + ' — check your webhook URL', 'error');
     }
   } catch(e) {
     toast('Ping failed: ' + e.message, 'error');
   }
 }
+
+const WH_CHANNELS = {
+  flights_7bw:    { label:'7th BW Flight Log',          group:'Wing Flights', events:'flight_logged, flight_deleted' },
+  flights_509bw:  { label:'509th BW Flight Log',         group:'Wing Flights', events:'flight_logged, flight_deleted' },
+  flights_2bw:    { label:'2nd BW Flight Log',           group:'Wing Flights', events:'flight_logged, flight_deleted' },
+  flight_plans:   { label:'Flight Plans',                group:'Wing Flights', events:'flight_plan_saved' },
+  admin_pilots:   { label:'Admin — Pilot Actions',       group:'Admin',        events:'approved, denied, rank/role changes' },
+  admin_training: { label:'Admin — Training & Certs',    group:'Admin',        events:'cert_awarded, cert_revoked' },
+  admin_site:     { label:'Admin — Site Changes',        group:'Admin',        events:'news, roles, wings, webhooks' },
+  admin_all:      { label:'Admin — All Events (audit)',  group:'Admin',        events:'everything' },
+};
+let _adminWhConfig = {};
+
+async function adminLoadWebhooks() {
+  try {
+    const s = await db.collection('settings').doc('webhooks').get();
+    _adminWhConfig = s.exists ? (s.data().channels || {}) : {};
+  } catch(e) { _adminWhConfig = {}; }
+  renderAdminWebhookCards();
+}
+
+function renderAdminWebhookCards() {
+  const groups = {};
+  Object.entries(WH_CHANNELS).forEach(([key, ch]) => {
+    if (!groups[ch.group]) groups[ch.group] = [];
+    groups[ch.group].push([key, ch]);
+  });
+
+  let container = document.getElementById('admin-webhook-cards');
+  if (!container) return;
+
+  container.innerHTML = Object.entries(groups).map(([group, channels]) => {
+    const groupHtml = '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)">' + group + '</div>';
+    const cardsHtml = channels.map(function(pair) {
+      const key = pair[0], ch = pair[1];
+      const cfg = _adminWhConfig[key] || {};
+      const has = !!cfg.url;
+      return '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden">'
+        + '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--card2);border-bottom:1px solid var(--border)">'
+        + '<div style="width:8px;height:8px;border-radius:50%;background:' + (has?'var(--green)':'var(--text3)') + '"></div>'
+        + '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--text)">' + ch.label + '</div>'
+        + '<div style="font-size:11px;color:var(--text3)">' + ch.events + '</div></div>'
+        + '<span style="font-size:11px;color:' + (has?'var(--green2)':'var(--text3)') + '">' + (has?'● Active':'○ Not set') + '</span>'
+        + '</div>'
+        + '<div style="padding:12px 16px;display:flex;gap:8px">'
+        + '<input id="wh-admin-' + key + '" type="text" value="' + (cfg.url||'') + '" placeholder="https://discord.com/api/webhooks/..." '
+        + 'style="flex:1;padding:8px 12px;background:#0a0c14;border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;font-family:var(--mono);outline:none">'
+        + '<button onclick="adminTestWebhook(\'' + key + '\')" style="padding:6px 12px;background:rgba(74,144,217,.15);color:var(--blue2);border:1px solid rgba(74,144,217,.3);border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--sans)">Test</button>'
+        + '</div></div>';
+    }).join('');
+    return groupHtml + cardsHtml;
+  }).join('');
+}
+
+async function adminSaveWebhooks() {
+  const updated = {};
+  Object.keys(WH_CHANNELS).forEach(function(key) {
+    const el = document.getElementById('wh-admin-' + key);
+    const url = el ? el.value.trim() : '';
+    if (url) updated[key] = { url: url, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+  });
+  try {
+    await db.collection('settings').doc('webhooks').set({ channels: updated }, { merge: true });
+    _adminWhConfig = updated;
+    renderAdminWebhookCards();
+    toast('Webhooks saved ✓');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function adminTestWebhook(key) {
+  const el = document.getElementById('wh-admin-' + key);
+  const url = el ? el.value.trim() : '';
+  if (!url) { toast('Enter a webhook URL first', 'error'); return; }
+  const payload = {
+    embeds: [{
+      color: 0xc8a951,
+      title: '🔔 VTAC GSC Webhook Test',
+      description: 'Test from **' + (WH_CHANNELS[key] ? WH_CHANNELS[key].label : key) + '**. If you see this, the webhook is working correctly.',
+      footer: { text: 'VTAC Global Strike Command — Admin Panel' },
+      timestamp: new Date().toISOString(),
+    }]
+  };
+  try {
+    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (resp.ok || resp.status === 204) toast('Test sent ✓');
+    else toast('Discord returned ' + resp.status, 'error');
+  } catch(e) { toast('Test failed: ' + e.message, 'error'); }
+}
+
+let _adminAuditLast = null;
+const _ADMIN_AUDIT_PAGE = 50;
+
+async function adminLoadAudit() {
+  _adminAuditLast = null;
+  const list = document.getElementById('admin-audit-list');
+  if (list) list.innerHTML = '<div class="empty-state"><p>Loading…</p></div>';
+  await adminFetchAuditPage(true);
+}
+async function adminLoadMoreAudit() { await adminFetchAuditPage(false); }
+
+async function adminFetchAuditPage(reset) {
+  const filterEl = document.getElementById('admin-audit-filter');
+  const filter = filterEl ? filterEl.value : '';
+  try {
+    let q = db.collection('auditLog').orderBy('timestamp','desc').limit(_ADMIN_AUDIT_PAGE);
+    if (filter) q = q.where('eventType','==',filter);
+    if (!reset && _adminAuditLast) q = q.startAfter(_adminAuditLast);
+
+    const snap = await q.get();
+    _adminAuditLast = snap.docs[snap.docs.length-1] || null;
+    const moreBtn = document.getElementById('admin-audit-more');
+    if (moreBtn) moreBtn.style.display = snap.docs.length === _ADMIN_AUDIT_PAGE ? 'block' : 'none';
+
+    const entries = snap.docs.map(function(d) { return Object.assign({id:d.id}, d.data()); });
+    const countEl = document.getElementById('admin-audit-count');
+    if (countEl) countEl.textContent = entries.length + (snap.docs.length===_ADMIN_AUDIT_PAGE?'+':'') + ' entries';
+
+    const list = document.getElementById('admin-audit-list');
+    if (!list) return;
+
+    if (!entries.length && reset) {
+      list.innerHTML = '<div class="empty-state"><p>No audit entries yet. Actions taken on the site will appear here.</p></div>';
+      return;
+    }
+
+    const COLORS = {
+      pilot_approved:'var(--green)', pilot_denied:'var(--red)',
+      pilot_rank_changed:'var(--gold)', flight_logged:'var(--green)',
+      flight_deleted:'var(--red)', cert_awarded:'var(--gold)',
+      cert_revoked:'var(--amber)', news_posted:'var(--blue)',
+    };
+
+    const html = entries.map(function(e) {
+      const ts = (e.timestamp && e.timestamp.toDate) ? e.timestamp.toDate() : new Date();
+      const time = ts.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      const d = e.details || {};
+      let detail = '—';
+      if (d.departure && d.arrival) detail = d.departure + ' → ' + d.arrival;
+      else if (d.pilotCallsign) detail = d.pilotCallsign;
+      else if (d.certName) detail = d.certName;
+      else if (d.newsTitle) detail = d.newsTitle;
+      else if (d.notes) detail = d.notes.slice(0,80);
+      const dotColor = COLORS[e.eventType] || 'var(--text3)';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:.5px solid var(--border);font-size:12px">'
+        + '<div style="width:7px;height:7px;border-radius:50%;background:' + dotColor + ';flex-shrink:0"></div>'
+        + '<div style="width:90px;flex-shrink:0;color:var(--text3);font-family:var(--mono);font-size:11px">' + time + '</div>'
+        + '<div style="width:120px;flex-shrink:0;color:var(--gold);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (e.actor?e.actor.callsign:'—') + '</div>'
+        + '<div style="flex-shrink:0;font-size:10px;padding:1px 7px;border-radius:8px;background:var(--card2);border:1px solid var(--border);font-family:var(--mono)">' + (e.eventType||'—') + '</div>'
+        + '<div style="flex:1;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + detail + '</div>'
+        + '</div>';
+    }).join('');
+
+    if (reset) list.innerHTML = html;
+    else list.insertAdjacentHTML('beforeend', html);
+  } catch(e) {
+    const list = document.getElementById('admin-audit-list');
+    if (list) list.innerHTML = '<div class="alert alert-error">Error: ' + e.message + '<br><small>You may need to create a Firestore index for auditLog (eventType ASC + timestamp DESC).</small></div>';
+  }
+}
+
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 </script>
 </body>
