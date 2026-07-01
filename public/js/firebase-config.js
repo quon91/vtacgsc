@@ -485,3 +485,198 @@ function hideAuthLoading() {
   const el = document.getElementById('auth-loading');
   if (el) el.remove();
 }
+// ═══════════════════════════════════════════════════════════════
+//  VTAC GSC — AUDIT LOG + DISCORD WEBHOOK SYSTEM
+//  Paste this entire block at the bottom of firebase-config.js
+//
+//  HOW IT WORKS:
+//  1. Every admin/flight action calls logAudit() → writes to Firestore
+//  2. logAudit() also fires any matching Discord webhooks from Firestore
+//  3. Webhooks are managed in admin panel → never hardcoded
+//
+//  FIRESTORE COLLECTIONS:
+//  auditLog/{docId}       — every action ever taken on the site
+//  settings/webhooks      — webhook config managed from admin panel
+// ═══════════════════════════════════════════════════════════════
+
+// ── AUDIT EVENT TYPES ─────────────────────────────────────────
+// Use these constants everywhere so webhook routing is consistent
+const AUDIT = {
+  // Flights
+  FLIGHT_LOGGED:    'flight_logged',
+  FLIGHT_DELETED:   'flight_deleted',
+  FLIGHT_PLAN_SAVED:'flight_plan_saved',
+  // Pilots
+  PILOT_APPROVED:   'pilot_approved',
+  PILOT_DENIED:     'pilot_denied',
+  PILOT_RANK_CHANGED:'pilot_rank_changed',
+  PILOT_ROLE_CHANGED:'pilot_role_changed',
+  PILOT_DELETED:    'pilot_deleted',
+  // Training
+  CERT_AWARDED:     'cert_awarded',
+  CERT_REVOKED:     'cert_revoked',
+  QUAL_UPDATED:     'qual_updated',
+  // Site
+  NEWS_POSTED:      'news_posted',
+  NEWS_DELETED:     'news_deleted',
+  TRAINING_EDITED:  'training_edited',
+  ROLE_EDITED:      'role_edited',
+  WEBHOOK_ADDED:    'webhook_added',
+  WEBHOOK_DELETED:  'webhook_deleted',
+  // Wings
+  WING_EDITED:      'wing_edited',
+};
+
+// Which audit events map to which webhook "channel" key
+// Admin panel lets you set a URL per channel key
+const WEBHOOK_CHANNELS = {
+  // Wing flight channels — one per wing
+  flights_7bw:     { label: '7th BW Flight Log',         events: [AUDIT.FLIGHT_LOGGED, AUDIT.FLIGHT_DELETED] },
+  flights_509bw:   { label: '509th BW Flight Log',        events: [AUDIT.FLIGHT_LOGGED, AUDIT.FLIGHT_DELETED] },
+  flights_2bw:     { label: '2nd BW Flight Log',          events: [AUDIT.FLIGHT_LOGGED, AUDIT.FLIGHT_DELETED] },
+  // Flight plans
+  flight_plans:    { label: 'Flight Plans',               events: [AUDIT.FLIGHT_PLAN_SAVED] },
+  // Admin channels
+  admin_pilots:    { label: 'Admin — Pilot Actions',      events: [AUDIT.PILOT_APPROVED, AUDIT.PILOT_DENIED, AUDIT.PILOT_RANK_CHANGED, AUDIT.PILOT_ROLE_CHANGED, AUDIT.PILOT_DELETED] },
+  admin_training:  { label: 'Admin — Training & Certs',   events: [AUDIT.CERT_AWARDED, AUDIT.CERT_REVOKED, AUDIT.QUAL_UPDATED, AUDIT.TRAINING_EDITED] },
+  admin_site:      { label: 'Admin — Site Changes',       events: [AUDIT.NEWS_POSTED, AUDIT.NEWS_DELETED, AUDIT.ROLE_EDITED, AUDIT.WING_EDITED, AUDIT.WEBHOOK_ADDED, AUDIT.WEBHOOK_DELETED] },
+  // Catch-all — receives everything
+  admin_all:       { label: 'Admin — All Events (audit)', events: Object.values(AUDIT) },
+};
+
+// ── WEBHOOK CONFIG CACHE ──────────────────────────────────────
+let _webhookConfig = null; // cached from Firestore
+
+async function getWebhookConfig() {
+  if (_webhookConfig) return _webhookConfig;
+  try {
+    const snap = await db.collection('settings').doc('webhooks').get();
+    _webhookConfig = snap.exists ? (snap.data().channels || {}) : {};
+  } catch(e) { _webhookConfig = {}; }
+  return _webhookConfig;
+}
+
+function clearWebhookCache() { _webhookConfig = null; }
+
+// ── CORE AUDIT LOG FUNCTION ───────────────────────────────────
+// Call this everywhere an action is taken.
+// actor: { uid, callsign } — the person doing the action
+// eventType: one of the AUDIT.* constants
+// details: plain object with any relevant data
+async function logAudit(eventType, details = {}, actor = null) {
+  // Resolve actor from currentPilot if not provided
+  const resolvedActor = actor || (currentPilot ? {
+    uid:      currentPilot.uid,
+    callsign: currentPilot.callsign || currentPilot.displayName || 'Unknown',
+    role:     getDisplayRole(currentPilot)?.name || 'Unknown',
+  } : { uid: 'system', callsign: 'System', role: 'System' });
+
+  const entry = {
+    eventType,
+    actor:     resolvedActor,
+    details,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    page:      window.location.pathname,
+  };
+
+  // Write to Firestore audit log (fire-and-forget — never block the UI)
+  db.collection('auditLog').add(entry).catch(e => console.warn('Audit log write failed:', e));
+
+  // Fire Discord webhooks
+  fireWebhooks(eventType, entry).catch(() => {});
+}
+
+// ── DISCORD WEBHOOK DISPATCHER ────────────────────────────────
+async function fireWebhooks(eventType, entry) {
+  const config = await getWebhookConfig();
+  if (!config || !Object.keys(config).length) return;
+
+  // Find all channels that should receive this event type
+  const matchingChannels = Object.entries(WEBHOOK_CHANNELS)
+    .filter(([key, ch]) => ch.events.includes(eventType) && config[key]?.url)
+    .map(([key]) => config[key].url);
+
+  if (!matchingChannels.length) return;
+
+  const embed = buildDiscordEmbed(eventType, entry);
+  const payload = JSON.stringify({ embeds: [embed] });
+
+  // POST to all matching webhooks in parallel
+  await Promise.allSettled(
+    matchingChannels.map(url =>
+      fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload })
+    )
+  );
+}
+
+// ── DISCORD EMBED BUILDER ─────────────────────────────────────
+function buildDiscordEmbed(eventType, entry) {
+  const actor    = entry.actor || {};
+  const details  = entry.details || {};
+  const ts       = new Date().toISOString();
+
+  // Color per event category
+  const colors = {
+    flight_logged:      0x3dba6e, flight_deleted:    0xd04040,
+    flight_plan_saved:  0x4a90d9,
+    pilot_approved:     0x3dba6e, pilot_denied:      0xd04040,
+    pilot_rank_changed: 0xc8a951, pilot_role_changed:0xc8a951, pilot_deleted: 0xd04040,
+    cert_awarded:       0xc8a951, cert_revoked:      0xe09030, qual_updated:  0x4a90d9,
+    news_posted:        0x4a90d9, news_deleted:      0xd04040,
+    training_edited:    0x9aa0b8, role_edited:       0xe09030,
+    wing_edited:        0x9aa0b8, webhook_added:     0x3dba6e, webhook_deleted: 0xd04040,
+    admin_all:          0xc8a951,
+  };
+
+  // Human-readable titles
+  const titles = {
+    flight_logged:      '✈ Flight Logged',
+    flight_deleted:     '🗑 Flight Deleted',
+    flight_plan_saved:  '📋 Flight Plan Saved',
+    pilot_approved:     '✅ Pilot Approved',
+    pilot_denied:       '❌ Pilot Application Denied',
+    pilot_rank_changed: '🎖 Rank Changed',
+    pilot_role_changed: '🔑 Role Changed',
+    pilot_deleted:      '🗑 Pilot Removed',
+    cert_awarded:       '🏅 Certification Awarded',
+    cert_revoked:       '⚠️ Certification Revoked',
+    qual_updated:       '📊 Qualification Status Updated',
+    news_posted:        '📰 News Posted',
+    news_deleted:       '🗑 News Deleted',
+    training_edited:    '📚 Training Module Edited',
+    role_edited:        '🔑 Role/Permissions Edited',
+    wing_edited:        '🦅 Wing Data Edited',
+    webhook_added:      '🔗 Webhook Added',
+    webhook_deleted:    '🔗 Webhook Deleted',
+  };
+
+  // Build fields from details dynamically
+  const fields = [];
+
+  // Actor always shown
+  fields.push({ name: 'By', value: `**${actor.callsign}** (${actor.role || ''})`, inline: true });
+
+  // Event-specific fields
+  if (details.pilotCallsign) fields.push({ name: 'Pilot', value: details.pilotCallsign, inline: true });
+  if (details.departure && details.arrival) fields.push({ name: 'Route', value: `\`${details.departure} → ${details.arrival}\``, inline: false });
+  if (details.aircraft)   fields.push({ name: 'Aircraft',  value: details.aircraft,   inline: true });
+  if (details.durationMins) fields.push({ name: 'Duration', value: `${Math.floor(details.durationMins/60)}h ${details.durationMins%60}m`, inline: true });
+  if (details.wing)       fields.push({ name: 'Wing',      value: getWingName(details.wing) || details.wing, inline: true });
+  if (details.fromRank)   fields.push({ name: 'From Rank', value: details.fromRank, inline: true });
+  if (details.toRank)     fields.push({ name: 'To Rank',   value: details.toRank,   inline: true });
+  if (details.certName)   fields.push({ name: 'Cert',      value: details.certName, inline: true });
+  if (details.qualStatus) fields.push({ name: 'Qual Status', value: details.qualStatus, inline: true });
+  if (details.newsTitle)  fields.push({ name: 'Title',     value: details.newsTitle, inline: false });
+  if (details.distance)   fields.push({ name: 'Distance',  value: details.distance, inline: true });
+  if (details.estTime)    fields.push({ name: 'Est. Time', value: details.estTime,  inline: true });
+  if (details.notes)      fields.push({ name: 'Notes',     value: details.notes.slice(0,200), inline: false });
+  if (details.channelName) fields.push({ name: 'Channel',  value: details.channelName, inline: true });
+
+  return {
+    color:     colors[eventType] || 0xc8a951,
+    title:     titles[eventType] || eventType,
+    fields,
+    footer:    { text: 'VTAC Global Strike Command' },
+    timestamp: ts,
+  };
+}
