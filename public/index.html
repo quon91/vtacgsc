@@ -190,8 +190,129 @@
   <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
 </footer>
 
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
 <script>
 function toggleMobileNav() { document.getElementById('nav-links').classList.toggle('open'); }
+
+// ── AUTH STATE ────────────────────────────────────────────────
+// Homepage is PUBLIC — never redirect. Just update nav if logged in.
+function onAuthReady(user, pilot) {
+  if (user && pilot && pilot.status === 'active') {
+    const authArea = document.getElementById('nav-auth-area');
+    const userArea = document.getElementById('nav-user-area');
+    if (authArea) authArea.style.display = 'none';
+    if (userArea) {
+      userArea.style.display = 'flex';
+      const nameEl = document.getElementById('nav-pilot-name');
+      const rankEl = document.getElementById('nav-rank-badge');
+      const avatarEl = document.getElementById('nav-avatar');
+      if (nameEl) nameEl.textContent = pilot.callsign || pilot.displayName || '';
+      if (rankEl) rankEl.textContent = getRankAbbr(pilot.rank || 'ab');
+      if (avatarEl && pilot.avatarUrl) avatarEl.src = pilot.avatarUrl;
+    }
+  }
+}
+
+// ── LOAD STATS ────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const [pilotsSnap, flightsSnap] = await Promise.all([
+      db.collection('pilots').where('status','==','active').get(),
+      db.collection('flights').get()
+    ]);
+    document.getElementById('stat-pilots').textContent  = pilotsSnap.size;
+    document.getElementById('stat-flights').textContent = flightsSnap.size;
+    let totalMins = 0;
+    flightsSnap.forEach(d => totalMins += (d.data().durationMins || 0));
+    document.getElementById('stat-hours').textContent = Math.round(totalMins / 60);
+  } catch(e) {}
+}
+
+// ── LOAD RECENT FLIGHTS ───────────────────────────────────────
+async function loadRecentFlights() {
+  try {
+    const snap = await db.collection('flights').orderBy('loggedAt','desc').limit(5).get();
+    if (snap.empty) return;
+    const list = document.getElementById('recent-flights');
+    list.innerHTML = '';
+    snap.forEach(d => {
+      const f = d.data();
+      list.innerHTML += `
+        <div class="flight-row fade-in">
+          <div>
+            <div class="flight-route">${f.departure} <span class="flight-arrow">→</span> ${f.arrival}</div>
+            <div class="flight-meta">${f.pilotCallsign || 'Unknown'} · ${f.aircraft || '—'} · ${formatDate(f.loggedAt)}</div>
+          </div>
+          <div class="flight-duration">${Math.floor((f.durationMins||0)/60)}h ${(f.durationMins||0)%60}m</div>
+        </div>`;
+    });
+  } catch(e) {}
+}
+
+// ── LOAD NEWS ─────────────────────────────────────────────────
+async function loadNews() {
+  try {
+    const snap = await db.collection('news').orderBy('createdAt','desc').limit(5).get();
+    if (snap.empty) return;
+    const list = document.getElementById('news-list');
+    list.innerHTML = '';
+    snap.forEach(d => {
+      const n = d.data();
+      list.innerHTML += `
+        <div class="news-item">
+          <div class="news-date">${formatDate(n.createdAt)}</div>
+          <div class="news-title">${n.title}</div>
+          <div class="news-body">${n.body}</div>
+        </div>`;
+    });
+  } catch(e) {}
+}
+
+// ── SLIDESHOW ─────────────────────────────────────────────────
+let ssSlides = [], ssIdx = 0, ssTimer = null;
+async function loadSlideshow() {
+  try {
+    const snap = await db.collection('settings').doc('slideshow').get();
+    ssSlides = snap.exists ? (snap.data().slides || []) : [];
+  } catch(e) {}
+  renderSlideshow();
+}
+function renderSlideshow() {
+  const wrap = document.getElementById('slideshow-wrap');
+  if (!ssSlides.length) {
+    wrap.innerHTML = `<div class="no-slides"><div class="no-slides-inner"><div style="font-size:40px;opacity:.3">✈</div><div style="color:var(--text3);font-size:14px;margin-top:8px">VTAC Global Strike Command</div></div></div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="hero-slideshow">
+      <div class="slide-track" id="ss-track">
+        ${ssSlides.map(s=>`<div class="slide"><img src="${s.url}" alt="${s.caption||''}" onerror="this.parentElement.style.display='none'">${s.caption?`<div class="slide-cap">${s.caption}</div>`:''}</div>`).join('')}
+      </div>
+      <button class="ss-arrow left" onclick="ssMove(-1)">‹</button>
+      <button class="ss-arrow right" onclick="ssMove(1)">›</button>
+      <div class="ss-dots" id="ss-dots">
+        ${ssSlides.map((_,i)=>`<div class="ss-dot ${i===0?'active':''}" onclick="ssGoTo(${i})"></div>`).join('')}
+      </div>
+    </div>`;
+  if (ssSlides.length > 1) ssTimer = setInterval(()=>ssMove(1), 5500);
+}
+function ssMove(d) { ssIdx=(ssIdx+d+ssSlides.length)%ssSlides.length; ssApply(); }
+function ssGoTo(i) { ssIdx=i; ssApply(); }
+function ssApply() {
+  const t=document.getElementById('ss-track');
+  if(t) t.style.transform=`translateX(-${ssIdx*100}%)`;
+  document.querySelectorAll('.ss-dot').forEach((d,i)=>d.classList.toggle('active',i===ssIdx));
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+loadStats();
+loadRecentFlights();
+loadNews();
+loadSlideshow();
 </script>
 </body>
 </html>
