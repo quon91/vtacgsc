@@ -376,10 +376,12 @@ auth.onAuthStateChanged(async (user) => {
         }
       }
     } catch(e) { console.error('Pilot load error:', e); }
+    if (typeof updateNavUI === 'function') updateNavUI(currentUser, currentPilot);
     onAuthReady(currentUser, currentPilot);
   } else {
     currentUser  = null;
     currentPilot = null;
+    if (typeof updateNavUI === 'function') updateNavUI(null, null);
     onAuthReady(null, null);
   }
 });
