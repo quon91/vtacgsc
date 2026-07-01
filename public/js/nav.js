@@ -147,6 +147,36 @@
     }
   };
 
+  // ── VIEW-AS BANNER ───────────────────────────────────────────
+  // Called by firebase-config.js ONLY after it has verified that the
+  // real signed-in pilot is master admin. Shows a fixed amber bar on
+  // every page while a "View As" role simulation is active, with an
+  // Exit button that clears the override and returns to the admin
+  // dashboard.
+  window.renderViewAsBanner = function (roleId) {
+    if (document.getElementById('viewas-banner')) return;
+    var label;
+    if (roleId === 'logged_out') {
+      label = 'Logged-out visitor';
+    } else if (typeof ROLES !== 'undefined' && ROLES[roleId]) {
+      label = ROLES[roleId].name;
+    } else {
+      label = roleId;
+    }
+    var bar = document.createElement('div');
+    bar.id = 'viewas-banner';
+    bar.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#e09030;color:#0a0c14;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:14px;padding:9px 16px;box-shadow:0 -4px 16px rgba(0,0,0,.45);font-family:var(--sans,sans-serif)';
+    bar.innerHTML =
+      '<span>👁 Viewing site as: ' + label + '</span>' +
+      '<button id="viewas-exit-btn" style="background:#0a0c14;color:#e09030;border:none;border-radius:16px;padding:5px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Exit view</button>';
+    document.body.appendChild(bar);
+    document.body.style.paddingBottom = '52px'; // keep footer clear of the bar
+    document.getElementById('viewas-exit-btn').addEventListener('click', function () {
+      try { sessionStorage.removeItem('vtac_viewas'); } catch (e) {}
+      window.location.href = '/pages/master-admin.html';
+    });
+  };
+
   // ── BOOT ─────────────────────────────────────────────────────
   function boot() {
     renderNavLinks();

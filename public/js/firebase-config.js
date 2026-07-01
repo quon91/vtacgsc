@@ -352,9 +352,29 @@ function getAllDisplayRoles(pilot) {
   return out.length ? out.sort((a,b)=>(b.level||0)-(a.level||0)) : [ROLES.pending];
 }
 
+// ── VIEW AS — ROLE SIMULATION (master admin only) ───────────────
+// Lets the master admin preview the site as any role, or as a
+// logged-out visitor. The selected role lives in sessionStorage
+// (dies when the tab closes) and is ONLY honored after verifying
+// that the REAL signed-in pilot holds the master_admin role — a
+// non-admin setting this key by hand gets it silently cleared.
+//
+// IMPORTANT: this is a UI/permission simulation only. Firestore
+// security rules still see the real authenticated account, so any
+// write made while previewing is still made with real admin access.
+const VIEWAS_KEY = 'vtac_viewas';
+
+function getViewAsOverride() {
+  try { return sessionStorage.getItem(VIEWAS_KEY) || null; } catch(e) { return null; }
+}
+function clearViewAsOverride() {
+  try { sessionStorage.removeItem(VIEWAS_KEY); } catch(e) {}
+}
+
 // ── AUTH STATE WATCHER ───────────────────────────────────────
 let currentUser   = null;
 let currentPilot  = null;
+let realPilot     = null;   // the TRUE pilot doc — never touched by View As
 
 auth.onAuthStateChanged(async (user) => {
   await loadRolesFromFirestore(); // ensure custom roles/permissions are loaded first
@@ -363,16 +383,37 @@ auth.onAuthStateChanged(async (user) => {
     try {
       const doc = await db.collection('pilots').doc(user.uid).get();
       if (doc.exists) {
-        currentPilot = { uid: user.uid, ...doc.data() };
-        // Redirect pending users away from protected pages
-        if (currentPilot.status === 'pending' && !isPendingPage()) {
+        realPilot    = { uid: user.uid, ...doc.data() };
+        currentPilot = realPilot;
+
+        // Status redirects always use the REAL pilot, never the simulation
+        if (realPilot.status === 'pending' && !isPendingPage()) {
           window.location.href = '/pages/pending.html';
           return;
         }
-        if (currentPilot.status === 'denied') {
+        if (realPilot.status === 'denied') {
           auth.signOut();
           window.location.href = '/pages/login.html?denied=1';
           return;
+        }
+
+        // Apply View As override — only for a verified master admin
+        const viewAs = getViewAsOverride();
+        if (viewAs && isMasterAdminPilot(realPilot)) {
+          if (typeof renderViewAsBanner === 'function') renderViewAsBanner(viewAs);
+          if (viewAs === 'logged_out') {
+            // Simulate a logged-out visitor site-wide
+            currentUser  = null;
+            currentPilot = null;
+            if (typeof updateNavUI === 'function') updateNavUI(null, null);
+            onAuthReady(null, null);
+            return;
+          }
+          // Simulate holding ONLY the selected role (strip master admin
+          // and the public title/color so nothing leaks through)
+          currentPilot = { ...realPilot, role: viewAs, roles: [viewAs], publicTitle: null, publicColor: null };
+        } else if (viewAs) {
+          clearViewAsOverride(); // set by a non-admin — ignore and clean up
         }
       }
     } catch(e) { console.error('Pilot load error:', e); }
@@ -381,6 +422,8 @@ auth.onAuthStateChanged(async (user) => {
   } else {
     currentUser  = null;
     currentPilot = null;
+    realPilot    = null;
+    clearViewAsOverride();
     if (typeof updateNavUI === 'function') updateNavUI(null, null);
     onAuthReady(null, null);
   }
