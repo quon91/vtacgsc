@@ -55,3 +55,32 @@ window.updateNavUI = function(user, pilot) {
     if (userArea) userArea.style.display = 'none';
   }
 };
+
+// ── SITE LOGO ─────────────────────────────────────────────────
+// Swaps the "GSC" text emblem for an uploaded logo image, if one
+// is configured in Firestore settings/site → logoUrl.
+// Falls back to the text badge if no logo has been set.
+(function() {
+  function applyLogo(url, badgeText) {
+    const emblem = document.getElementById('nav-emblem');
+    if (!emblem) return;
+    if (url) {
+      emblem.innerHTML = '<img src="' + url + '" alt="Logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    } else if (badgeText) {
+      emblem.textContent = badgeText;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof db === 'undefined') return;
+    db.collection('settings').doc('site').get().then(function(doc) {
+      if (!doc.exists) return;
+      const d = doc.data();
+      applyLogo(d.logoUrl, d.badge);
+      if (d.orgName) {
+        const nameEl = document.getElementById('nav-org-name');
+        if (nameEl) nameEl.textContent = d.orgName;
+      }
+    }).catch(function() {});
+  });
+})();
