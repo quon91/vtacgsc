@@ -101,6 +101,9 @@
     <div class="sidebar-item" onclick="showSec('slideshow')"><span class="si-icon">🖼</span> Slideshow</div>
     <div class="sidebar-item" onclick="showSec('news')"><span class="si-icon">📢</span> News / Announcements</div>
     <div class="sidebar-item" onclick="showSec('wings')"><span class="si-icon">✈</span> Wing Settings</div>
+    <div class="sidebar-label">Logs</div>
+    <div class="sidebar-item" onclick="showSec('webhooks')"><span class="si-icon">🔗</span> Discord Webhooks</div>
+    <div class="sidebar-item" onclick="showSec('auditlog')"><span class="si-icon">📜</span> Audit Log</div>
   </div>
 
   <div class="admin-main">
@@ -118,7 +121,7 @@
       <div class="grid-2">
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px">Pending Access Requests</div>
-          <div id="dash-pending-list"><div class="empty-state"><div class="icon">✅</div><p>No pending access_requests</p></div></div>
+          <div id="dash-pending-list"><div class="empty-state"><div class="icon">✅</div><p>No pending applications</p></div></div>
         </div>
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px">Recent Activity</div>
@@ -130,8 +133,8 @@
     <!-- ── APPLICATIONS ── -->
     <div id="sec-applications" class="sec">
       <div class="sec-title">Pilot Access Requests</div>
-      <div class="sec-sub">Review and approve or deny incoming pilot access_requests. Approved pilots are assigned a wing and squadron.</div>
-      <div id="applications-list"><div class="empty-state"><div class="icon">📋</div><p>No pending access_requests</p></div></div>
+      <div class="sec-sub">Review and approve or deny incoming pilot applications. Approved pilots are assigned a wing and squadron.</div>
+      <div id="applications-list"><div class="empty-state"><div class="icon">📋</div><p>No pending applications</p></div></div>
     </div>
 
     <!-- ── ALL PILOTS ── -->
@@ -509,6 +512,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/nav.js"></script>
+<script src="/js/nav.js"></script>
 <script src="/js/firebase-config.js?v=2"></script>
 <script>
 // ── SAFETY NET: guarantees the medal/wings SVG renderers exist even if
@@ -584,7 +588,7 @@ async function loadAll() {
 
 function renderDashPending() {
   const el = document.getElementById('dash-pending-list');
-  if (!pendingApps.length) { el.innerHTML='<div class="empty-state"><div class="icon">✅</div><p>No pending access_requests</p></div>'; return; }
+  if (!pendingApps.length) { el.innerHTML='<div class="empty-state"><div class="icon">✅</div><p>No pending applications</p></div>'; return; }
   el.innerHTML = pendingApps.slice(0,5).map(p => `
     <div class="pilot-row">
       <div class="pilot-row-avatar">✈</div>
@@ -604,7 +608,7 @@ function renderDashPending() {
 async function loadAccess Requests() {
   const snap = await db.collection('pilots').where('status','==','pending').orderBy('appliedAt','desc').get();
   const list = document.getElementById('applications-list');
-  if (snap.empty) { list.innerHTML='<div class="empty-state"><div class="icon">✅</div><p>No pending access_requests</p></div>'; return; }
+  if (snap.empty) { list.innerHTML='<div class="empty-state"><div class="icon">✅</div><p>No pending applications</p></div>'; return; }
   list.innerHTML = '';
   snap.forEach(d => {
     const p = {uid:d.id,...d.data()};

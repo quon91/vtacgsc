@@ -14,10 +14,6 @@
 .base-name{font-size:18px;font-weight:700;color:var(--text)}
 .base-loc{font-size:13px;color:var(--text2);margin-top:2px}
 .base-wing-tag{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px}
-.base-quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:0 20px 16px}
-.bd-item{background:var(--card2);border-radius:8px;padding:10px 12px}
-.bd-lbl{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px}
-.bd-val{font-size:13px;color:var(--text);font-family:var(--mono)}
 .base-section-lbl{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);padding:0 20px;margin-bottom:8px;margin-top:6px}
 .freq-table{width:100%;font-size:13px;margin-bottom:6px}
 .freq-table td{padding:5px 20px;color:var(--text2);border-bottom:0.5px solid var(--border)}
@@ -217,14 +213,6 @@ function renderBases() {
         </div>
         ${canEditWing(wingId)?`<button class="edit-pencil" onclick="openBaseEditor('${wingId}')">✏ Edit</button>`:''}
       </div>
-
-      <div class="base-quick">
-        <div class="bd-item"><div class="bd-lbl">Elevation</div><div class="bd-val">${b.elevation||'—'}</div></div>
-        <div class="bd-item"><div class="bd-lbl">VOR</div><div class="bd-val">${b.vor||'—'}</div></div>
-        <div class="bd-item"><div class="bd-lbl">TACAN</div><div class="bd-val">${b.tacan||'—'}</div></div>
-        <div class="bd-item"><div class="bd-lbl">Current Aircraft</div><div class="bd-val">${(wing.aircraft||[]).join(', ')||'—'}</div></div>
-      </div>
-
       <!-- BASE TABS -->
       <div class="base-tabs">
         <button class="base-tab" data-base="${wingId}" data-base="${wingId}" onclick="switchBaseTab('${wingId}','history',this)">🏛 Base History</button>
