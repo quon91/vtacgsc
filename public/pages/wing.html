@@ -25,6 +25,12 @@
 .empty-roster{font-size:13px;color:var(--text3);padding:8px 0}
 .edit-pencil{background:rgba(200,169,81,.12);border:1px solid rgba(200,169,81,.3);color:var(--gold);border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-family:var(--sans);display:none}
 .editable-mode .edit-pencil{display:inline-flex;align-items:center;gap:4px}
+.ov-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.ov-stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
+.ov-stat-val{font-size:26px;font-weight:900;color:var(--gold)}
+.ov-stat-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.history-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -63,6 +69,54 @@
     <button class="tab-btn active" onclick="showTab('overview',this)">Overview</button>
     <button class="tab-btn" onclick="showTab('roster',this)">Roster</button>
   </div>
+
+  <!-- OVERVIEW TAB -->
+  <div id="tab-overview" class="tab-panel active">
+
+    <div id="commander-banner"></div>
+
+    <div class="ov-stats-grid">
+      <div class="ov-stat"><div class="ov-stat-val" id="ov-pilots">—</div><div class="ov-stat-lbl">Active Pilots</div></div>
+      <div class="ov-stat"><div class="ov-stat-val" id="ov-sqs">—</div><div class="ov-stat-lbl">Squadrons</div></div>
+      <div class="ov-stat"><div class="ov-stat-val" id="ov-flights">—</div><div class="ov-stat-lbl">Total Flights</div></div>
+    </div>
+
+    <div class="section">
+      <div class="history-section-head">
+        <div class="section-label" style="margin-bottom:0">Wing History</div>
+        <button class="edit-pencil" id="history-edit-btn" onclick="openHistoryModal()">✏ Edit</button>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="history-content" id="history-content">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Squadrons</div>
+      <div id="sq-list"></div>
+    </div>
+
+  </div>
+
+  <!-- ROSTER TAB -->
+  <div id="tab-roster" class="tab-panel">
+    <div class="section">
+      <div class="section-label">Full Wing Roster</div>
+      <div id="full-roster"><div class="empty-state"><p>Loading roster…</p></div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- EDIT FAB (floating edit button, shown only to wing commander / master admin) -->
+<button class="btn btn-primary edit-fab" id="edit-fab-btn" onclick="openHistoryModal()">✏ Edit History</button>
+
+<!-- HISTORY EDIT MODAL -->
+<div class="modal-overlay" id="history-modal">
+  <div class="modal">
+    <div class="modal-title">Edit Wing History</div>
     <div class="modal-sub">This text appears on the wing's History tab. Visible to all members.</div>
     <div class="form-group">
       <textarea id="history-textarea" style="min-height:280px" placeholder="Write the wing's history here..."></textarea>
@@ -90,12 +144,15 @@ let wingData = null, canEdit = false;
 
 function onAuthReady(user, pilot) {
   const navArea = document.getElementById('nav-right-area');
-  if (user && pilot?.status === 'active') {
-    navArea.innerHTML = `<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>`;
+  if (user && pilot && pilot.status === 'active') {
+    navArea.innerHTML = '<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>';
     canEdit = pilot.role === 'master_admin' || (pilot.role === 'wing_commander' && pilot.wing === wingId);
     if (canEdit) {
       document.body.classList.add('editable-mode');
-      document.getElementById('history-edit-btn').style.display = 'inline-flex';
+      const editBtn = document.getElementById('history-edit-btn');
+      if (editBtn) editBtn.style.display = 'inline-flex';
+      const fab = document.getElementById('edit-fab-btn');
+      if (fab) fab.classList.add('show');
     }
   }
   loadWing();
@@ -110,7 +167,7 @@ async function loadWing() {
   if (!wingData) { document.getElementById('wing-name').textContent = 'Wing not found'; return; }
 
   const color = wingData.color || '#c8a951';
-  document.getElementById('wing-hero').style.background = `radial-gradient(ellipse at top, ${color}15, transparent 60%)`;
+  document.getElementById('wing-hero').style.background = 'radial-gradient(ellipse at top, ' + color + '15, transparent 60%)';
   document.getElementById('wing-emblem').style.background = color;
   document.getElementById('wing-emblem').textContent = (wingData.name||'').split(' ').map(w=>w[0]).slice(0,2).join('');
   document.getElementById('wing-name').textContent = wingData.name;
@@ -211,14 +268,30 @@ function renderSquadrons() {
 function showTab(id, btn) {
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tab-'+id).classList.add('active');
-  btn.classList.add('active');
+  const panel = document.getElementById('tab-'+id);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+function openHistoryModal() {
+  if (!canEdit) return;
+  document.getElementById('history-textarea').value = (wingData && wingData.history) || '';
+  document.getElementById('history-modal').classList.add('open');
+}
+
+async function saveHistory() {
+  const text = document.getElementById('history-textarea').value.trim();
+  try {
+    await db.collection('wings').doc(wingId).set({ history: text }, { merge: true });
+    wingData.history = text;
+    document.getElementById('history-content').textContent = text || 'No history written yet for this wing.';
+    closeModal('history-modal');
+    toast('Wing history saved!');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
-
-
 </script>
 </body>
 </html>
