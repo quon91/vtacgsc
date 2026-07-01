@@ -1349,6 +1349,470 @@ async function loadWingSettings() {
 
 // close modals on backdrop
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+// ═══════════════════════════════════════════════════════════════
+//  VTAC GSC — ADMIN AUDIT PATCH
+//  Paste this entire block at the BOTTOM of your master admin's
+//  <script> tag, just before the closing </script>.
+//
+//  This overrides existing functions with audit-logged versions
+//  and adds the Webhooks + Audit Log sections.
+//
+//  REQUIRES: audit-log-addon.js content already in firebase-config.js
+// ═══════════════════════════════════════════════════════════════
+
+// ── 1. ADD SIDEBAR ITEMS ──────────────────────────────────────
+// Run after DOM loads to inject the two new sidebar items
+document.addEventListener('DOMContentLoaded', () => {
+  const sidebar = document.querySelector('.admin-sidebar');
+  if (sidebar) {
+    const label = document.createElement('div');
+    label.className = 'sidebar-label';
+    label.textContent = 'Logs';
+
+    const webhookItem = document.createElement('div');
+    webhookItem.className = 'sidebar-item';
+    webhookItem.innerHTML = '<span class="si-icon">🔗</span> Discord Webhooks';
+    webhookItem.onclick = () => showSec('webhooks');
+
+    const auditItem = document.createElement('div');
+    auditItem.className = 'sidebar-item';
+    auditItem.innerHTML = '<span class="si-icon">📜</span> Audit Log';
+    auditItem.onclick = () => showSec('auditlog');
+
+    sidebar.appendChild(label);
+    sidebar.appendChild(webhookItem);
+    sidebar.appendChild(auditItem);
+  }
+
+  // Inject the two new section panels into admin-main
+  const main = document.querySelector('.admin-main');
+  if (main) {
+    main.insertAdjacentHTML('beforeend', `
+      <!-- ── WEBHOOKS SECTION ── -->
+      <div id="sec-webhooks" class="sec">
+        <div class="sec-title">Discord Webhooks</div>
+        <div class="sec-sub">Configure a Discord webhook URL per event channel. Each channel posts to a different Discord channel of your choice.</div>
+        <div class="alert alert-info" style="margin-bottom:18px;font-size:12px">
+          <strong>To create a webhook:</strong> Discord → Channel Settings → Integrations → Webhooks → New Webhook → Copy URL → paste below.
+        </div>
+        <div id="admin-webhook-cards"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+          <button class="btn btn-primary" onclick="adminSaveWebhooks()">💾 Save All Webhooks</button>
+        </div>
+      </div>
+
+      <!-- ── AUDIT LOG SECTION ── -->
+      <div id="sec-auditlog" class="sec">
+        <div class="sec-title">Site Audit Log</div>
+        <div class="sec-sub">Every action taken on the site — approvals, denials, rank changes, cert awards, deletions. Timestamped and attributed.</div>
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+          <select id="admin-audit-filter" onchange="adminLoadAudit()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--sans)">
+            <option value="">All events</option>
+            <option value="pilot_approved">Pilot Approved</option>
+            <option value="pilot_denied">Pilot Denied</option>
+            <option value="pilot_rank_changed">Rank Changed</option>
+            <option value="pilot_role_changed">Role Changed</option>
+            <option value="pilot_deleted">Pilot Deleted</option>
+            <option value="flight_logged">Flight Logged</option>
+            <option value="flight_deleted">Flight Deleted</option>
+            <option value="flight_plan_saved">Flight Plan Saved</option>
+            <option value="cert_awarded">Cert Awarded</option>
+            <option value="cert_revoked">Cert Revoked</option>
+            <option value="qual_updated">Qual Updated</option>
+            <option value="news_posted">News Posted</option>
+            <option value="news_deleted">News Deleted</option>
+            <option value="training_edited">Training Edited</option>
+            <option value="role_edited">Role Edited</option>
+            <option value="webhook_added">Webhook Saved</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="adminLoadAudit()">🔄 Refresh</button>
+          <span id="admin-audit-count" style="font-size:12px;color:var(--text2)"></span>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:0">
+            <div id="admin-audit-list" style="padding:16px">
+              <div class="empty-state"><p>Loading audit log…</p></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" id="admin-audit-more" style="margin-top:10px;display:none" onclick="adminLoadMoreAudit()">Load more</button>
+      </div>
+    `);
+  }
+});
+
+// Hook into showSec so the new sections trigger their loaders
+const _origShowSec = typeof showSec === 'function' ? showSec : null;
+showSec = function(id) {
+  if (_origShowSec) _origShowSec(id);
+  if (id === 'webhooks')  adminLoadWebhooks();
+  if (id === 'auditlog')  adminLoadAudit();
+};
+
+// ── 2. OVERRIDE EXISTING FUNCTIONS WITH AUDIT-LOGGED VERSIONS ─
+
+// ── Approve pilot ─────────────────────────────────────────────
+if (typeof confirmApprove === 'function') {
+  const _origApprove = confirmApprove;
+  confirmApprove = async function() {
+    const uid  = editingPilotUid;
+    const pilot = allPilots.find(p => p.uid === uid) || pendingApps.find(p => p.uid === uid);
+    const wing  = document.getElementById('approve-wing')?.value;
+    const role  = document.getElementById('approve-role')?.value;
+    const rank  = document.getElementById('approve-rank')?.value;
+    await _origApprove();
+    logAudit(AUDIT.PILOT_APPROVED, {
+      pilotCallsign: pilot?.displayName || pilot?.callsign || uid,
+      pilotUid: uid,
+      wing,
+      role,
+      rank,
+    });
+  };
+}
+
+// ── Deny pilot ────────────────────────────────────────────────
+if (typeof confirmDeny === 'function') {
+  const _origDeny = confirmDeny;
+  confirmDeny = async function() {
+    const uid   = editingPilotUid;
+    const pilot = allPilots.find(p => p.uid === uid) || pendingApps.find(p => p.uid === uid);
+    const reason = document.getElementById('deny-reason')?.value?.trim();
+    await _origDeny();
+    logAudit(AUDIT.PILOT_DENIED, {
+      pilotCallsign: pilot?.displayName || pilot?.callsign || uid,
+      pilotUid: uid,
+      notes: reason || '(no reason given)',
+    });
+  };
+}
+
+// ── Rank/role change ──────────────────────────────────────────
+if (typeof saveRankChange === 'function') {
+  const _origRankChange = saveRankChange;
+  saveRankChange = async function() {
+    const uid   = editingPilotUid;
+    const pilot = allPilots.find(p => p.uid === uid);
+    const oldRank = pilot?.rank;
+    const newRank = document.getElementById('rank-modal-rank')?.value;
+    const newRoles = [...(document.querySelectorAll('.rank-modal-role-cb:checked') || [])].map(c => c.value);
+    await _origRankChange();
+    if (oldRank !== newRank) {
+      logAudit(AUDIT.PILOT_RANK_CHANGED, {
+        pilotCallsign: pilot?.displayName || pilot?.callsign || uid,
+        pilotUid: uid,
+        fromRank: getRankName(oldRank || 'rec'),
+        toRank:   getRankName(newRank),
+      });
+    }
+    if (newRoles.length) {
+      logAudit(AUDIT.PILOT_ROLE_CHANGED, {
+        pilotCallsign: pilot?.displayName || pilot?.callsign || uid,
+        pilotUid: uid,
+        notes: `Roles set to: ${newRoles.join(', ')}`,
+      });
+    }
+  };
+}
+
+// ── Post news ─────────────────────────────────────────────────
+if (typeof postNews === 'function') {
+  const _origPostNews = postNews;
+  postNews = async function() {
+    const title = document.getElementById('news-title')?.value?.trim();
+    await _origPostNews();
+    if (title) logAudit(AUDIT.NEWS_POSTED, { newsTitle: title });
+  };
+}
+
+// ── Delete news ───────────────────────────────────────────────
+if (typeof deleteNews === 'function') {
+  const _origDeleteNews = deleteNews;
+  deleteNews = async function(id) {
+    await _origDeleteNews(id);
+    logAudit(AUDIT.NEWS_DELETED, { notes: `News ID: ${id}` });
+  };
+}
+
+// ── Award medal ───────────────────────────────────────────────
+if (typeof awardMedal === 'function') {
+  const _origAwardMedal = awardMedal;
+  awardMedal = async function(medalId, medalName) {
+    await _origAwardMedal(medalId, medalName);
+    logAudit(AUDIT.CERT_AWARDED, {
+      pilotCallsign: medalTargetPilot?.displayName || medalTargetPilot?.callsign,
+      pilotUid:      medalTargetPilot?.uid,
+      certName:      medalName,
+    });
+  };
+}
+
+// ── Revoke medal ──────────────────────────────────────────────
+if (typeof revokeMedal === 'function') {
+  const _origRevokeMedal = revokeMedal;
+  revokeMedal = async function(medalId) {
+    const medal = MEDALS_CATALOG.find(m => m.id === medalId);
+    await _origRevokeMedal(medalId);
+    logAudit(AUDIT.CERT_REVOKED, {
+      pilotCallsign: medalTargetPilot?.displayName || medalTargetPilot?.callsign,
+      pilotUid:      medalTargetPilot?.uid,
+      certName:      medal?.name || medalId,
+    });
+  };
+}
+
+// ── Award wings badge ─────────────────────────────────────────
+if (typeof awardWingsBadge === 'function') {
+  const _origAwardWings = awardWingsBadge;
+  awardWingsBadge = async function(wingId, wingName) {
+    await _origAwardWings(wingId, wingName);
+    logAudit(AUDIT.CERT_AWARDED, {
+      pilotCallsign: medalTargetPilot?.displayName || medalTargetPilot?.callsign,
+      pilotUid:      medalTargetPilot?.uid,
+      certName:      wingName + ' (Pilot Wings)',
+    });
+  };
+}
+
+// ── Revoke wings badge ────────────────────────────────────────
+if (typeof revokeWingsBadge === 'function') {
+  const _origRevokeWings = revokeWingsBadge;
+  revokeWingsBadge = async function(wingId) {
+    const badge = WINGS_BADGES.find(w => w.id === wingId);
+    await _origRevokeWings(wingId);
+    logAudit(AUDIT.CERT_REVOKED, {
+      pilotCallsign: medalTargetPilot?.displayName || medalTargetPilot?.callsign,
+      pilotUid:      medalTargetPilot?.uid,
+      certName:      (badge?.name || wingId) + ' (Pilot Wings)',
+    });
+  };
+}
+
+// ── Role create/edit/delete ───────────────────────────────────
+if (typeof createRole === 'function') {
+  const _origCreateRole = createRole;
+  createRole = async function() {
+    const name = document.getElementById('nr-name')?.value?.trim();
+    await _origCreateRole();
+    if (name) logAudit(AUDIT.ROLE_EDITED, { notes: `Created role: ${name}` });
+  };
+}
+if (typeof saveRoleEdit === 'function') {
+  const _origSaveRoleEdit = saveRoleEdit;
+  saveRoleEdit = async function() {
+    const name = document.getElementById('er-name')?.value?.trim();
+    await _origSaveRoleEdit();
+    logAudit(AUDIT.ROLE_EDITED, { notes: `Edited role: ${editingRoleId} → ${name}` });
+  };
+}
+if (typeof deleteRole === 'function') {
+  const _origDeleteRole = deleteRole;
+  deleteRole = async function(roleId) {
+    const roleName = liveRoles[roleId]?.name || roleId;
+    await _origDeleteRole(roleId);
+    logAudit(AUDIT.ROLE_EDITED, { notes: `Deleted role: ${roleName}` });
+  };
+}
+
+// ── 3. WEBHOOK MANAGER (inline, no separate page needed) ──────
+
+const WEBHOOK_CHANNELS_ADMIN = {
+  flights_7bw:    { label:'7th BW Flight Log',         group:'Wing Flights', events:['flight_logged','flight_deleted'] },
+  flights_509bw:  { label:'509th BW Flight Log',        group:'Wing Flights', events:['flight_logged','flight_deleted'] },
+  flights_2bw:    { label:'2nd BW Flight Log',          group:'Wing Flights', events:['flight_logged','flight_deleted'] },
+  flight_plans:   { label:'Flight Plans',               group:'Wing Flights', events:['flight_plan_saved'] },
+  admin_pilots:   { label:'Admin — Pilot Actions',      group:'Admin',        events:['pilot_approved','pilot_denied','pilot_rank_changed','pilot_role_changed','pilot_deleted'] },
+  admin_training: { label:'Admin — Training & Certs',   group:'Admin',        events:['cert_awarded','cert_revoked','qual_updated','training_edited'] },
+  admin_site:     { label:'Admin — Site Changes',       group:'Admin',        events:['news_posted','news_deleted','role_edited','wing_edited','webhook_added','webhook_deleted'] },
+  admin_all:      { label:'Admin — All Events (audit)', group:'Admin',        events:['*'] },
+};
+
+let _adminWebhookConfig = {};
+
+async function adminLoadWebhooks() {
+  try {
+    const snap = await db.collection('settings').doc('webhooks').get();
+    _adminWebhookConfig = snap.exists ? (snap.data().channels || {}) : {};
+  } catch(e) { _adminWebhookConfig = {}; }
+  adminRenderWebhooks();
+}
+
+function adminRenderWebhooks() {
+  const container = document.getElementById('admin-webhook-cards');
+  if (!container) return;
+
+  const groups = {};
+  Object.entries(WEBHOOK_CHANNELS_ADMIN).forEach(([key, ch]) => {
+    if (!groups[ch.group]) groups[ch.group] = [];
+    groups[ch.group].push([key, ch]);
+  });
+
+  container.innerHTML = Object.entries(groups).map(([group, channels]) => `
+    <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin:20px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--border)">${group}</div>
+    ${channels.map(([key, ch]) => {
+      const cfg    = _adminWebhookConfig[key] || {};
+      const hasUrl = !!cfg.url;
+      return `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--card2);border-bottom:1px solid var(--border)">
+          <div style="width:8px;height:8px;border-radius:50%;background:${hasUrl?'var(--green)':'var(--text3)'};${hasUrl?'box-shadow:0 0 6px var(--green)':''}"></div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${ch.label}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${ch.events[0]==='*'?'All events':ch.events.join(', ')}</div>
+          </div>
+          <span style="font-size:11px;color:${hasUrl?'var(--green2)':'var(--text3)'}">${hasUrl?'● Active':'○ Not set'}</span>
+        </div>
+        <div style="padding:12px 16px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="wh-admin-${key}" type="text" value="${cfg.url||''}"
+              placeholder="https://discord.com/api/webhooks/..."
+              style="flex:1;padding:8px 12px;background:#0a0c14;border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;font-family:var(--mono);outline:none">
+            <button onclick="adminTestWebhook('${key}')"
+              style="padding:6px 12px;background:rgba(74,144,217,.15);color:var(--blue2);border:1px solid rgba(74,144,217,.3);border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap;font-family:var(--sans)">
+              Test
+            </button>
+          </div>
+          ${cfg.lastUsed ? `<div style="font-size:10px;color:var(--text3);margin-top:6px">Last fired: ${formatDateTime(cfg.lastUsed)}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('')}
+  `).join('');
+}
+
+async function adminSaveWebhooks() {
+  const updated = {};
+  Object.keys(WEBHOOK_CHANNELS_ADMIN).forEach(key => {
+    const url = document.getElementById('wh-admin-'+key)?.value?.trim() || '';
+    if (url) updated[key] = { url, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+  });
+  try {
+    await db.collection('settings').doc('webhooks').set({ channels: updated }, { merge: true });
+    clearWebhookCache?.();
+    _adminWebhookConfig = updated;
+    adminRenderWebhooks();
+    toast('Webhooks saved ✓');
+    logAudit(AUDIT.WEBHOOK_ADDED, {
+      channelName: `${Object.keys(updated).length} channel(s) configured`,
+    });
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+async function adminTestWebhook(key) {
+  const url = document.getElementById('wh-admin-'+key)?.value?.trim();
+  if (!url) { toast('Enter a webhook URL first','error'); return; }
+  const payload = {
+    embeds: [{
+      color: 0xc8a951,
+      title: '🔔 VTAC GSC Webhook Test',
+      description: `Test from **${WEBHOOK_CHANNELS_ADMIN[key]?.label}** channel.\nIf you see this, the webhook is working correctly.`,
+      footer: { text: 'VTAC Global Strike Command — Admin Panel' },
+      timestamp: new Date().toISOString(),
+    }]
+  };
+  try {
+    const resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    if (resp.ok || resp.status === 204) toast(`Test sent to ${WEBHOOK_CHANNELS_ADMIN[key]?.label} ✓`);
+    else toast(`Discord returned ${resp.status} — check the URL`,'error');
+  } catch(e) { toast('Test failed — check URL','error'); }
+}
+
+// ── 4. AUDIT LOG VIEWER ────────────────────────────────────────
+let _auditLastDoc = null;
+const _AUDIT_PAGE = 50;
+
+async function adminLoadAudit() {
+  _auditLastDoc = null;
+  document.getElementById('admin-audit-list').innerHTML =
+    '<div class="empty-state" style="padding:20px"><p>Loading…</p></div>';
+  await _fetchAuditPage(true);
+}
+
+async function adminLoadMoreAudit() { await _fetchAuditPage(false); }
+
+async function _fetchAuditPage(reset) {
+  const filter = document.getElementById('admin-audit-filter')?.value || '';
+  try {
+    let q = db.collection('auditLog').orderBy('timestamp','desc').limit(_AUDIT_PAGE);
+    if (filter) q = q.where('eventType','==',filter);
+    if (!reset && _auditLastDoc) q = q.startAfter(_auditLastDoc);
+
+    const snap = await q.get();
+    _auditLastDoc = snap.docs[snap.docs.length-1] || null;
+    document.getElementById('admin-audit-more').style.display =
+      snap.docs.length === _AUDIT_PAGE ? 'block' : 'none';
+
+    const entries = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    document.getElementById('admin-audit-count').textContent =
+      `${entries.length}${snap.docs.length===_AUDIT_PAGE?'+':''} entries`;
+
+    if (!entries.length && reset) {
+      document.getElementById('admin-audit-list').innerHTML =
+        '<div class="empty-state" style="padding:20px"><p>No audit entries yet. Actions taken on the site will appear here automatically.</p></div>';
+      return;
+    }
+
+    const EVENT_COLORS = {
+      pilot_approved:'var(--green)', pilot_denied:'var(--red)',
+      pilot_rank_changed:'var(--gold)', pilot_role_changed:'var(--gold)',
+      pilot_deleted:'var(--red)',
+      flight_logged:'var(--green)', flight_deleted:'var(--red)',
+      flight_plan_saved:'var(--blue)',
+      cert_awarded:'var(--gold)', cert_revoked:'var(--amber)',
+      qual_updated:'var(--blue)',
+      news_posted:'var(--blue)', news_deleted:'var(--red)',
+      training_edited:'var(--text2)', role_edited:'var(--amber)',
+      wing_edited:'var(--text2)', webhook_added:'var(--green)',
+    };
+
+    const html = entries.map(e => {
+      const ts = e.timestamp?.toDate?.() ? e.timestamp.toDate() : new Date();
+      const time = ts.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      const d = e.details || {};
+      let detail = '';
+      if (d.departure && d.arrival) detail = `${d.departure} → ${d.arrival}`;
+      else if (d.pilotCallsign)     detail = d.pilotCallsign;
+      else if (d.certName)          detail = d.certName;
+      else if (d.newsTitle)         detail = d.newsTitle;
+      else if (d.channelName)       detail = d.channelName;
+      else if (d.notes)             detail = d.notes.slice(0,80);
+      if (d.aircraft && detail)     detail += ` · ${d.aircraft}`;
+      if (d.fromRank && d.toRank)   detail += ` ${d.fromRank} → ${d.toRank}`;
+      const dotColor = EVENT_COLORS[e.eventType] || 'var(--text3)';
+      const page = (e.page||'').replace('/pages/','').replace('.html','');
+      return `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:.5px solid var(--border);font-size:12px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0;margin-top:4px"></div>
+        <div style="width:90px;flex-shrink:0;color:var(--text3);font-family:var(--mono);font-size:11px">${time}</div>
+        <div style="width:120px;flex-shrink:0;color:var(--gold);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.actor?.callsign||'—'}</div>
+        <div style="flex-shrink:0;font-size:10px;padding:1px 7px;border-radius:8px;background:var(--card2);border:1px solid var(--border);font-family:var(--mono);color:var(--text2)">${e.eventType||'—'}</div>
+        <div style="flex:1;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${detail||'—'}</div>
+        <div style="color:var(--text3);font-size:10px;flex-shrink:0">${page}</div>
+      </div>`;
+    }).join('');
+
+    const list = document.getElementById('admin-audit-list');
+    if (reset) list.innerHTML = html;
+    else list.insertAdjacentHTML('beforeend', html);
+
+  } catch(e) {
+    document.getElementById('admin-audit-list').innerHTML =
+      `<div class="alert alert-error">Error: ${e.message}<br><small>You may need to create a Firestore index for auditLog (eventType ASC + timestamp DESC). Check Firebase Console → Firestore → Indexes.</small></div>`;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+  
 </script>
 </body>
 </html>
+
+
