@@ -736,7 +736,8 @@ function updateSqOptions() {
   const wing = document.getElementById('approve-wing').value;
   const sel  = document.getElementById('approve-squadron');
   const sqs  = WINGS[wing]?.squadrons || {};
-  sel.innerHTML = Object.entries(sqs).map(([id,sq])=>`<option value="${id}">${sq.name}</option>`).join('');
+  sel.innerHTML = '<option value="">None — command staff / unassigned</option>'
+    + Object.entries(sqs).map(([id,sq])=>`<option value="${id}">${sq.name}</option>`).join('');
 }
 
 async function confirmApprove() {
@@ -751,7 +752,7 @@ async function confirmApprove() {
       role:      role,
       rank:      rank,
       wing:      wing,
-      squadron:  sq,
+      squadron:  sq || null,
       approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     toast('Pilot approved and activated!');
