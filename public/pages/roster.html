@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/css/main.css">
 <style>
 .roster-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
-.roster-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.roster-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .rf-btn{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--card);color:var(--text3);font-family:var(--sans);transition:all .12s}
 .rf-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(200,169,81,.08)}
 .roster-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
@@ -38,6 +38,16 @@
   font-size:10px;font-weight:700;background:rgba(200,169,81,.15);color:var(--gold2);
   border:1px solid rgba(200,169,81,.3);border-radius:10px;padding:2px 8px;
 }
+/* ── GSC COMMAND SPOTLIGHT ── */
+.command-section{margin-bottom:28px}
+.command-banner{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.command-banner .cb-line{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(200,169,81,.5))}
+.command-banner .cb-line.r{background:linear-gradient(90deg,rgba(200,169,81,.5),transparent)}
+.command-banner .cb-label{font-size:11px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}
+.command-card{background:linear-gradient(135deg,rgba(200,169,81,.08),var(--card));border:1px solid rgba(200,169,81,.45);border-radius:14px;padding:22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;box-shadow:0 0 28px rgba(200,169,81,.08);margin-bottom:10px}
+.command-avatar{width:68px;height:68px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);flex-shrink:0;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 18px rgba(200,169,81,.25)}
+.command-name{font-size:19px;font-weight:800;color:var(--text)}
+.majcom-badge{font-size:9px;font-weight:800;letter-spacing:.06em;border-radius:9px;padding:2px 8px;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -62,16 +72,31 @@
 <div class="roster-hero">
   <div class="hero-eyebrow">Order of Battle</div>
   <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Command <span>Roster</span></h1>
-  <p class="hero-sub" style="font-size:14px">Every active pilot across Virtual Global Strike Command.</p>
+  <p class="hero-sub" style="font-size:14px">Every active pilot across Virtual Global Strike Command and partnered commands.</p>
 </div>
 
 <div class="container page-body">
-  <div class="roster-filters" id="roster-filters">
-    <button class="rf-btn active" onclick="filterRoster(null,this)">All Wings</button>
-    <button class="rf-btn" onclick="filterRoster('7bw',this)">7th BW</button>
-    <button class="rf-btn" onclick="filterRoster('509bw',this)">509th BW</button>
-    <button class="rf-btn" onclick="filterRoster('2bw',this)">2nd BW</button>
+
+  <!-- GSC COMMAND spotlight — rendered by JS, hidden if empty -->
+  <div class="command-section" id="command-section" style="display:none">
+    <div class="command-banner">
+      <div class="cb-line"></div>
+      <div class="cb-label">★ GSC Command ★</div>
+      <div class="cb-line r"></div>
+    </div>
+    <div id="command-list"></div>
   </div>
+
+  <!-- MAJCOM filter -->
+  <div class="roster-filters" id="majcom-filters"></div>
+  <!-- Wing filter — only visible when Global Strike is selected -->
+  <div class="roster-filters" id="wing-filters" style="display:none">
+    <button class="rf-btn active" onclick="filterWing(null,this)">All Wings</button>
+    <button class="rf-btn" onclick="filterWing('7bw',this)">7th BW</button>
+    <button class="rf-btn" onclick="filterWing('509bw',this)">509th BW</button>
+    <button class="rf-btn" onclick="filterWing('2bw',this)">2nd BW</button>
+  </div>
+
   <input type="text" id="roster-search" placeholder="Search by callsign..." style="width:100%;max-width:320px;margin-bottom:20px" oninput="renderRosterList()">
   <div id="roster-list"><div class="empty-state"><p>Loading roster...</p></div></div>
 </div>
@@ -80,18 +105,43 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
 <script src="/js/nav.js"></script>
 <script>
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
 
-let rosterPilots = [], activeWingFilter = null;
+// ── MAJCOMS ──────────────────────────────────────────────────
+// Pilots carry an optional `majcom` field (set in Master Admin →
+// Edit Pilot). Anyone without one belongs to Global Strike Command.
+const MAJCOMS = {
+  afgsc: { name: 'Global Strike Command',              abbr: 'AFGSC', color: '#c8a951' },
+  acc:   { name: 'Air Combat Command',                 abbr: 'ACC',   color: '#4a90d9' },
+  amc:   { name: 'Air Mobility Command',               abbr: 'AMC',   color: '#3dba6e' },
+  aetc:  { name: 'Air Education & Training Command',   abbr: 'AETC',  color: '#9b59b6' },
+  usafe: { name: 'US Air Forces in Europe',            abbr: 'USAFE', color: '#e09030' },
+  nato:  { name: 'NATO Partners',                      abbr: 'NATO',  color: '#5b92e5' },
+  raf:   { name: 'Royal Air Force',                    abbr: 'RAF',   color: '#d04040' },
+};
+function pilotMajcom(p) { return p.majcom || 'afgsc'; }
 
-// NOTE: nav.js (updateNavUI) now fully owns #nav-right-area — including
+// A pilot belongs in the GSC Command spotlight if either:
+//  - their highest display role has authority level 90+ (the GSC
+//    Commander — shows their public title, never "master admin"), or
+//  - their doc carries gscCommand: true (manual flag for future
+//    command staff, settable in Firestore)
+function isCommandStaff(p) {
+  if (p.gscCommand === true) return true;
+  const top = Math.max(0, ...getAllDisplayRoles(p).map(r => r.level || 0));
+  return top >= 90;
+}
+
+let rosterPilots = [], activeWingFilter = null, activeMajcom = null;
+
+// NOTE: nav.js (updateNavUI) fully owns #nav-right-area — including
 // the My Profile button AND the pilot avatar. This function must NOT
-// touch the nav, or it erases the avatar (that was the old bug).
+// touch the nav, or it erases the avatar.
 function onAuthReady(user, pilot) {
   loadRoster();
 }
@@ -110,20 +160,94 @@ async function loadRoster() {
       return bRank - aRank;
     });
   } catch(e) { rosterPilots = []; }
+  renderMajcomFilters();
+  renderCommandSection();
   renderRosterList();
 }
 
-function filterRoster(wingId, btn) {
+// ── GSC COMMAND SPOTLIGHT ────────────────────────────────────
+function renderCommandSection() {
+  const staff = rosterPilots.filter(isCommandStaff);
+  const section = document.getElementById('command-section');
+  const list = document.getElementById('command-list');
+  if (!staff.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = staff.map(p => {
+    const roles = getAllDisplayRoles(p);
+    const medals = p.medals || [];
+    const wingsBadges = p.wingsBadges || [];
+    return `
+    <div class="command-card">
+      <div class="command-avatar">${p.avatarUrl?`<img src="${p.avatarUrl}" style="width:68px;height:68px;border-radius:50%;object-fit:cover">`:'★'}</div>
+      <div class="roster-info">
+        <div class="command-name">${p.displayName||p.callsign}</div>
+        <div class="roster-meta">${getRankName(p.rank||'rec')}${p.wing ? ' · ' + (getWingName(p.wing)||'') : ''}</div>
+        <div class="roster-roles">
+          ${roles.map(r=>`<span class="badge" style="background:${r.color}22;color:${r.color};border:1px solid ${r.color}55">${r.name}</span>`).join('')}
+        </div>
+        ${wingsBadges.length ? `<div class="wings-badge-row">${wingsBadges.map(w=>`
+          <div class="wings-badge-wrap" title="${w.name}">
+            ${renderWingsBadgeSVG(w.id, 28)}
+            <span class="wings-badge-label">${w.name}</span>
+          </div>`).join('')}</div>` : ''}
+        ${medals.length ? `<div class="ribbon-row">${medals.map(m=>`
+          <div class="ribbon-wrap">
+            ${renderRibbonSVG(m.id, 40, 14)}
+            <div class="ribbon-tooltip">${m.name}</div>
+          </div>`).join('')}</div>` : ''}
+      </div>
+      <div class="roster-stats">
+        <div class="rs-item"><div class="rs-val">${p.totalFlights||0}</div><div class="rs-lbl">Flights</div></div>
+        <div class="rs-item"><div class="rs-val">${Math.round(p.flightHours||0)}h</div><div class="rs-lbl">Hours</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── FILTERS ──────────────────────────────────────────────────
+function renderMajcomFilters() {
+  const el = document.getElementById('majcom-filters');
+  // Only show a MAJCOM button if it has members (AFGSC always shows)
+  const present = new Set(rosterPilots.filter(p => !isCommandStaff(p)).map(pilotMajcom));
+  present.add('afgsc');
+  let html = '<button class="rf-btn active" onclick="filterMajcom(null,this)">All Commands</button>';
+  Object.entries(MAJCOMS).forEach(([id, m]) => {
+    if (!present.has(id)) return;
+    html += `<button class="rf-btn" onclick="filterMajcom('${id}',this)">${m.abbr}</button>`;
+  });
+  el.innerHTML = html;
+}
+
+function filterMajcom(majcomId, btn) {
+  activeMajcom = majcomId;
+  document.querySelectorAll('#majcom-filters .rf-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  // Wing filter only makes sense inside Global Strike Command
+  const wingRow = document.getElementById('wing-filters');
+  if (majcomId === 'afgsc') {
+    wingRow.style.display = 'flex';
+  } else {
+    wingRow.style.display = 'none';
+    activeWingFilter = null;
+    document.querySelectorAll('#wing-filters .rf-btn').forEach((b,i)=>b.classList.toggle('active', i===0));
+  }
+  renderRosterList();
+}
+
+function filterWing(wingId, btn) {
   activeWingFilter = wingId;
-  document.querySelectorAll('#roster-filters .rf-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#wing-filters .rf-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderRosterList();
 }
 
+// ── MEMBER LIST ──────────────────────────────────────────────
 function renderRosterList() {
   const q = document.getElementById('roster-search').value.toLowerCase();
   const el = document.getElementById('roster-list');
   const filtered = rosterPilots.filter(p =>
+    !isCommandStaff(p) && // command staff live in the spotlight section
+    (!activeMajcom || pilotMajcom(p) === activeMajcom) &&
     (!activeWingFilter || p.wing === activeWingFilter) &&
     (!q || (p.displayName||p.callsign||'').toLowerCase().includes(q))
   );
@@ -133,12 +257,17 @@ function renderRosterList() {
     const roles = getAllDisplayRoles(p);
     const medals = p.medals || [];
     const wingsBadges = p.wingsBadges || [];
+    const mj = MAJCOMS[pilotMajcom(p)] || MAJCOMS.afgsc;
+    const isPartner = pilotMajcom(p) !== 'afgsc';
+    const unitLine = isPartner
+      ? `<span class="majcom-badge" style="background:${mj.color}22;color:${mj.color};border:1px solid ${mj.color}55">${mj.abbr}</span> ${mj.name}`
+      : `${getWingName(p.wing)||'Unassigned'}${p.squadron?' · '+getSqName(p.wing,p.squadron):''}`;
     return `
     <div class="roster-card">
       <div class="roster-avatar">${p.avatarUrl?`<img src="${p.avatarUrl}" style="width:52px;height:52px;border-radius:50%;object-fit:cover">`:'✈'}</div>
       <div class="roster-info">
         <div class="roster-name">${p.displayName||p.callsign}</div>
-        <div class="roster-meta">${getRankName(p.rank||'rec')} · ${getWingName(p.wing)||'Unassigned'}${p.squadron?' · '+getSqName(p.wing,p.squadron):''}</div>
+        <div class="roster-meta">${getRankName(p.rank||'rec')} · ${unitLine}</div>
         <div class="roster-roles">
           ${roles.map(r=>`<span class="badge" style="background:${r.color}22;color:${r.color};border:1px solid ${r.color}55">${r.name}</span>`).join('')}
         </div>
