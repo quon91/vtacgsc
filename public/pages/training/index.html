@@ -17,7 +17,9 @@
 .tc-module-card:hover { transform: translateY(-2px); }
 .tc-module-icon { font-size: 22px; flex-shrink: 0; line-height: 1; }
 .tc-module-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.tc-module-desc { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
 .tc-module-arrow { font-size: 12px; font-weight: 600; }
+.tc-manage-btn { display:inline-flex; align-items:center; gap:8px; margin-top:16px; }
 </style>
 </head>
 <body>
@@ -34,6 +36,7 @@
     </a>
     <div class="nav-links" id="nav-links">
       <a href="/index.html">Home</a>
+      <a href="/pages/wings.html">Wings</a>
       <a href="/pages/roster.html">Roster</a>
       <a href="/pages/history.html">History</a>
       <a href="/pages/bases.html">Bases</a>
@@ -65,6 +68,7 @@
   <div class="hero-eyebrow">Instructor Resources</div>
   <h1 class="hero-title" style="font-size:clamp(28px,5vw,46px)">Training <span>Center</span></h1>
   <p class="hero-sub">Aircraft-specific training guides, checklists, and syllabi for every wing.</p>
+  <a href="/pages/training-manager.html" class="btn btn-outline btn-sm tc-manage-btn" id="tc-manage-btn" style="display:none">🎓 Manage training modules</a>
 </section>
 
 <div class="container page-body">
@@ -76,7 +80,7 @@
       <div class="wing-name" style="color:var(--gold)">B-1B Lancer Training</div>
       <div class="wing-base">📍 Dyess AFB (KDYS) — Abilene, TX</div>
     </div>
-    <div class="tc-module-grid">
+    <div class="tc-module-grid" id="grid-7bw">
       <a href="/pages/training/b1b-ils.html" class="tc-module-card" style="border-top:2px solid var(--gold)">
         <div class="tc-module-icon">🎯</div>
         <div><div class="tc-module-title">ILS Approach</div><div class="tc-module-arrow" style="color:var(--gold)">Open guide →</div></div>
@@ -119,7 +123,7 @@
       <div class="wing-name" style="color:var(--blue)">B-2 Spirit Training</div>
       <div class="wing-base">📍 Whiteman AFB (KSZL) — Knob Noster, MO</div>
     </div>
-    <div class="tc-module-grid">
+    <div class="tc-module-grid" id="grid-509bw">
       <a href="/pages/training/b2-cockpit.html" class="tc-module-card" style="border-top:2px solid var(--blue)">
         <div class="tc-module-icon">🚪</div>
         <div><div class="tc-module-title">Cockpit &amp; Ground Ops</div><div class="tc-module-arrow" style="color:var(--blue)">Open guide →</div></div>
@@ -154,7 +158,7 @@
       <div class="wing-name" style="color:var(--green)">B-52H Stratofortress Training</div>
       <div class="wing-base">📍 Barksdale AFB (KBAD) — Bossier City, LA</div>
     </div>
-    <div class="tc-module-grid">
+    <div class="tc-module-grid" id="grid-2bw">
       <a href="/pages/training/b52h-systems.html" class="tc-module-card" style="border-top:2px solid var(--green)">
         <div class="tc-module-icon">📡</div>
         <div><div class="tc-module-title">Systems Reference</div><div class="tc-module-arrow" style="color:var(--green)">Open guide →</div></div>
@@ -168,6 +172,16 @@
         <div><div class="tc-module-title">QRC Checklist</div><div class="tc-module-arrow" style="color:var(--green)">Open checklist →</div></div>
       </a>
     </div>
+  </div>
+
+  <!-- General / All Aircraft — dynamic modules only, hidden until one exists -->
+  <div class="tc-wing-section" id="general-section" style="display:none">
+    <div class="wing-banner" style="border-left:3px solid var(--gold)">
+      <div class="wing-label" style="color:var(--gold)">All Aircraft</div>
+      <div class="wing-name" style="color:var(--gold)">General Training</div>
+      <div class="wing-base">Command-wide procedures, airmanship, and shared resources</div>
+    </div>
+    <div class="tc-module-grid" id="grid-general"></div>
   </div>
 
   <div class="divider"></div>
@@ -196,32 +210,78 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
 <script>
 function toggleMobileNav() { document.getElementById('nav-links').classList.toggle('open'); }
 
-// Update nav when auth resolves - training pages are PUBLIC (no redirect)
+// Same access check as training-manager.html and the Firestore rule:
+// Instructors, Squadron/Wing Commanders, Master Admin, and any custom
+// role holding the manage_training permission (the GSC Commander).
+function canManageTraining(pilot) {
+  if (!pilot) return false;
+  if (typeof hasPermission === 'function' && hasPermission(pilot, 'manage_training')) return true;
+  return getPilotRoleIds(pilot).some(function(rid) {
+    return rid === 'instructor' || rid === 'sq_commander' || rid === 'wing_commander';
+  });
+}
+
+// Nav auth UI is fully handled by nav.js (updateNavUI). This page's
+// job on auth is loading the dynamic modules — which, with the site
+// lockdown, must wait for auth or the reads get denied by the rules.
 function onAuthReady(user, pilot) {
-  if (user && pilot?.status === 'active') {
-    const authArea = document.getElementById('nav-auth-area');
-    const userArea = document.getElementById('nav-user-area');
-    if (authArea) authArea.style.display = 'none';
-    if (userArea) {
-      userArea.style.display = 'flex';
-      const nameEl = document.getElementById('nav-pilot-name');
-      const rankEl = document.getElementById('nav-rank-badge');
-      if (nameEl) nameEl.textContent = pilot.callsign || pilot.displayName || '';
-      if (rankEl) {
-        const roleInfo = typeof getDisplayRole === 'function' ? getDisplayRole(pilot) : null;
-        if (roleInfo) {
-          rankEl.textContent = roleInfo.name;
-          rankEl.style.background = (roleInfo.color || '#c8a951') + '26';
-          rankEl.style.color = roleInfo.color || '#c8a951';
-        }
-      }
-      const avatarEl = document.getElementById('nav-avatar');
-      if (avatarEl && pilot.avatarUrl) avatarEl.src = pilot.avatarUrl;
-    }
+  if (canManageTraining(pilot)) {
+    document.getElementById('tc-manage-btn').style.display = 'inline-flex';
   }
+  loadDynamicModules();
+}
+
+// ── DYNAMIC MODULES ──────────────────────────────────────────
+// Modules added in the Training Manager (Firestore `training`
+// collection) are appended to their wing's grid right alongside
+// the built-in guides. `general` modules get their own section,
+// which stays hidden until at least one exists.
+const CAT_STYLE = {
+  '7bw':    { grid: 'grid-7bw',     color: 'var(--gold)'  },
+  '509bw':  { grid: 'grid-509bw',   color: 'var(--blue)'  },
+  '2bw':    { grid: 'grid-2bw',     color: 'var(--green)' },
+  'general':{ grid: 'grid-general', color: 'var(--gold)'  },
+};
+
+async function loadDynamicModules() {
+  let mods = [];
+  try {
+    const snap = await db.collection('training').orderBy('createdAt', 'asc').get();
+    mods = snap.docs.map(function(d){ return d.data(); });
+  } catch(e) {
+    try {
+      const snap = await db.collection('training').get();
+      mods = snap.docs.map(function(d){ return d.data(); });
+    } catch(e2) { return; }
+  }
+  if (!mods.length) return;
+
+  let hasGeneral = false;
+  mods.forEach(function(m) {
+    const cat = CAT_STYLE[m.category || 'general'] || CAT_STYLE.general;
+    const grid = document.getElementById(cat.grid);
+    if (!grid) return;
+    if ((m.category || 'general') === 'general') hasGeneral = true;
+    const url = m.url || '#';
+    const external = /^https?:\/\//i.test(url);
+    const card = document.createElement('a');
+    card.className = 'tc-module-card';
+    card.setAttribute('style', 'border-top:2px solid ' + cat.color);
+    card.href = url;
+    if (external) { card.target = '_blank'; card.rel = 'noopener'; }
+    card.innerHTML =
+      '<div class="tc-module-icon">📘</div>' +
+      '<div><div class="tc-module-title">' + (m.title || 'Untitled module') + (external ? ' ↗' : '') + '</div>' +
+      (m.description ? '<div class="tc-module-desc">' + m.description + '</div>' : '') +
+      '<div class="tc-module-arrow" style="color:' + cat.color + '">Open ' + (external ? 'link' : 'guide') + ' →</div></div>';
+    grid.appendChild(card);
+  });
+
+  if (hasGeneral) document.getElementById('general-section').style.display = 'block';
 }
 </script>
 </body>
