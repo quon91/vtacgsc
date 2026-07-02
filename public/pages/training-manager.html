@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Training Manager — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.tm-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.cat-banner{display:flex;align-items:center;gap:10px;margin:26px 0 12px}
+.cat-banner .cb-line{flex:1;height:1px;background:var(--border)}
+.cat-banner .cb-label{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
+.module-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.module-icon{width:42px;height:42px;border-radius:10px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.module-info{flex:1;min-width:200px}
+.module-title{font-size:15px;font-weight:700;color:var(--text)}
+.module-title a{color:var(--text);text-decoration:none}
+.module-title a:hover{color:var(--gold)}
+.module-desc{font-size:12px;color:var(--text2);margin-top:3px}
+.module-meta{font-size:10px;color:var(--text3);margin-top:5px;font-family:var(--mono)}
+.mgr-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--green2);border:1px solid rgba(61,186,110,.4);background:rgba(61,186,110,.08);border-radius:14px;padding:4px 12px;margin-top:10px}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links"></div>
+    <div class="nav-right" id="nav-right-area"></div>
+    <button class="nav-mobile-btn" onclick="document.getElementById('nav-links').classList.toggle('open')">☰</button>
+  </div>
+</nav>
+
+<div class="tm-hero">
+  <div class="hero-eyebrow">Training Command</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Training <span>Manager</span></h1>
+  <p class="hero-sub" style="font-size:14px">The official vTAC GSC training library — courses, procedures, and qualification modules.</p>
+  <div class="mgr-badge" id="mgr-badge" style="display:none">🎓 Training Staff — you can add and remove modules</div>
+</div>
+
+<div class="container page-body">
+
+  <!-- ADD MODULE — visible to training staff only -->
+  <div class="card" id="add-card" style="display:none;margin-bottom:24px">
+    <div class="card-header"><div class="card-icon">➕</div><div class="card-title">Add training module</div></div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Module title</label>
+          <input type="text" id="tm-title" placeholder="e.g. B-1B ILS Approaches" maxlength="80">
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="tm-category">
+            <option value="general">General / All Aircraft</option>
+            <option value="7bw">B-1B Lancer — 7th BW</option>
+            <option value="509bw">B-2 Spirit — 509th BW</option>
+            <option value="2bw">B-52H Stratofortress — 2nd BW</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Link (training page on this site, Google Doc, YouTube, etc.)</label>
+        <input type="url" id="tm-url" placeholder="/pages/training/b1b-ils.html or https://...">
+        <div class="form-hint">Site pages start with /pages/training/… — external links need the full https:// address.</div>
+      </div>
+      <div class="form-group">
+        <label>Short description <span style="color:var(--text3)">(optional)</span></label>
+        <input type="text" id="tm-desc" placeholder="What does this module cover?" maxlength="140">
+      </div>
+      <button class="btn btn-primary" onclick="addModule()">+ Add module</button>
+    </div>
+  </div>
+
+  <div id="module-list"><div class="empty-state"><p>Loading training library…</p></div></div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+// ── ACCESS ───────────────────────────────────────────────────
+// Training staff = Instructors, Squadron Commanders, Wing
+// Commanders, Master Admin, and any custom role holding the
+// "Edit training modules" permission (that's how the GSC
+// Commander role qualifies — the permission is ticked on the
+// role in Roles & Permissions). Mirrors the Firestore rule.
+function canManageTraining(pilot) {
+  if (!pilot) return false;
+  if (typeof hasPermission === 'function' && hasPermission(pilot, 'manage_training')) return true;
+  return getPilotRoleIds(pilot).some(function(rid) {
+    return rid === 'instructor' || rid === 'sq_commander' || rid === 'wing_commander';
+  });
+}
+
+const CATEGORIES = {
+  general: { label: 'General / All Aircraft', color: '#c8a951', icon: '🎓' },
+  '7bw':   { label: 'B-1B Lancer — 7th Bomb Wing', color: '#c8a951', icon: '🛩' },
+  '509bw': { label: 'B-2 Spirit — 509th Bomb Wing', color: '#4a90d9', icon: '🛩' },
+  '2bw':   { label: 'B-52H Stratofortress — 2nd Bomb Wing', color: '#3dba6e', icon: '🛩' },
+};
+
+let isStaff = false;
+let modules = [];
+
+function onAuthReady(user, pilot) {
+  if (!user) { window.location.replace('/pages/login.html'); return; }
+  isStaff = canManageTraining(pilot);
+  if (isStaff) {
+    document.getElementById('add-card').style.display = 'block';
+    document.getElementById('mgr-badge').style.display = 'inline-flex';
+  }
+  loadModules();
+}
+
+async function loadModules() {
+  try {
+    const snap = await db.collection('training').orderBy('createdAt', 'desc').get();
+    modules = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
+  } catch(e) {
+    // Fallback without index/orderBy if needed
+    try {
+      const snap = await db.collection('training').get();
+      modules = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
+    } catch(e2) { modules = []; }
+  }
+  renderModules();
+}
+
+function renderModules() {
+  const el = document.getElementById('module-list');
+  if (!modules.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🎓</div><p>No training modules yet' + (isStaff ? ' — add the first one above' : '') + '</p></div>';
+    return;
+  }
+  el.innerHTML = Object.entries(CATEGORIES).map(function(entry) {
+    const catId = entry[0], cat = entry[1];
+    const items = modules.filter(function(m){ return (m.category || 'general') === catId; });
+    if (!items.length) return '';
+    return '<div class="cat-banner">'
+      + '<div class="cb-line"></div>'
+      + '<div class="cb-label" style="color:' + cat.color + '">' + cat.label + '</div>'
+      + '<div class="cb-line"></div>'
+      + '</div>'
+      + items.map(function(m) {
+        const safeUrl = (m.url || '#');
+        const external = /^https?:\/\//i.test(safeUrl);
+        return '<div class="module-card" style="border-left:3px solid ' + cat.color + '">'
+          + '<div class="module-icon">' + cat.icon + '</div>'
+          + '<div class="module-info">'
+          +   '<div class="module-title"><a href="' + safeUrl + '"' + (external ? ' target="_blank" rel="noopener"' : '') + '>' + (m.title || 'Untitled module') + (external ? ' ↗' : '') + '</a></div>'
+          +   (m.description ? '<div class="module-desc">' + m.description + '</div>' : '')
+          +   '<div class="module-meta">Added ' + (m.createdBy || '—') + (m.createdAt && m.createdAt.toDate ? ' · ' + m.createdAt.toDate().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'}) : '') + '</div>'
+          + '</div>'
+          + (isStaff ? '<button class="btn btn-danger btn-xs" onclick="removeModule(\'' + m.id + '\')">Remove</button>' : '')
+          + '</div>';
+      }).join('');
+  }).join('');
+}
+
+async function addModule() {
+  const title = document.getElementById('tm-title').value.trim();
+  const url   = document.getElementById('tm-url').value.trim();
+  const desc  = document.getElementById('tm-desc').value.trim();
+  const cat   = document.getElementById('tm-category').value;
+  if (!title) { toast('Enter a module title', 'error'); return; }
+  if (!url)   { toast('Enter a link for the module', 'error'); return; }
+  try {
+    await db.collection('training').add({
+      title: title,
+      url: url,
+      description: desc,
+      category: cat,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '',
+      createdByUid: currentUser ? currentUser.uid : null,
+    });
+    // Audit trail
+    try {
+      await db.collection('auditLog').add({
+        eventType: 'training_added',
+        actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
+        details: { notes: 'Training module added: ' + title },
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch(e) {}
+    document.getElementById('tm-title').value = '';
+    document.getElementById('tm-url').value = '';
+    document.getElementById('tm-desc').value = '';
+    toast('Training module added!');
+    loadModules();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function removeModule(id) {
+  const mod = modules.find(function(m){ return m.id === id; });
+  if (!confirm('Remove "' + (mod ? mod.title : 'this module') + '" from the training library?')) return;
+  try {
+    await db.collection('training').doc(id).delete();
+    try {
+      await db.collection('auditLog').add({
+        eventType: 'training_removed',
+        actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
+        details: { notes: 'Training module removed: ' + (mod ? mod.title : id) },
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch(e) {}
+    toast('Module removed');
+    loadModules();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+</script>
+</body>
+</html>
