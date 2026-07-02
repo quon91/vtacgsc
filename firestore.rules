@@ -38,6 +38,31 @@ service cloud.firestore {
         || (isActive() && hasRole('sq_commander'));
     }
 
+    // ── CUSTOM-ROLE PERMISSION CHECK ─────────────────────────
+    // Reads the role definitions saved by the Roles & Permissions
+    // manager (settings/roles) and checks whether ANY of the
+    // pilot's roles carries the given permission. This is how
+    // custom roles like "GSC Commander" get abilities in rules:
+    // tick the permission checkbox on the role, and it works here.
+    // Checks the legacy role string plus the first four roles in
+    // the roles array (rules can't loop; four is plenty).
+    function roleIdHasPerm(cfg, roleId, perm) {
+      return roleId in cfg && perm in cfg[roleId].get('permissions', []);
+    }
+    function hasPerm(perm) {
+      return isActive()
+        && exists(/databases/$(database)/documents/settings/roles)
+        && hasPermInner(get(/databases/$(database)/documents/settings/roles).data.get('roles', {}), perm);
+    }
+    function hasPermInner(cfg, perm) {
+      let rs = pilotData().get('roles', []);
+      return roleIdHasPerm(cfg, pilotData().get('role', ''), perm)
+        || (rs.size() > 0 && roleIdHasPerm(cfg, rs[0], perm))
+        || (rs.size() > 1 && roleIdHasPerm(cfg, rs[1], perm))
+        || (rs.size() > 2 && roleIdHasPerm(cfg, rs[2], perm))
+        || (rs.size() > 3 && roleIdHasPerm(cfg, rs[3], perm));
+    }
+
     // ── PILOTS ────────────────────────────────────────────────
     match /pilots/{pilotId} {
       // ★ REGISTRATION ★
@@ -123,13 +148,17 @@ service cloud.firestore {
     }
 
     // ── TRAINING (both collections kept from your two files) ─
+    // Writable by: Instructors, Squadron Commanders, Wing
+    // Commanders, Master Admin, and ANY custom role holding the
+    // "Edit training modules" (manage_training) permission —
+    // which is how the GSC Commander role gets access.
     match /training/{recordId} {
       allow read: if isActive();
-      allow write: if isInstructor() || isMasterAdmin();
+      allow write: if isMasterAdmin() || isInstructor() || hasPerm('manage_training');
     }
     match /trainingRecords/{recordId} {
       allow read: if isActive();
-      allow write: if isInstructor() || isMasterAdmin();
+      allow write: if isMasterAdmin() || isInstructor() || hasPerm('manage_training');
     }
 
     // ── WINGS (names, callsign pools, logos) ─────────────────
