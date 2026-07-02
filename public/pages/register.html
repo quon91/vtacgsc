@@ -52,7 +52,7 @@
         <div class="form-group">
           <label>Callsign / Pilot name</label>
           <input type="text" id="callsign" placeholder="e.g. Viper, Ghost, Reaper" required maxlength="20">
-          <div class="form-hint">This is your in-game identity. Choose carefully — it represents you in the squadron.</div>
+          <div class="form-hint">This is your in-game identity. Choose carefully — it represents you in the squadron. If your callsign is already taken, command staff will contact you during review.</div>
         </div>
         <div class="form-group">
           <label>Email address</label>
@@ -146,12 +146,14 @@ async function handleRegister(e) {
   }
 
   const callsign = document.getElementById('callsign').value.trim();
-  // Check callsign uniqueness
-  const csCheck = await db.collection('pilots').where('callsign','==',callsign.toLowerCase()).get();
-  if (!csCheck.empty) {
-    errEl.textContent = 'That callsign is already taken. Please choose another.';
-    errEl.style.display = 'block'; return;
-  }
+
+  // NOTE: the old callsign-uniqueness pre-check was removed on purpose.
+  // It queried the pilots collection BEFORE the visitor had an account —
+  // and with the site locked down (login required + Firestore rules
+  // denying logged-out reads), that query is always rejected, which
+  // killed the entire application submit with an uncaught permission
+  // error. Duplicate callsigns are now caught by command staff during
+  // application review, where every applicant's callsign is visible.
 
   const btn = document.getElementById('reg-btn');
   btn.textContent = 'Submitting…'; btn.disabled = true;
@@ -203,6 +205,7 @@ async function handleRegister(e) {
       'auth/email-already-in-use': 'An account with that email already exists.',
       'auth/invalid-email':        'Invalid email address.',
       'auth/weak-password':        'Password must be at least 8 characters.',
+      'permission-denied':         'Something went wrong saving your application. Please contact command staff on Discord.',
     };
     errEl.textContent = msgs[err.code] || err.message;
     errEl.style.display = 'block';
