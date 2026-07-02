@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Application Pending — vTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.auth-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:40px 24px; background:radial-gradient(ellipse at top,rgba(224,144,48,.06) 0%,transparent 60%),var(--bg); }
+.auth-box  { background:var(--card); border:1px solid var(--border2); border-radius:18px; padding:40px; width:100%; max-width:520px; }
+.auth-emblem { width:60px; height:60px; border-radius:50%; background:linear-gradient(135deg,var(--gold),var(--amber)); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; color:#000; margin:0 auto 10px; box-shadow:0 0 24px rgba(200,169,81,.3); }
+.pending-icon { font-size:52px; text-align:center; margin-bottom:14px; }
+.status-badge { display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--amber); border:1px solid rgba(224,144,48,.45); background:rgba(224,144,48,.08); border-radius:20px; padding:6px 18px; }
+.status-badge .dot { width:8px; height:8px; border-radius:50%; background:var(--amber); animation:pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+.app-detail { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:20px 0; }
+@media(max-width:480px){ .app-detail { grid-template-columns:1fr; } }
+.detail-item { background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; text-align:left; }
+.detail-lbl { font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text3); margin-bottom:3px; }
+.detail-val { font-size:13px; color:var(--text); font-weight:600; }
+.pending-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-box fade-in" id="pending-box" style="text-align:center">
+    <div style="margin-bottom:24px">
+      <div class="auth-emblem">GSC</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)">Virtual Global Strike Command</div>
+    </div>
+
+    <div class="pending-icon">🕐</div>
+    <div class="status-badge" style="margin-bottom:16px"><span class="dot"></span> Application Under Review</div>
+
+    <div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:8px">Hang tight, <span id="p-callsign" style="color:var(--gold)">pilot</span></div>
+    <div style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:4px">
+      Your application is in the queue for review by command staff. You'll be able to access the site as soon as you're approved — check back here, or watch for word on Discord.
+    </div>
+
+    <div class="app-detail" id="app-detail"></div>
+
+    <div class="alert alert-info" style="font-size:12px;text-align:left;margin-bottom:18px">
+      <strong>While you wait:</strong> make sure you've joined the vTAC GSC Discord server — that's where command staff will reach you, and where squadron life happens.
+    </div>
+
+    <div class="pending-actions">
+      <button class="btn btn-primary" id="check-btn" onclick="checkStatus()">🔄 Check my status</button>
+      <button class="btn btn-outline" onclick="auth.signOut().then(()=>window.location.href='/pages/login.html')">Sign out</button>
+    </div>
+    <div id="check-msg" style="font-size:12px;color:var(--text3);margin-top:12px;min-height:16px"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+// This page is in firebase-config's isPendingPage() allowlist, so
+// pending users are NOT redirected away from it. The lockdown gate
+// still applies to logged-out visitors via onAuthReady below.
+function onAuthReady(user, pilot) {
+  if (!user) { window.location.replace('/pages/login.html'); return; }
+  if (pilot && pilot.status === 'active') { window.location.replace('/index.html'); return; }
+  renderApplication(pilot);
+}
+
+function renderApplication(pilot) {
+  if (!pilot) return;
+  const csEl = document.getElementById('p-callsign');
+  csEl.textContent = pilot.displayName || pilot.callsign || 'pilot';
+
+  const wingNames = {
+    '7bw':   '7th Bomb Wing — B-1B',
+    '509bw': '509th Bomb Wing — B-2',
+    '2bw':   '2nd Bomb Wing — B-52H',
+  };
+  const simNames = {
+    'msfs2024': 'MSFS 2024',
+    'msfs2020': 'MSFS 2020',
+    'both':     'MSFS 2020 + 2024',
+  };
+
+  const applied = (pilot.appliedAt && pilot.appliedAt.toDate)
+    ? pilot.appliedAt.toDate().toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' })
+    : '—';
+
+  document.getElementById('app-detail').innerHTML =
+    '<div class="detail-item"><div class="detail-lbl">Callsign</div><div class="detail-val">' + (pilot.displayName || pilot.callsign || '—') + '</div></div>' +
+    '<div class="detail-item"><div class="detail-lbl">Preferred Wing</div><div class="detail-val">' + (wingNames[pilot.preferredWing] || '—') + '</div></div>' +
+    '<div class="detail-item"><div class="detail-lbl">Simulator</div><div class="detail-val">' + (simNames[pilot.simulator] || pilot.simulator || '—') + '</div></div>' +
+    '<div class="detail-item"><div class="detail-lbl">Submitted</div><div class="detail-val">' + applied + '</div></div>';
+}
+
+// Re-reads the pilot doc. If approved, celebrate + enter the site.
+async function checkStatus() {
+  const btn = document.getElementById('check-btn');
+  const msg = document.getElementById('check-msg');
+  btn.disabled = true; btn.textContent = 'Checking…';
+  try {
+    const doc = await db.collection('pilots').doc(auth.currentUser.uid).get();
+    const pilot = doc.exists ? doc.data() : null;
+    if (pilot && pilot.status === 'active') {
+      msg.style.color = 'var(--green2)';
+      msg.textContent = '✅ You have been approved! Taking you in…';
+      setTimeout(function(){ window.location.href = '/index.html'; }, 1200);
+      return;
+    }
+    if (pilot && pilot.status === 'denied') {
+      msg.style.color = 'var(--red2)';
+      msg.textContent = 'Your application was not approved. Reach out to command staff on Discord if you have questions.';
+      btn.disabled = false; btn.textContent = '🔄 Check my status';
+      return;
+    }
+    msg.style.color = 'var(--text3)';
+    msg.textContent = 'Still under review — checked ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    msg.style.color = 'var(--red2)';
+    msg.textContent = 'Could not check status: ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = '🔄 Check my status';
+}
+</script>
+</body>
+</html>
