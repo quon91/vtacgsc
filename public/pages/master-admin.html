@@ -561,6 +561,18 @@
       <select id="rank-modal-sq"></select>
     </div>
     <div class="form-group">
+      <label>MAJCOM (command the pilot belongs to)</label>
+      <select id="rank-modal-majcom">
+        <option value="afgsc">AFGSC — Global Strike Command (default)</option>
+        <option value="acc">ACC — Air Combat Command</option>
+        <option value="amc">AMC — Air Mobility Command</option>
+        <option value="aetc">AETC — Air Education &amp; Training Command</option>
+        <option value="usafe">USAFE — US Air Forces in Europe</option>
+        <option value="nato">NATO Partners</option>
+        <option value="raf">RAF — Royal Air Force</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label>Status</label>
       <select id="rank-modal-status">
         <option value="active">Active</option>
@@ -804,6 +816,7 @@ function openRankModal(uid) {
   renderRankModalRoles(getPilotRoleIds(p));
   document.getElementById('rank-modal-wing').value   = p.wing||'';
   document.getElementById('rank-modal-status').value = p.status||'active';
+  document.getElementById('rank-modal-majcom').value = p.majcom||'afgsc';
   updateRankSqOptions(p.squadron);
   document.getElementById('rank-modal').classList.add('open');
 }
@@ -836,6 +849,7 @@ async function saveRankChange() {
       roles:    selectedRoles,
       wing:     document.getElementById('rank-modal-wing').value||null,
       squadron: document.getElementById('rank-modal-sq').value||null,
+      majcom:   document.getElementById('rank-modal-majcom').value||'afgsc',
       status:   document.getElementById('rank-modal-status').value,
     });
     toast('Pilot updated!');
