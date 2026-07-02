@@ -398,8 +398,12 @@ let currentPilot  = null;
 let realPilot     = null;   // the TRUE pilot doc — never touched by View As
 
 auth.onAuthStateChanged(async (user) => {
-  await loadRolesFromFirestore(); // ensure custom roles/permissions are loaded first
   if (user) {
+    // Load custom roles only once signed in — with the site lockdown,
+    // Firestore refuses reads from logged-out visitors, so calling this
+    // before auth just produced a harmless-but-noisy permissions warning
+    // on the login/register pages.
+    await loadRolesFromFirestore();
     currentUser = user;
     try {
       const doc = await db.collection('pilots').doc(user.uid).get();
