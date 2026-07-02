@@ -371,6 +371,27 @@ function clearViewAsOverride() {
   try { sessionStorage.removeItem(VIEWAS_KEY); } catch(e) {}
 }
 
+// ── SITE LOCKDOWN — LOGIN REQUIRED EVERYWHERE ────────────────
+// The entire site requires a signed-in account. Only the pages
+// listed here are reachable while logged out; every other page
+// redirects to the login page before showing anything.
+const PUBLIC_PAGES = ['/pages/login.html', '/pages/register.html'];
+
+function isPublicPage() {
+  const p = window.location.pathname;
+  return PUBLIC_PAGES.some(pub => p === pub || p.endsWith(pub));
+}
+
+// Anti-flash guard: hide the page until auth status is confirmed,
+// so logged-out visitors never see even a flicker of content
+// before the redirect fires. Public pages are never hidden.
+if (!isPublicPage()) {
+  document.documentElement.style.visibility = 'hidden';
+}
+function revealPage() {
+  document.documentElement.style.visibility = '';
+}
+
 // ── AUTH STATE WATCHER ───────────────────────────────────────
 let currentUser   = null;
 let currentPilot  = null;
@@ -402,9 +423,14 @@ auth.onAuthStateChanged(async (user) => {
         if (viewAs && isMasterAdminPilot(realPilot)) {
           if (typeof renderViewAsBanner === 'function') renderViewAsBanner(viewAs);
           if (viewAs === 'logged_out') {
-            // Simulate a logged-out visitor site-wide
+            // Simulate a logged-out visitor site-wide.
+            // NOTE: with the site lockdown active, a REAL logged-out
+            // visitor is redirected to the login page — this simulation
+            // shows the logged-out nav state without kicking you out,
+            // so you can still navigate and use the Exit bar.
             currentUser  = null;
             currentPilot = null;
+            revealPage();
             if (typeof updateNavUI === 'function') updateNavUI(null, null);
             onAuthReady(null, null);
             return;
@@ -417,6 +443,7 @@ auth.onAuthStateChanged(async (user) => {
         }
       }
     } catch(e) { console.error('Pilot load error:', e); }
+    revealPage(); // signed in — show the page
     if (typeof updateNavUI === 'function') updateNavUI(currentUser, currentPilot);
     onAuthReady(currentUser, currentPilot);
   } else {
@@ -424,6 +451,12 @@ auth.onAuthStateChanged(async (user) => {
     currentPilot = null;
     realPilot    = null;
     clearViewAsOverride();
+    // LOCKDOWN: logged out + not on a public page → straight to login
+    if (!isPublicPage()) {
+      window.location.replace('/pages/login.html');
+      return;
+    }
+    revealPage();
     if (typeof updateNavUI === 'function') updateNavUI(null, null);
     onAuthReady(null, null);
   }
