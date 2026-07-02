@@ -127,14 +127,19 @@ const MAJCOMS = {
 function pilotMajcom(p) { return p.majcom || 'afgsc'; }
 
 // A pilot belongs in the GSC Command spotlight if either:
-//  - their highest display role has authority level 90+ (the GSC
-//    Commander — shows their public title, never "master admin"), or
-//  - their doc carries gscCommand: true (manual flag for future
-//    command staff, settable in Firestore)
+//  - they hold a role whose NAME is "GSC Commander" (matches the
+//    custom role created in Roles & Permissions, whatever its
+//    generated ID is — matched case-insensitively), or
+//  - their doc carries gscCommand: true (manual flag settable in
+//    Firestore for additional command staff)
+// The master admin is deliberately NOT included — holding
+// master_admin does not make someone the GSC Commander.
 function isCommandStaff(p) {
   if (p.gscCommand === true) return true;
-  const top = Math.max(0, ...getAllDisplayRoles(p).map(r => r.level || 0));
-  return top >= 90;
+  return getPilotRoleIds(p).some(function(rid) {
+    const role = ROLES[rid];
+    return role && !role.isMasterAdmin && /gsc\s*commander/i.test(role.name || '');
+  });
 }
 
 let rosterPilots = [], activeWingFilter = null, activeMajcom = null;
