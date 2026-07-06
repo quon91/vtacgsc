@@ -8,11 +8,36 @@
 <style>
 .sop-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
 .sop-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px 24px;margin-bottom:14px}
-.sop-num{font-size:10px;font-weight:800;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:4px}
 .sop-title{font-size:17px;font-weight:800;color:var(--text);margin-bottom:10px}
-.sop-body{font-size:13.5px;color:var(--text2);line-height:1.8;white-space:pre-wrap}
+.sop-body{font-size:13.5px;color:var(--text2);line-height:1.8}
+.sop-body.plain{white-space:pre-wrap}
+.sop-body h1{font-size:20px;color:var(--text);margin:14px 0 8px}
+.sop-body h2{font-size:17px;color:var(--text);margin:12px 0 6px}
+.sop-body h3{font-size:15px;color:var(--text);margin:10px 0 5px}
+.sop-body ul,.sop-body ol{padding-left:22px;margin:8px 0}
+.sop-body li{margin-bottom:4px}
+.sop-body p{margin:0 0 8px}
+.sop-body a{color:var(--gold)}
 .sop-updated{font-size:11px;color:var(--text3);font-family:var(--mono);text-align:center;margin-top:20px}
 .sop-edit-section{background:var(--card2);border:1px dashed var(--border2);border-radius:12px;padding:16px;margin-bottom:12px}
+
+/* ── RICH TEXT EDITOR ── */
+.rt-toolbar{position:sticky;top:64px;z-index:50;display:flex;gap:4px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:8px 10px;margin-bottom:14px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+.rt-btn{min-width:32px;height:30px;padding:0 8px;border-radius:6px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:13px;cursor:pointer;font-family:var(--sans);transition:all .1s}
+.rt-btn:hover{border-color:var(--gold);color:var(--gold)}
+.rt-btn b{font-weight:900}
+.rt-sep{width:1px;height:22px;background:var(--border2);margin:0 4px}
+.rt-select{height:30px;padding:0 6px;border-radius:6px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:12px;font-family:var(--sans);cursor:pointer}
+.rt-color{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .1s}
+.rt-color:hover{transform:scale(1.15);border-color:#fff}
+.rt-hint{font-size:10px;color:var(--text3);margin-left:auto}
+.sop-e-body{min-height:130px;background:#0a0c14;border:1px solid var(--border2);border-radius:8px;padding:12px 14px;font-size:13.5px;color:var(--text);line-height:1.8;outline:none}
+.sop-e-body:focus{border-color:var(--gold)}
+.sop-e-body h1{font-size:20px;margin:14px 0 8px}
+.sop-e-body h2{font-size:17px;margin:12px 0 6px}
+.sop-e-body h3{font-size:15px;margin:10px 0 5px}
+.sop-e-body ul,.sop-e-body ol{padding-left:22px;margin:8px 0}
+.sop-e-body p{margin:0 0 8px}
 </style>
 </head>
 <body>
@@ -37,7 +62,45 @@
 
   <!-- EDIT MODE — command staff only -->
   <div id="sop-edit" style="display:none">
-    <div class="alert alert-info" style="margin-bottom:16px;font-size:12px">Editing the official SOPs. Each section has a title and body — line breaks are preserved. Changes go live for every member the moment you save.</div>
+    <div class="alert alert-info" style="margin-bottom:16px;font-size:12px">Editing the official SOPs. Select text in any section, then use the toolbar to format it — size, bold, headings, colors, lists. Changes go live for every member the moment you save.</div>
+
+    <!-- FORMATTING TOOLBAR — applies to whichever section you're typing in -->
+    <div class="rt-toolbar" id="rt-toolbar">
+      <button class="rt-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+      <button class="rt-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+      <button class="rt-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+      <div class="rt-sep"></div>
+      <select class="rt-select" id="rt-size" title="Font size">
+        <option value="">Size</option>
+        <option value="2">Small</option>
+        <option value="3">Normal</option>
+        <option value="4">Medium</option>
+        <option value="5">Large</option>
+        <option value="6">X-Large</option>
+        <option value="7">Huge</option>
+      </select>
+      <select class="rt-select" id="rt-block" title="Paragraph style">
+        <option value="">Style</option>
+        <option value="p">Paragraph</option>
+        <option value="h1">Heading 1</option>
+        <option value="h2">Heading 2</option>
+        <option value="h3">Heading 3</option>
+      </select>
+      <div class="rt-sep"></div>
+      <button class="rt-btn" data-cmd="insertUnorderedList" title="Bullet list">•≡</button>
+      <button class="rt-btn" data-cmd="insertOrderedList" title="Numbered list">1≡</button>
+      <div class="rt-sep"></div>
+      <div class="rt-color" style="background:#e8eaf2" data-color="#e8eaf2" title="White"></div>
+      <div class="rt-color" style="background:#c8a951" data-color="#c8a951" title="Gold"></div>
+      <div class="rt-color" style="background:#4a90d9" data-color="#4a90d9" title="Blue"></div>
+      <div class="rt-color" style="background:#3dba6e" data-color="#3dba6e" title="Green"></div>
+      <div class="rt-color" style="background:#d04040" data-color="#d04040" title="Red"></div>
+      <div class="rt-color" style="background:#e09030" data-color="#e09030" title="Amber"></div>
+      <div class="rt-sep"></div>
+      <button class="rt-btn" data-cmd="removeFormat" title="Clear formatting">✕fmt</button>
+      <span class="rt-hint">select text → click a format</span>
+    </div>
+
     <div id="sop-edit-sections"></div>
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="addEditSection()">+ Add section</button>
@@ -72,6 +135,65 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── HTML SANITIZER ───────────────────────────────────────────
+// SOP bodies are stored as HTML (written only by command staff),
+// but everything is scrubbed on render anyway: only formatting
+// tags survive, style is limited to font/color properties, links
+// must be http(s), and everything else (scripts, handlers, embeds)
+// is stripped.
+const SOP_ALLOWED_TAGS = ['B','STRONG','I','EM','U','S','H1','H2','H3','P','BR','HR','UL','OL','LI','DIV','SPAN','FONT','A','BLOCKQUOTE'];
+const SOP_ALLOWED_STYLES = ['font-size','color','text-align','font-weight','font-style','text-decoration'];
+
+function sanitizeSopHtml(html) {
+  const doc = new DOMParser().parseFromString('<div id="rt-root">' + String(html || '') + '</div>', 'text/html');
+  const root = doc.getElementById('rt-root');
+  if (!root) return '';
+  (function walk(node) {
+    const children = Array.prototype.slice.call(node.childNodes);
+    children.forEach(function(child) {
+      if (child.nodeType === 1) {
+        if (SOP_ALLOWED_TAGS.indexOf(child.tagName) === -1) {
+          // Disallowed element: unwrap it, keep its children
+          while (child.firstChild) node.insertBefore(child.firstChild, child);
+          node.removeChild(child);
+          return;
+        }
+        // Scrub attributes
+        Array.prototype.slice.call(child.attributes).forEach(function(attr) {
+          const n = attr.name.toLowerCase();
+          if (n === 'style') {
+            const keep = [];
+            attr.value.split(';').forEach(function(rule) {
+              const idx = rule.indexOf(':');
+              if (idx < 0) return;
+              const prop = rule.slice(0, idx).trim().toLowerCase();
+              const val  = rule.slice(idx + 1).trim();
+              if (SOP_ALLOWED_STYLES.indexOf(prop) !== -1 && val && val.toLowerCase().indexOf('url') === -1 && val.indexOf('(') === -1) {
+                keep.push(prop + ':' + val);
+              }
+            });
+            if (keep.length) child.setAttribute('style', keep.join(';'));
+            else child.removeAttribute('style');
+          } else if (child.tagName === 'FONT' && (n === 'size' || n === 'color' || n === 'face')) {
+            // keep — produced by the toolbar's size/color commands
+          } else if (child.tagName === 'A' && n === 'href' && /^https?:\/\//i.test(attr.value)) {
+            child.setAttribute('target', '_blank');
+            child.setAttribute('rel', 'noopener');
+          } else if (child.tagName === 'A' && (n === 'target' || n === 'rel')) {
+            // keep
+          } else {
+            child.removeAttribute(attr.name);
+          }
+        });
+        walk(child);
+      } else if (child.nodeType !== 3) {
+        node.removeChild(child); // comments, CDATA, etc.
+      }
+    });
+  })(root);
+  return root.innerHTML;
+}
+
 let sopData = { sections: [] };
 
 function onAuthReady(user, pilot) {
@@ -89,6 +211,9 @@ async function loadSop() {
   renderSop();
 }
 
+// View: no section numbers — just title and formatted body.
+// New sections carry .html (rich text); older ones only .body
+// (plain text) and still render exactly as before.
 function renderSop() {
   const el = document.getElementById('sop-view');
   if (!sopData.sections.length) {
@@ -96,11 +221,13 @@ function renderSop() {
       (document.getElementById('sop-edit-btn').style.display !== 'none' ? '<br>Use the Edit button above to write the first SOP.' : '') + '</p></div>';
     return;
   }
-  el.innerHTML = sopData.sections.map(function(s, i) {
+  el.innerHTML = sopData.sections.map(function(s) {
+    const bodyHtml = s.html
+      ? '<div class="sop-body">' + sanitizeSopHtml(s.html) + '</div>'
+      : '<div class="sop-body plain">' + esc(s.body) + '</div>';
     return '<div class="sop-section">'
-      + '<div class="sop-num">Section ' + (i+1) + '</div>'
-      + '<div class="sop-title">' + esc(s.title) + '</div>'
-      + '<div class="sop-body">' + esc(s.body) + '</div>'
+      + (s.title ? '<div class="sop-title">' + esc(s.title) + '</div>' : '')
+      + bodyHtml
       + '</div>';
   }).join('')
   + (sopData.updatedAt && sopData.updatedAt.toDate
@@ -115,19 +242,24 @@ function enterEditMode() {
   document.getElementById('sop-edit-btn').style.display = 'none';
   const wrap = document.getElementById('sop-edit-sections');
   wrap.innerHTML = '';
-  (sopData.sections.length ? sopData.sections : [{title:'', body:''}]).forEach(function(s){ appendEditSection(s.title, s.body); });
+  const sections = sopData.sections.length ? sopData.sections : [{ title: '', html: '' }];
+  sections.forEach(function(s) {
+    // Legacy plain-text bodies become HTML on first edit
+    const html = s.html != null ? s.html : esc(s.body || '').replace(/\n/g, '<br>');
+    appendEditSection(s.title, html);
+  });
 }
 
-function appendEditSection(title, body) {
+function appendEditSection(title, html) {
   const wrap = document.getElementById('sop-edit-sections');
   const div = document.createElement('div');
   div.className = 'sop-edit-section';
   div.innerHTML =
-    '<div class="form-group"><label>Section title</label><input type="text" class="sop-e-title" maxlength="100" placeholder="e.g. Radio Communications"></div>' +
-    '<div class="form-group"><label>Body</label><textarea class="sop-e-body" rows="6" placeholder="Procedure text… line breaks are kept."></textarea></div>' +
+    '<div class="form-group"><label>Section title <span style="color:var(--text3)">(optional)</span></label><input type="text" class="sop-e-title" maxlength="100" placeholder="e.g. Radio Communications"></div>' +
+    '<div class="form-group"><label>Body</label><div class="sop-e-body" contenteditable="true"></div></div>' +
     '<button class="btn btn-danger btn-xs" onclick="this.parentElement.remove()">Remove section</button>';
   div.querySelector('.sop-e-title').value = title || '';
-  div.querySelector('.sop-e-body').value = body || '';
+  div.querySelector('.sop-e-body').innerHTML = sanitizeSopHtml(html || '');
   wrap.appendChild(div);
 }
 function addEditSection() { appendEditSection('', ''); }
@@ -138,13 +270,40 @@ function cancelEdit() {
   document.getElementById('sop-edit-btn').style.display = 'inline-flex';
 }
 
+// ── TOOLBAR ──────────────────────────────────────────────────
+// One toolbar drives every section: execCommand acts on the
+// current selection, wherever the cursor is. mousedown is
+// prevented so clicking a button doesn't steal the selection.
+(function initToolbar() {
+  const tb = document.getElementById('rt-toolbar');
+  document.execCommand('styleWithCSS', false, true);
+  tb.addEventListener('mousedown', function(e) {
+    if (e.target.closest('.rt-btn') || e.target.closest('.rt-color')) e.preventDefault();
+  });
+  tb.addEventListener('click', function(e) {
+    const btn = e.target.closest('.rt-btn');
+    if (btn && btn.dataset.cmd) { document.execCommand(btn.dataset.cmd, false, null); return; }
+    const sw = e.target.closest('.rt-color');
+    if (sw && sw.dataset.color) { document.execCommand('foreColor', false, sw.dataset.color); return; }
+  });
+  document.getElementById('rt-size').addEventListener('change', function() {
+    if (this.value) document.execCommand('fontSize', false, this.value);
+    this.value = '';
+  });
+  document.getElementById('rt-block').addEventListener('change', function() {
+    if (this.value) document.execCommand('formatBlock', false, '<' + this.value + '>');
+    this.value = '';
+  });
+})();
+
 async function saveSop() {
-  const sections = [...document.querySelectorAll('.sop-edit-section')].map(function(div) {
-    return {
-      title: div.querySelector('.sop-e-title').value.trim(),
-      body:  div.querySelector('.sop-e-body').value.trim(),
-    };
-  }).filter(function(s){ return s.title || s.body; });
+  const sections = Array.prototype.slice.call(document.querySelectorAll('.sop-edit-section')).map(function(div) {
+    const title = div.querySelector('.sop-e-title').value.trim();
+    const html  = sanitizeSopHtml(div.querySelector('.sop-e-body').innerHTML);
+    const text  = div.querySelector('.sop-e-body').textContent.trim();
+    return { title: title, html: html, text: text };
+  }).filter(function(s) { return s.title || s.text; })
+    .map(function(s) { return { title: s.title, html: s.html }; });
   try {
     await db.collection('settings').doc('sop').set({
       sections: sections,
