@@ -145,9 +145,36 @@ select.search-input{min-width:140px;flex:0}
       <div class="fp-card">
         <div class="tab-row">
           <button class="tab-btn2 active" data-tab="squad" onclick="switchTab('squad',this)">🦅 Squadron Routes</button>
+          <button class="tab-btn2" data-tab="random" onclick="switchTab('random',this)">🎲 Random Sortie</button>
           <button class="tab-btn2" data-tab="custom" onclick="switchTab('custom',this)">✏️ Custom Route</button>
           <button class="tab-btn2" data-tab="simbrief" onclick="switchTab('simbrief',this)">🛰 SimBrief OFP</button>
           <button class="tab-btn2" data-tab="community" onclick="switchTab('community',this)">🌐 Community Routes</button>
+        </div>
+
+        <!-- RANDOM SORTIE TAB -->
+        <div id="tab-random" class="tab-panel2">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Generates a sortie using <strong>real-world filed IFR routes</strong> between your airports (from flightplandatabase.com). Leave arrival blank and the generator picks a random USAF field for you — then rolls a mission type and step time to match.</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Departure (ICAO)</label>
+              <input type="text" id="rs-dep" placeholder="your wing's base" maxlength="6" style="text-transform:uppercase;font-family:var(--mono)">
+              <div class="form-hint">Blank = your wing's home base</div>
+            </div>
+            <div class="form-group">
+              <label>Arrival (ICAO)</label>
+              <input type="text" id="rs-arr" placeholder="blank = surprise me" maxlength="6" style="text-transform:uppercase;font-family:var(--mono)">
+              <div class="form-hint">Blank = random USAF / military field</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="generateSortie()">🎲 Generate sortie</button>
+            <div id="rs-status" style="font-size:12px;color:var(--text3)"></div>
+          </div>
+          <div id="rs-result" style="display:none;margin-top:14px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+            <div style="font-size:14px;font-weight:800;color:var(--text)" id="rs-title"></div>
+            <div style="font-size:12px;color:var(--text2);margin-top:4px" id="rs-meta"></div>
+            <div class="route-line" style="margin-top:10px" id="rs-route"></div>
+          </div>
         </div>
 
         <!-- SQUADRON ROUTES TAB -->
@@ -787,6 +814,101 @@ function loadSquadronRoute(wing, idx) {
 }
 
 const ACFT_SPEEDS = { 'B-1B Lancer': 650, 'B-2 Spirit': 480, 'B-52H Stratofortress': 400 };
+
+// ── 🎲 RANDOM SORTIE GENERATOR ────────────────────────────────
+// Pulls REAL filed IFR routes between the chosen airports from
+// flightplandatabase.com (public API, fetched through the same
+// allorigins proxy the SimBrief integration uses). Picks one of
+// the filed routes at random, garnishes it with a mission type,
+// altitude, and step time, and loads it straight into the planner.
+// If nobody has ever filed that city pair, falls back to a direct
+// routing so the button always produces a flyable sortie.
+const SORTIE_FIELDS = [
+  'KTIK','KEND','KSPS','KLTS','KHMN','KDMA','KEDW','KLSV','KTCM','KWRI',
+  'KDOV','KCHS','KSSC','KFFO','KRND','KCOS','KRCA','KBLV','KRIV','KMUO',
+  'KHIF','KGFK','KMIB','KOFF','KBIX','KVAD','KLFI','KSUU','KGUS','KVPS',
+  'KDYS','KBAD','KSZL','KTUS','KABQ','KOKC','KICT','KSTL','KMEM','KNFW',
+];
+const SORTIE_TYPES = ['Cross Country','Training Sortie','Low-Level / Terrain','Strike Mission','Air Refueling','Navigation Proficiency','Instrument Check'];
+const WING_BASE = { '7bw':'KDYS', '509bw':'KSZL', '2bw':'KBAD' };
+
+function randomZulu() {
+  const h = (new Date().getUTCHours() + 1 + Math.floor(Math.random()*6)) % 24;
+  return String(h).padStart(2,'0') + '00Z';
+}
+
+async function generateSortie() {
+  const status = document.getElementById('rs-status');
+  const resBox = document.getElementById('rs-result');
+  resBox.style.display = 'none';
+
+  let dep = document.getElementById('rs-dep').value.trim().toUpperCase();
+  if (!dep) dep = WING_BASE[myPilot?.wing] || WING_BASE[TYPE_WING[document.getElementById('fp-aircraft').value]] || 'KDYS';
+  let arr = document.getElementById('rs-arr').value.trim().toUpperCase();
+  if (!arr) {
+    const pool = SORTIE_FIELDS.filter(function(f){ return f !== dep; });
+    arr = pool[Math.floor(Math.random() * pool.length)];
+  }
+  if (arr === dep) { toast('Departure and arrival are the same — roll again', 'error'); return; }
+
+  status.innerHTML = '<span class="loading-spin"></span>Searching real-world filed routes ' + dep + ' → ' + arr + '…';
+
+  let routeWaypoints = [], routeAlt = 0, routeDist = 0, source = 'direct';
+  try {
+    // 1) Find real filed plans for this city pair
+    const searchUrl = 'https://api.flightplandatabase.com/search/plans?fromICAO=' + dep + '&toICAO=' + arr + '&limit=20';
+    const sResp = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(searchUrl));
+    const sWrap = await sResp.json();
+    const plans = JSON.parse(sWrap.contents);
+    const usable = Array.isArray(plans) ? plans.filter(function(p){ return p && p.id && (p.waypoints || 0) <= 60; }) : [];
+    if (usable.length) {
+      // 2) Pick one at random and pull its full route
+      const pick = usable[Math.floor(Math.random() * usable.length)];
+      const pResp = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://api.flightplandatabase.com/plan/' + pick.id));
+      const pWrap = await pResp.json();
+      const plan = JSON.parse(pWrap.contents);
+      const nodes = plan && plan.route && Array.isArray(plan.route.nodes) ? plan.route.nodes : [];
+      routeWaypoints = nodes
+        .filter(function(n, i){ return n && n.ident && !(i === 0 || i === nodes.length - 1); })
+        .map(function(n){ return String(n.ident).toUpperCase(); });
+      routeAlt  = plan.maxAltitude || pick.maxAltitude || 0;
+      routeDist = Math.round(plan.distance || pick.distance || 0);
+      source = 'real filed route (flightplandatabase.com)';
+    }
+  } catch(e) { /* fall through to direct */ }
+
+  // Garnish the sortie
+  const acft  = document.getElementById('fp-aircraft').value;
+  const mtype = SORTIE_TYPES[Math.floor(Math.random() * SORTIE_TYPES.length)];
+  const step  = randomZulu();
+  if (!routeAlt) routeAlt = ({'B-1B Lancer':[31000,33000,35000,37000],'B-2 Spirit':[36000,38000,40000],'B-52H Stratofortress':[31000,33000,35000]}[acft] || [35000])[Math.floor(Math.random()*3)];
+
+  // Load into the planner
+  sbData = null;
+  document.getElementById('fp-dep').value = dep;
+  document.getElementById('fp-arr').value = arr;
+  document.getElementById('fp-altitude').value = routeAlt;
+  document.getElementById('fp-deptime').value = step;
+  document.getElementById('fp-notes').value = '🎲 Random sortie · ' + mtype + ' · step ' + step + (source !== 'direct' ? ' · routing: real-world filed plan' : ' · routing: direct (no filed routes found for this pair)');
+  waypoints = routeWaypoints;
+  renderWaypoints();
+  updateRoute();
+  renderTailOptions();
+  if (routeDist) {
+    document.getElementById('sum-distance').textContent = routeDist + ' NM';
+    const speed = ACFT_SPEEDS[acft] || 450;
+    const hrs = routeDist / speed;
+    document.getElementById('sum-time').textContent = Math.floor(hrs) + 'h ' + Math.round((hrs - Math.floor(hrs)) * 60) + 'm';
+  }
+
+  // Show the result card
+  status.textContent = '';
+  document.getElementById('rs-title').textContent = '🎲 ' + mtype + ' — ' + dep + ' → ' + arr;
+  document.getElementById('rs-meta').textContent = acft + ' · FL' + Math.round(routeAlt/100) + ' · step ' + step + (routeDist ? ' · ' + routeDist + ' NM' : '') + ' · ' + source;
+  document.getElementById('rs-route').textContent = [dep].concat(routeWaypoints, [arr]).join(' ');
+  resBox.style.display = 'block';
+  toast(routeWaypoints.length ? 'Sortie generated from a real filed route ✓' : 'Sortie generated (direct routing — no filed routes for this pair)');
+}
 
 // ── PLANNER SUB-TABS ──────────────────────────────────────────
 function switchTab(id, btn) {
