@@ -34,13 +34,11 @@
     { href: '/index.html',                label: 'Home' },
     { href: '/pages/wings.html',          label: 'Wings' },
     { href: '/pages/roster.html',         label: 'Roster' },
-    { href: '/pages/bases.html',          label: 'Bases' },
     { href: '/pages/fleet.html',          label: 'Fleet' },
     { href: '/pages/events.html',         label: 'Events' },
     { href: '/pages/sop.html',            label: 'SOPs' },
     { href: '/pages/training/index.html', label: 'Training' },
-    { href: '/pages/flights.html',        label: 'Flight Log' },
-    { href: '/pages/flight-plan.html',    label: 'Flight Planner' },
+    { href: '/pages/flight-ops.html',     label: 'Flight Ops' },
   ];
 
   function renderNavLinks() {
