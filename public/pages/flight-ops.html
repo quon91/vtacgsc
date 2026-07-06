@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight Ops — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+/* ── TOP-LEVEL OPS TABS ── */
+.ops-tabs{display:inline-flex;gap:0;margin-top:18px;border:1px solid var(--border2);border-radius:24px;overflow:hidden;background:var(--card)}
+.ops-tab{padding:10px 26px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--text3);font-family:var(--sans);transition:all .14s}
+.ops-tab.active{background:var(--gold);color:#000}
+.ops-panel{display:none}.ops-panel.active{display:block}
+
+/* ── FLIGHT LOG ── */
+.wing-tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:24px;overflow-x:auto;gap:0}
+.wing-tab{padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;color:var(--text2);background:none;font-family:var(--sans);transition:all .14s}
+.wing-tab:hover{color:var(--text)}
+.wing-tab.t-all{border-bottom-color:var(--gold);color:var(--gold)}
+.wing-tab.t-7bw{border-bottom-color:var(--gold);color:var(--gold)}
+.wing-tab.t-509bw{border-bottom-color:var(--blue);color:var(--blue)}
+.wing-tab.t-2bw{border-bottom-color:var(--green);color:var(--green)}
+.wing-tab.t-mine{border-bottom-color:var(--amber);color:var(--amber)}
+.fl-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:24px}
+.fl-stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+.fl-stat-val{font-size:22px;font-weight:900;color:var(--gold);line-height:1}
+.fl-stat-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-top:4px}
+.flight-row{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;transition:border-color .14s}
+.flight-row:hover{border-color:var(--border2)}
+.wing-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.flight-route{font-size:15px;font-weight:700;color:var(--text);font-family:var(--mono)}
+.flight-meta{font-size:12px;color:var(--text3);margin-top:3px}
+.del-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 6px;opacity:0;transition:opacity .15s;flex-shrink:0}
+.flight-row:hover .del-btn{opacity:1}.del-btn:hover{color:var(--red2)}
+.search-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-input{flex:1;min-width:200px;padding:9px 14px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;outline:none}
+.search-input:focus{border-color:var(--gold)}
+select.search-input{min-width:140px;flex:0}
+
+/* ── FLIGHT PLANNER ── */
+.fp-layout{display:grid;grid-template-columns:1fr 360px;gap:24px}
+@media(max-width:900px){.fp-layout{grid-template-columns:1fr}}
+.fp-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px}
+.fp-card-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.waypoint-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;background:var(--card2);border-radius:8px;padding:8px 12px}
+.wp-num{width:24px;height:24px;border-radius:50%;background:var(--gold);color:#000;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.wp-num.dep{background:var(--green);color:#000}.wp-num.arr{background:var(--red);color:#fff}
+.wp-input{flex:1;background:none;border:none;color:var(--text);font-size:14px;font-family:var(--mono);outline:none;text-transform:uppercase}
+.wp-remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:2px 6px}.wp-remove:hover{color:var(--red2)}
+.route-line{font-family:var(--mono);font-size:12px;color:var(--blue2);background:#0a0c14;border:1px solid var(--border2);border-radius:8px;padding:12px 16px;word-break:break-all;min-height:20px;line-height:1.7}
+.fp-summary{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;position:sticky;top:76px}
+.fp-stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:.5px solid var(--border);font-size:13px}
+.fp-stat-row:last-child{border-bottom:none}
+.fp-stat-lbl{color:var(--text3)}.fp-stat-val{color:var(--text);font-weight:600;font-family:var(--mono)}
+.saved-plan-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.spc-route{font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono)}
+.spc-meta{font-size:11px;color:var(--text3);margin-top:3px}
+.sq-route-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+@media(max-width:500px){.sq-route-grid{grid-template-columns:1fr}}
+.sq-route-btn{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;text-align:left;transition:border-color .12s;font-family:var(--sans)}
+.sq-route-btn:hover{border-color:var(--gold)}
+.sq-route-btn .airports{font-size:13px;font-weight:700;color:var(--text);font-family:var(--mono)}
+.sq-route-btn .desc{font-size:10px;color:var(--text3);margin-top:2px}
+.sq-route-btn .dist{font-size:11px;color:var(--gold2);font-weight:600;margin-top:4px}
+.sb-section{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:14px}
+.sb-route{font-family:var(--mono);font-size:12px;color:var(--blue2);word-break:break-all;line-height:1.7}
+.sb-data-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.sb-data-item{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px}
+.sb-data-val{font-size:15px;font-weight:800;color:var(--gold);font-family:var(--mono)}
+.sb-data-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.loading-spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.export-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.cr-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;transition:border-color .14s}
+.cr-card:hover{border-color:var(--border2)}
+.cr-card-top{display:flex;align-items:flex-start;gap:10px}
+.cr-route-str{font-size:15px;font-weight:700;color:var(--text);font-family:var(--mono);margin-bottom:2px}
+.cr-meta{font-size:11px;color:var(--text3);margin-bottom:8px}
+.cr-airway{font-size:11px;color:var(--text3);font-family:var(--mono);background:var(--card2);border-radius:6px;padding:6px 10px;margin-bottom:8px;word-break:break-all;line-height:1.7}
+.cr-notes-text{font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.5}
+.cr-actions{display:flex;gap:6px;flex-wrap:wrap}
+.cr-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:auto;flex-shrink:0}
+.tab-row{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px}
+.tab-btn2{padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;background:none;border:none;color:var(--text3);font-family:var(--sans);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .12s}
+.tab-btn2.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab-panel2{display:none}.tab-panel2.active{display:block}
+</style>
+</head>
+<body>
+<nav class="site-nav"><div class="nav-inner">
+  <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+  <div class="nav-links" id="nav-links"><a href="/index.html">Home</a><a href="/pages/wings.html">Wings</a><a href="/pages/roster.html">Roster</a><a href="/pages/fleet.html">Fleet</a><a href="/pages/events.html">Events</a><a href="/pages/sop.html">SOPs</a><a href="/pages/training/index.html">Training</a><a href="/pages/flight-ops.html" class="active">Flight Ops</a></div>
+  <div class="nav-right" id="nav-right-area"><a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a></div>
+  <button class="nav-mobile-btn" onclick="toggleMobileNav()">☰</button>
+</div></nav>
+
+<section class="hero" style="padding:44px 24px 30px;text-align:center">
+  <div class="hero-eyebrow">Operations</div>
+  <h1 class="hero-title" style="font-size:clamp(26px,5vw,40px)">Flight <span>Ops</span></h1>
+  <p class="hero-sub" style="font-size:14px">Mission planning and the command flight log — one flight deck.</p>
+  <div class="ops-tabs">
+    <button class="ops-tab active" id="ops-btn-log" onclick="showOps('log')">✈ Flight Log</button>
+    <button class="ops-tab" id="ops-btn-plan" onclick="showOps('plan')">🗺 Flight Planner</button>
+  </div>
+</section>
+
+<!-- ═══════════ FLIGHT LOG PANEL ═══════════ -->
+<div class="ops-panel active" id="ops-panel-log">
+<div class="container page-body">
+  <div id="log-btn-wrap" style="display:none;margin-bottom:18px;text-align:center">
+    <a href="#" onclick="openLogModal();return false" class="btn btn-primary">+ Log a Flight</a>
+  </div>
+  <div class="wing-tabs" id="wing-tabs">
+    <button class="wing-tab t-all" onclick="setTab('all',this)">🌐 All Wings</button>
+    <button class="wing-tab" onclick="setTab('7bw',this)">7th BW — B-1B</button>
+    <button class="wing-tab" onclick="setTab('509bw',this)">509th BW — B-2</button>
+    <button class="wing-tab" onclick="setTab('2bw',this)">2nd BW — B-52H</button>
+    <button class="wing-tab" id="my-tab" style="display:none" onclick="setTab('mine',this)">👤 My Flights</button>
+  </div>
+  <div class="fl-stats">
+    <div class="fl-stat"><div class="fl-stat-val" id="st-total">0</div><div class="fl-stat-lbl">Total Flights</div></div>
+    <div class="fl-stat"><div class="fl-stat-val" id="st-hours">0</div><div class="fl-stat-lbl">Flight Hours</div></div>
+    <div class="fl-stat"><div class="fl-stat-val" id="st-7bw">0</div><div class="fl-stat-lbl">7th BW</div></div>
+    <div class="fl-stat"><div class="fl-stat-val" id="st-509bw">0</div><div class="fl-stat-lbl">509th BW</div></div>
+    <div class="fl-stat"><div class="fl-stat-val" id="st-2bw">0</div><div class="fl-stat-lbl">2nd BW</div></div>
+  </div>
+  <div class="search-bar">
+    <input class="search-input" id="fl-search" placeholder="Search pilot, route, aircraft…" oninput="render()">
+    <select class="search-input" id="fl-acft" onchange="render()">
+      <option value="">All aircraft</option>
+      <option>B-1B Lancer</option><option>B-2 Spirit</option><option>B-52H Stratofortress</option>
+    </select>
+  </div>
+  <div id="flights-list"><div class="empty-state"><div class="icon">✈️</div><p>Loading flights…</p></div></div>
+</div>
+</div>
+
+<!-- ═══════════ FLIGHT PLANNER PANEL ═══════════ -->
+<div class="ops-panel" id="ops-panel-plan">
+<div class="container page-body">
+  <div class="fp-layout">
+    <div>
+
+      <!-- ROUTE SOURCE TABS -->
+      <div class="fp-card">
+        <div class="tab-row">
+          <button class="tab-btn2 active" data-tab="squad" onclick="switchTab('squad',this)">🦅 Squadron Routes</button>
+          <button class="tab-btn2" data-tab="custom" onclick="switchTab('custom',this)">✏️ Custom Route</button>
+          <button class="tab-btn2" data-tab="simbrief" onclick="switchTab('simbrief',this)">🛰 SimBrief OFP</button>
+          <button class="tab-btn2" data-tab="community" onclick="switchTab('community',this)">🌐 Community Routes</button>
+        </div>
+
+        <!-- SQUADRON ROUTES TAB -->
+        <div id="tab-squad" class="tab-panel2 active">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Pre-built routes between VTAC GSC bases and common training areas. Click any route to load it.</div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin-bottom:8px">7th BW — B-1B Routes (KDYS)</div>
+          <div class="sq-route-grid" id="rg-7bw"></div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--blue);margin:14px 0 8px">509th BW — B-2 Routes (KSZL)</div>
+          <div class="sq-route-grid" id="rg-509bw"></div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--green);margin:14px 0 8px">2nd BW — B-52H Routes (KBAD)</div>
+          <div class="sq-route-grid" id="rg-2bw"></div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin:14px 0 8px">Cross-Wing Training Routes</div>
+          <div class="sq-route-grid" id="rg-cross"></div>
+        </div>
+
+        <!-- CUSTOM ROUTE TAB -->
+        <div id="tab-custom" class="tab-panel2">
+          <div class="waypoint-row">
+            <div class="wp-num dep">DEP</div>
+            <input type="text" class="wp-input" id="fp-dep" placeholder="KDYS" maxlength="6" oninput="updateRoute()">
+            <span style="font-size:11px;color:var(--text3)">ICAO</span>
+          </div>
+          <div id="fp-waypoints"></div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="addWaypoint()" style="margin:8px 0">+ Add Waypoint / Airway</button>
+          <div class="waypoint-row">
+            <div class="wp-num arr">ARR</div>
+            <input type="text" class="wp-input" id="fp-arr" placeholder="KTIK" maxlength="6" oninput="updateRoute()">
+            <span style="font-size:11px;color:var(--text3)">ICAO</span>
+          </div>
+          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:14px;margin-bottom:6px">Route String</div>
+          <div class="route-line" id="route-string">—</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-outline btn-sm" onclick="copyRoute()">📋 Copy</button>
+          </div>
+        </div>
+
+        <!-- COMMUNITY ROUTES TAB -->
+        <div id="tab-community" class="tab-panel2">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+            <div style="font-size:12px;color:var(--text2)">Routes submitted by squadron pilots — available to everyone.</div>
+            <button class="btn btn-primary btn-sm" id="submit-route-btn" onclick="openSubmitRouteModal()" style="display:none">+ Submit a Route</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+            <select id="cr-wing-filter" onchange="loadCommunityRoutes()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:12px">
+              <option value="">All Wings</option>
+              <option value="7bw">7th BW — B-1B</option>
+              <option value="509bw">509th BW — B-2</option>
+              <option value="2bw">2nd BW — B-52H</option>
+              <option value="cross">Cross-Wing</option>
+              <option value="training">Training</option>
+              <option value="other">Other</option>
+            </select>
+            <button class="btn btn-outline btn-sm" onclick="loadCommunityRoutes()">🔄 Refresh</button>
+          </div>
+          <div id="community-routes-list">
+            <div class="empty-state" style="padding:20px"><p>Loading community routes…</p></div>
+          </div>
+        </div>
+
+        <!-- SIMBRIEF TAB -->
+        <div id="tab-simbrief" class="tab-panel2">
+          <div class="form-row">
+            <div class="form-group">
+              <label>SimBrief Username or Pilot ID</label>
+              <input type="text" id="sb-username" placeholder="e.g. johndoe or 123456" style="text-transform:none">
+              <div class="form-hint">Find your Pilot ID at simbrief.com → Account Settings</div>
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end">
+              <button class="btn btn-blue" onclick="fetchSimBrief()" style="width:100%">Fetch Latest OFP</button>
+            </div>
+          </div>
+          <div id="sb-loading" style="display:none;padding:10px 0;font-size:13px;color:var(--text2)"><span class="loading-spin"></span>Fetching OFP…</div>
+          <div id="sb-error" style="display:none"></div>
+          <div id="sb-result" style="display:none">
+            <div class="sb-section">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div style="font-size:14px;font-weight:800;color:var(--text)" id="sb-route-title"></div>
+                <div style="font-size:11px;color:var(--text3)" id="sb-ofp-date"></div>
+              </div>
+              <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Full route</div>
+              <div class="sb-route" id="sb-full-route"></div>
+              <div class="sb-data-grid">
+                <div class="sb-data-item"><div class="sb-data-val" id="sb-dist"></div><div class="sb-data-lbl">Distance NM</div></div>
+                <div class="sb-data-item"><div class="sb-data-val" id="sb-time"></div><div class="sb-data-lbl">Block time</div></div>
+                <div class="sb-data-item"><div class="sb-data-val" id="sb-fuel"></div><div class="sb-data-lbl">Fuel lbs</div></div>
+                <div class="sb-data-item"><div class="sb-data-val" id="sb-alt"></div><div class="sb-data-lbl">Cruise alt</div></div>
+              </div>
+              <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="loadSimBriefIntoPlanner()">⬇ Load into Planner</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MISSION DETAILS -->
+      <div class="fp-card">
+        <div class="fp-card-title">📋 Mission Details</div>
+        <div class="form-row">
+          <div class="form-group"><label>Aircraft</label>
+            <select id="fp-aircraft" onchange="updateRoute();renderTailOptions()">
+              <option value="B-1B Lancer">B-1B Lancer</option>
+              <option value="B-2 Spirit">B-2 Spirit</option>
+              <option value="B-52H Stratofortress">B-52H Stratofortress</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Cruise altitude (ft)</label>
+            <input type="number" id="fp-altitude" placeholder="36000" step="1000" oninput="updateRoute()">
+          </div>
+        </div>
+        <div class="form-group" id="fp-tail-wrap" style="display:none">
+          <label>Airframe (tail number)</label>
+          <select id="fp-tail"></select>
+          <div class="form-hint">Pick a jet from the wing's fleet — airframes already in flight or in maintenance are locked so two pilots never fly the same aircraft. Saving the plan reserves it; logging the flight releases it at your destination.</div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Cruise speed (KTAS)</label>
+            <input type="number" id="fp-speed" placeholder="450" oninput="updateRoute()">
+          </div>
+          <div class="form-group"><label>Departure time (Zulu)</label>
+            <input type="text" id="fp-deptime" placeholder="1400Z">
+          </div>
+        </div>
+        <div class="form-group"><label>Mission notes</label>
+          <textarea id="fp-notes" placeholder="Mission type, weapons load, special instructions…"></textarea>
+        </div>
+        <div class="export-btns">
+          <button class="btn btn-primary" onclick="savePlan()">💾 Save to Squadron</button>
+          <button class="btn btn-outline" onclick="exportMSFS()" title="Download .pln for MSFS 2020/2024">🎮 Export to MSFS</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div>
+      <div class="fp-summary">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px">Plan Summary</div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Route</span><span class="fp-stat-val" id="sum-route">—</span></div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Aircraft</span><span class="fp-stat-val" id="sum-aircraft">—</span></div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Airframe</span><span class="fp-stat-val" id="sum-tail">—</span></div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Cruise alt</span><span class="fp-stat-val" id="sum-alt">—</span></div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Waypoints</span><span class="fp-stat-val" id="sum-waypoints">0</span></div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Distance</span><span class="fp-stat-val" id="sum-distance">—</span></div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Est. time</span><span class="fp-stat-val" id="sum-time">—</span></div>
+      </div>
+      <div style="margin-top:20px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">My Saved Plans</div>
+        <div id="saved-plans-list"><div class="empty-state" style="padding:20px"><p>Log in to save plans</p></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- LOG MODAL -->
+<div class="modal-overlay" id="log-modal">
+  <div class="modal">
+    <div class="modal-title">Log a Flight</div>
+    <div class="form-row">
+      <div class="form-group"><label>Departure (ICAO)</label><input type="text" id="lf-dep" placeholder="KDYS" maxlength="6" style="text-transform:uppercase"></div>
+      <div class="form-group"><label>Arrival (ICAO)</label><input type="text" id="lf-arr" placeholder="KTIK" maxlength="6" style="text-transform:uppercase"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Aircraft</label>
+        <select id="lf-acft"><option>B-1B Lancer</option><option>B-2 Spirit</option><option>B-52H Stratofortress</option></select>
+      </div>
+      <div class="form-group"><label>Duration (minutes)</label><input type="number" id="lf-dur" placeholder="90" min="1"></div>
+    </div>
+    <div class="form-group" id="lf-tail-wrap" style="display:none">
+      <label>Airframe flown (tail number)</label>
+      <select id="lf-tail"></select>
+      <div class="form-hint">From your wing's fleet. Logging the flight moves this jet to the arrival field and marks it Available again — the wing's Discord fleet channel gets the update.</div>
+    </div>
+    <div class="form-group"><label>Notes (optional)</label><textarea id="lf-notes" placeholder="Mission type, training event…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitFlight()">Log Flight</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUBMIT ROUTE MODAL -->
+<div class="modal-overlay" id="submit-route-modal">
+  <div class="modal">
+    <div class="modal-title">Submit a Community Route</div>
+    <div class="modal-sub">Your route will be visible to all squadron members.</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Departure (ICAO)</label>
+        <input type="text" id="cr-dep" placeholder="KDYS" maxlength="6" style="text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label>Arrival (ICAO)</label>
+        <input type="text" id="cr-arr" placeholder="KTIK" maxlength="6" style="text-transform:uppercase">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Route string (airways, waypoints)</label>
+      <input type="text" id="cr-route" placeholder="KDYS ABI J110 OKC KTIK" style="font-family:var(--mono);text-transform:uppercase">
+      <div class="form-hint">Full route from departure to arrival including airways. You can paste from the Custom Route tab.</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Aircraft</label>
+        <select id="cr-acft">
+          <option value="B-1B Lancer">B-1B Lancer</option>
+          <option value="B-2 Spirit">B-2 Spirit</option>
+          <option value="B-52H Stratofortress">B-52H Stratofortress</option>
+          <option value="Any">Any aircraft</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Cruise altitude (ft)</label>
+        <input type="number" id="cr-alt" placeholder="36000" step="1000">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category</label>
+        <select id="cr-category">
+          <option value="7bw">7th BW — B-1B Routes</option>
+          <option value="509bw">509th BW — B-2 Routes</option>
+          <option value="2bw">2nd BW — B-52H Routes</option>
+          <option value="cross">Cross-Wing Transit</option>
+          <option value="training">Training Area</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Distance (NM) — optional</label>
+        <input type="number" id="cr-dist" placeholder="e.g. 320">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <input type="text" id="cr-desc" placeholder="e.g. Dyess → Tinker training route" maxlength="80">
+    </div>
+    <div class="form-group">
+      <label>Notes (optional)</label>
+      <textarea id="cr-notes" placeholder="Routing notes, weather tips, ATC frequencies, alternate airports…" rows="3"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeSubmitModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCommunityRoute()">Submit Route</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open')}
+
+// ── TOP-LEVEL OPS TABS ────────────────────────────────────────
+// One page, two decks: ?tab=plan deep-links straight to the
+// planner (the old flight-plan.html redirects here with it).
+function showOps(which){
+  document.getElementById('ops-panel-log').classList.toggle('active', which==='log');
+  document.getElementById('ops-panel-plan').classList.toggle('active', which==='plan');
+  document.getElementById('ops-btn-log').classList.toggle('active', which==='log');
+  document.getElementById('ops-btn-plan').classList.toggle('active', which==='plan');
+  try{history.replaceState(null,'','/pages/flight-ops.html'+(which==='plan'?'?tab=plan':''));}catch(e){}
+}
+(function(){
+  const t=new URLSearchParams(window.location.search).get('tab');
+  if(t==='plan') showOps('plan');
+})();
+
+// ── SHARED STATE ──────────────────────────────────────────────
+let myPilot=null, isLoggedIn=false, canDelAny=false;
+let allFlights=[], activeTab='all', wingFleet=[];
+let waypoints=[], sbData=null;
+let fleetByWing={};
+
+function onAuthReady(user,pilot){
+  const p=pilot||(typeof currentPilot!=='undefined'?currentPilot:null);
+  if(user&&p&&p.status==='active'){
+    myPilot=p; isLoggedIn=true;
+    canDelAny=(typeof isMasterAdminPilot==='function'&&isMasterAdminPilot(p))||(typeof hasPermission==='function'&&hasPermission(p,'delete_flights'));
+    document.getElementById('log-btn-wrap').style.display='block';
+    document.getElementById('my-tab').style.display='block';
+    const sbtn=document.getElementById('submit-route-btn');
+    if(sbtn) sbtn.style.display='block';
+    if(p.simBriefUsername){const sbEl=document.getElementById('sb-username');if(sbEl)sbEl.value=p.simBriefUsername;}
+    loadWingFleet();
+    loadFleetAll();
+    loadSavedPlans();
+  }
+  loadFlights();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FLIGHT LOG DECK
+// ══════════════════════════════════════════════════════════════
+const WING_COLORS={'7bw':'var(--gold)','509bw':'var(--blue)','2bw':'var(--green)'};
+
+// The pilot's wing fleet feeds the tail picker in the log modal.
+async function loadWingFleet(){
+  if(!myPilot||!myPilot.wing){wingFleet=[];return;}
+  try{
+    const snap=await db.collection('fleet').where('wing','==',myPilot.wing).get();
+    wingFleet=snap.docs.map(d=>({id:d.id,...d.data()}));
+    wingFleet.sort((a,b)=>(a.tail||'').localeCompare(b.tail||''));
+  }catch(e){wingFleet=[];}
+}
+
+async function loadFlights(){
+  try{
+    const snap=await db.collection('flights').orderBy('loggedAt','desc').limit(200).get();
+    allFlights=snap.docs.map(d=>({id:d.id,...d.data()}));
+    refreshFlightStats();
+  }catch(e){allFlights=[];}
+  render();
+}
+function refreshFlightStats(){
+  const mins=allFlights.reduce((s,f)=>s+(f.durationMins||0),0);
+  document.getElementById('st-total').textContent=allFlights.length;
+  document.getElementById('st-hours').textContent=Math.round(mins/60);
+  document.getElementById('st-7bw').textContent=allFlights.filter(f=>f.wing==='7bw').length;
+  document.getElementById('st-509bw').textContent=allFlights.filter(f=>f.wing==='509bw').length;
+  document.getElementById('st-2bw').textContent=allFlights.filter(f=>f.wing==='2bw').length;
+}
+
+function setTab(tab,btn){
+  activeTab=tab;
+  document.querySelectorAll('.wing-tab').forEach(b=>b.className='wing-tab');
+  btn.classList.add('t-'+tab);
+  render();
+}
+
+function render(){
+  const q=(document.getElementById('fl-search').value||'').toLowerCase();
+  const af=document.getElementById('fl-acft').value;
+  let list=allFlights;
+  if(activeTab==='mine'&&myPilot) list=list.filter(f=>f.pilotUid===myPilot.uid);
+  else if(activeTab!=='all') list=list.filter(f=>f.wing===activeTab);
+  if(af) list=list.filter(f=>f.aircraft===af);
+  if(q) list=list.filter(f=>(f.pilotCallsign||'').toLowerCase().includes(q)||(f.departure||'').toLowerCase().includes(q)||(f.arrival||'').toLowerCase().includes(q)||(f.notes||'').toLowerCase().includes(q)||(f.tail||'').toLowerCase().includes(q));
+  const el=document.getElementById('flights-list');
+  if(!list.length){el.innerHTML='<div class="empty-state"><div class="icon">✈️</div><p>No flights match this filter.</p></div>';return;}
+  el.innerHTML=list.map(f=>{
+    const h=Math.floor((f.durationMins||0)/60),m=(f.durationMins||0)%60;
+    const col=WING_COLORS[f.wing]||'var(--text3)';
+    const canDel=canDelAny||(myPilot&&f.pilotUid===myPilot.uid);
+    const tailStr=f.tail?` · <span style="font-family:var(--mono)">${f.tail}</span>${f.tailNickname?' <span style="font-style:italic;color:var(--gold2)">"'+f.tailNickname+'"</span>':''}`:'';
+    return `<div class="flight-row">
+      <div class="wing-dot" style="background:${col}"></div>
+      <div style="flex:1">
+        <div class="flight-route">${f.departure||'?'} → ${f.arrival||'?'}</div>
+        <div class="flight-meta">${f.pilotCallsign||'Unknown'} · ${f.aircraft||'—'}${tailStr} · <span style="color:${col}">${getWingAbbr(f.wing)||f.wing||''}</span></div>
+        ${f.notes?`<div style="font-size:11px;color:var(--text3);margin-top:3px">${f.notes}</div>`:''}
+      </div>
+      <div style="font-size:14px;font-weight:600;color:var(--text2);flex-shrink:0">${h}h ${m}m</div>
+      ${canDel?`<button class="del-btn" onclick="delFlight('${f.id}')">🗑</button>`:''}
+    </div>`;
+  }).join('');
+}
+
+function getWingAbbr(w){return{'7bw':'7th BW','509bw':'509th BW','2bw':'2nd BW'}[w]||w;}
+
+async function delFlight(id){
+  if(!confirm('Delete this flight?'))return;
+  const f=allFlights.find(x=>x.id===id);
+  if(!f)return;
+  await db.collection('flights').doc(id).delete();
+  if(f.pilotUid) db.collection('pilots').doc(f.pilotUid).update({totalFlights:firebase.firestore.FieldValue.increment(-1),flightHours:firebase.firestore.FieldValue.increment(-(f.durationMins||0)/60)}).catch(()=>{});
+  allFlights=allFlights.filter(x=>x.id!==id);
+  refreshFlightStats();
+  render();
+  toast('Flight deleted');
+}
+
+function openLogModal(){
+  if(!myPilot){window.location.href='/pages/login.html';return;}
+  ['lf-dep','lf-arr','lf-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('lf-dur').value='';
+  if(myPilot.wing){const m={'7bw':'B-1B Lancer','509bw':'B-2 Spirit','2bw':'B-52H Stratofortress'};document.getElementById('lf-acft').value=m[myPilot.wing]||'B-1B Lancer';}
+  const tw=document.getElementById('lf-tail-wrap');
+  if(wingFleet.length){
+    tw.style.display='block';
+    const sel=document.getElementById('lf-tail');
+    sel.innerHTML='<option value="">— no assigned airframe —</option>'+wingFleet.map(a=>{
+      const tag=a.status==='maintenance'?' — MAINTENANCE':a.status==='inflight'?' — in flight (yours?)':'';
+      return `<option value="${a.id}" ${a.status==='maintenance'?'disabled':''}>${a.tail}${a.nickname?' "'+a.nickname+'"':''} · 📍${a.location||'?'}${tag}</option>`;
+    }).join('');
+  }else{tw.style.display='none';}
+  document.getElementById('log-modal').classList.add('open');
+}
+function closeModal(){document.getElementById('log-modal').classList.remove('open');}
+
+async function submitFlight(){
+  const dep=document.getElementById('lf-dep').value.trim().toUpperCase();
+  const arr=document.getElementById('lf-arr').value.trim().toUpperCase();
+  const dur=parseInt(document.getElementById('lf-dur').value)||0;
+  if(!dep||!arr||!dur){toast('Fill in departure, arrival, and duration','error');return;}
+  const tailSel=document.getElementById('lf-tail');
+  const fleetId=(wingFleet.length&&tailSel)?tailSel.value:'';
+  const ac=fleetId?wingFleet.find(a=>a.id===fleetId):null;
+  const flight={pilotUid:currentUser.uid,pilotCallsign:myPilot.callsign||myPilot.displayName||'Unknown',wing:myPilot.wing,squadron:myPilot.squadron,departure:dep,arrival:arr,aircraft:document.getElementById('lf-acft').value,durationMins:dur,notes:document.getElementById('lf-notes').value.trim(),loggedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  if(ac){flight.fleetId=ac.id;flight.tail=ac.tail||'';flight.tailNickname=ac.nickname||'';}
+  try{
+    await db.collection('flights').add(flight);
+    await db.collection('pilots').doc(currentUser.uid).update({totalFlights:firebase.firestore.FieldValue.increment(1),flightHours:firebase.firestore.FieldValue.increment(dur/60)});
+    // Release the airframe at the destination — best-effort, never
+    // fails the flight log itself.
+    if(ac){
+      try{
+        await db.collection('fleet').doc(ac.id).update({location:arr,status:'available',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:myPilot.callsign||myPilot.displayName||''});
+        postWingFleetStatus(myPilot.wing);
+      }catch(e){console.warn('Fleet update skipped:',e.message);}
+    }
+    closeModal();toast('Flight logged ✓');loadFlights();loadWingFleet();loadFleetAll();
+    // Discord webhook — wing flight log channel
+    try{const s=await db.collection('settings').doc('webhooks').get();const u=s.exists&&s.data()?.channels?.['flights_'+myPilot.wing]?.url;if(u)fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({embeds:[{color:0xc8a951,title:'✈ Flight Logged',fields:[{name:'Pilot',value:myPilot.callsign||'Unknown',inline:true},{name:'Route',value:dep+' → '+arr,inline:true},{name:'Aircraft',value:flight.aircraft+(ac?' · '+ac.tail+(ac.nickname?' "'+ac.nickname+'"':''):''),inline:true}],timestamp:new Date().toISOString()}]})}).catch(()=>{});}catch(e){}
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+// Posts a wing's full fleet picture to its Discord fleet channel —
+// shared by both decks (reserve on plan save, release on flight log).
+async function postWingFleetStatus(wing){
+  try{
+    const s=await db.collection('settings').doc('webhooks').get();
+    const url=s.exists?(s.data()?.channels?.['fleet_'+wing]?.url||''):'';
+    if(!url)return;
+    const snap=await db.collection('fleet').where('wing','==',wing).get();
+    const list=snap.docs.map(d=>d.data()).sort((a,b)=>(a.tail||'').localeCompare(b.tail||''));
+    const W={'7bw':{name:'7th Bomb Wing',color:0xc8a951},'509bw':{name:'509th Bomb Wing',color:0x4a90d9},'2bw':{name:'2nd Bomb Wing',color:0x3dba6e}};
+    const ST={available:'🟢 Available',inflight:'🔵 In Flight',maintenance:'🟠 Maintenance'};
+    const fields=list.slice(0,25).map(a=>({name:a.tail+(a.nickname?' — "'+a.nickname+'"':''),value:(ST[a.status]||ST.available)+' · 📍 **'+(a.location||'Unknown')+'**',inline:true}));
+    const payload={embeds:[{color:(W[wing]||{}).color||0xc8a951,title:'🛩 '+((W[wing]||{}).name||wing)+' — Fleet Status',description:list.length+' aircraft on strength',fields:fields,footer:{text:'Updated by '+(myPilot?.callsign||myPilot?.displayName||'Pilot')+' · VTAC Global Strike Command'},timestamp:new Date().toISOString()}]};
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FLIGHT PLANNER DECK
+// ══════════════════════════════════════════════════════════════
+
+// ── SQUADRON ROUTES DATABASE ──────────────────────────────────
+const SQUADRON_ROUTES = {
+  '7bw': [
+    { dep:'KDYS', arr:'KTIK', route:'KDYS FIDEN5 CRIED HAYYY BWD J146 CHOKE TIK3 KTIK', dist:155, alt:35000, desc:'Dyess → Tinker AFB', acft:'B-1B Lancer' },
+    { dep:'KDYS', arr:'KBAD', route:'KDYS TXO J86 MLU KBAD', dist:318, alt:37000, desc:'Dyess → Barksdale', acft:'B-1B Lancer' },
+    { dep:'KDYS', arr:'KEND', route:'KDYS ABI J110 INK J86 END', dist:405, alt:39000, desc:'Dyess → Vance AFB', acft:'B-1B Lancer' },
+    { dep:'KDYS', arr:'KSZL', route:'KDYS ABI J110 OKC J4 SGF KSZL', dist:626, alt:39000, desc:'Dyess → Whiteman', acft:'B-1B Lancer' },
+    { dep:'KDYS', arr:'KOKC', route:'KDYS FIDEN5 CRIED OKC', dist:230, alt:35000, desc:'Dyess → Oklahoma City (training)', acft:'B-1B Lancer' },
+    { dep:'KDYS', arr:'KDYS', route:'KDYS ABI ABI KDYS', dist:0, alt:8000, desc:'Local area orientation (LAO)', acft:'B-1B Lancer' },
+  ],
+  '509bw': [
+    { dep:'KSZL', arr:'KDYS', route:'KSZL SGF J4 OKC J110 ABI KDYS', dist:626, alt:40000, desc:'Whiteman → Dyess', acft:'B-2 Spirit' },
+    { dep:'KSZL', arr:'KBAD', route:'KSZL SGF J86 MLU KBAD', dist:540, alt:40000, desc:'Whiteman → Barksdale', acft:'B-2 Spirit' },
+    { dep:'KSZL', arr:'KOKC', route:'KSZL SGF J4 OKC', dist:280, alt:40000, desc:'Whiteman → Oklahoma City', acft:'B-2 Spirit' },
+    { dep:'KSZL', arr:'KSTL', route:'KSZL STL', dist:108, alt:35000, desc:'Whiteman → St. Louis (local training)', acft:'B-2 Spirit' },
+    { dep:'KSZL', arr:'KOFK', route:'KSZL STL J146 OFK', dist:410, alt:40000, desc:'Whiteman → Norfolk NE (long range)', acft:'B-2 Spirit' },
+    { dep:'KSZL', arr:'KICT', route:'KSZL ICT', dist:183, alt:37000, desc:'Whiteman → Wichita (medium range)', acft:'B-2 Spirit' },
+  ],
+  '2bw': [
+    { dep:'KBAD', arr:'KDYS', route:'KBAD MLU J86 TXO KDYS', dist:318, alt:37000, desc:'Barksdale → Dyess', acft:'B-52H Stratofortress' },
+    { dep:'KBAD', arr:'KSZL', route:'KBAD MLU J86 SGF KSZL', dist:540, alt:35000, desc:'Barksdale → Whiteman', acft:'B-52H Stratofortress' },
+    { dep:'KBAD', arr:'KNEW', route:'KBAD MLU MSY KNEW', dist:195, alt:33000, desc:'Barksdale → New Orleans', acft:'B-52H Stratofortress' },
+    { dep:'KBAD', arr:'KMSY', route:'KBAD SHV J86 MSY', dist:180, alt:33000, desc:'Barksdale → New Orleans Intl', acft:'B-52H Stratofortress' },
+    { dep:'KBAD', arr:'KDFW', route:'KBAD SHV J4 TXO DFW', dist:290, alt:35000, desc:'Barksdale → Dallas/Fort Worth', acft:'B-52H Stratofortress' },
+    { dep:'KBAD', arr:'KTUL', route:'KBAD SHV J86 FSM TUL', dist:336, alt:35000, desc:'Barksdale → Tulsa (AR track)', acft:'B-52H Stratofortress' },
+  ],
+  'cross': [
+    { dep:'KDYS', arr:'KBAD', route:'KDYS TXO J86 MLU KBAD', dist:318, alt:37000, desc:'7BW → 2BW transit', acft:'B-1B Lancer' },
+    { dep:'KBAD', arr:'KSZL', route:'KBAD MLU J86 SGF KSZL', dist:540, alt:35000, desc:'2BW → 509BW transit', acft:'B-52H Stratofortress' },
+    { dep:'KSZL', arr:'KDYS', route:'KSZL SGF J4 OKC J110 ABI KDYS', dist:626, alt:40000, desc:'509BW → 7BW transit', acft:'B-2 Spirit' },
+    { dep:'KDYS', arr:'KEND', route:'KDYS ABI J110 END', dist:390, alt:37000, desc:'Dyess → Vance (AR training)', acft:'B-1B Lancer' },
+  ]
+};
+
+function buildSquadronRoutes() {
+  Object.entries(SQUADRON_ROUTES).forEach(([wing, routes]) => {
+    const el = document.getElementById('rg-' + wing);
+    if (!el) return;
+    el.innerHTML = routes.map((r, i) => `
+      <button class="sq-route-btn" data-wing="${wing}" data-idx="${i}" onclick="loadSquadronRoute(this.dataset.wing, parseInt(this.dataset.idx))">
+        <div class="airports">${r.dep} → ${r.arr}</div>
+        <div class="desc">${r.desc}</div>
+        <div class="dist">${r.dist ? r.dist + ' NM · FL' + Math.round(r.alt/100) : 'Local area'} · ${r.acft}</div>
+      </button>`).join('');
+  });
+}
+
+function loadSquadronRoute(wing, idx) {
+  const r = SQUADRON_ROUTES[wing][idx];
+  if (!r) return;
+  sbData = null;
+  const parts = r.route.trim().split(/\s+/);
+  const dep = parts[0];
+  const arr = parts[parts.length - 1];
+  const mid = parts.slice(1, -1);
+  document.getElementById('fp-dep').value = dep;
+  document.getElementById('fp-arr').value = arr;
+  document.getElementById('fp-aircraft').value = r.acft;
+  document.getElementById('fp-altitude').value = r.alt;
+  waypoints = mid;
+  renderWaypoints();
+  updateRoute();
+  renderTailOptions();
+  document.getElementById('sum-distance').textContent = r.dist ? r.dist + ' NM' : 'Local';
+  document.getElementById('sum-route').textContent = dep + ' → ' + arr;
+  const speed = ACFT_SPEEDS[r.acft] || 450;
+  if (r.dist) {
+    const h = Math.floor(r.dist/speed), m = Math.round((r.dist/speed - Math.floor(r.dist/speed))*60);
+    document.getElementById('sum-time').textContent = h + 'h ' + m + 'm';
+  }
+  switchTab('custom');
+  toast('Route loaded: ' + r.desc);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+const ACFT_SPEEDS = { 'B-1B Lancer': 650, 'B-2 Spirit': 480, 'B-52H Stratofortress': 400 };
+
+// ── PLANNER SUB-TABS ──────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel2').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn2').forEach(b => b.classList.remove('active'));
+  const panel = document.getElementById('tab-' + id);
+  if (panel) panel.classList.add('active');
+  if (btn && typeof btn === 'object') {
+    btn.classList.add('active');
+  } else {
+    document.querySelectorAll('.tab-btn2[data-tab="' + id + '"]').forEach(b => b.classList.add('active'));
+  }
+}
+
+// ── FLEET TIE-IN (planner side) ───────────────────────────────
+const TYPE_WING = { 'B-1B Lancer':'7bw', 'B-2 Spirit':'509bw', 'B-52H Stratofortress':'2bw' };
+
+async function loadFleetAll() {
+  try {
+    const snap = await db.collection('fleet').get();
+    fleetByWing = {};
+    snap.docs.forEach(d => {
+      const a = {id: d.id, ...d.data()};
+      (fleetByWing[a.wing] = fleetByWing[a.wing] || []).push(a);
+    });
+    Object.values(fleetByWing).forEach(l => l.sort((a,b)=>(a.tail||'').localeCompare(b.tail||'')));
+  } catch(e) { fleetByWing = {}; }
+  renderTailOptions();
+}
+
+function renderTailOptions() {
+  const wrap = document.getElementById('fp-tail-wrap');
+  if (!wrap) return;
+  const wing = TYPE_WING[document.getElementById('fp-aircraft').value];
+  const list = fleetByWing[wing] || [];
+  if (!list.length) { wrap.style.display = 'none'; updateTailSummary(); return; }
+  wrap.style.display = 'block';
+  const sel = document.getElementById('fp-tail');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— no airframe assignment —</option>' + list.map(a => {
+    const busy = a.status === 'inflight' || a.status === 'maintenance';
+    const tag = a.status === 'inflight' ? ' — IN FLIGHT' : a.status === 'maintenance' ? ' — MAINTENANCE' : '';
+    return `<option value="${a.id}" ${busy ? 'disabled' : ''}>${a.tail}${a.nickname ? ' "' + a.nickname + '"' : ''} · 📍${a.location || '?'}${tag}</option>`;
+  }).join('');
+  if (prev && [...sel.options].some(o => o.value === prev && !o.disabled)) sel.value = prev;
+  sel.onchange = updateTailSummary;
+  updateTailSummary();
+}
+
+function getSelectedTail() {
+  const sel = document.getElementById('fp-tail');
+  if (!sel || document.getElementById('fp-tail-wrap').style.display === 'none' || !sel.value) return null;
+  const wing = TYPE_WING[document.getElementById('fp-aircraft').value];
+  return (fleetByWing[wing] || []).find(a => a.id === sel.value) || null;
+}
+
+function updateTailSummary() {
+  const ac = getSelectedTail();
+  document.getElementById('sum-tail').textContent = ac ? ac.tail + (ac.nickname ? ' "' + ac.nickname + '"' : '') : '—';
+}
+
+// ── SIMBRIEF ──────────────────────────────────────────────────
+async function fetchSimBrief() {
+  const username = document.getElementById('sb-username').value.trim();
+  if (!username) { toast('Enter your SimBrief username','error'); return; }
+  document.getElementById('sb-result').style.display = 'none';
+  document.getElementById('sb-error').style.display = 'none';
+  document.getElementById('sb-loading').style.display = 'block';
+  try {
+    const isNum = /^\d+$/.test(username);
+    const api = isNum
+      ? `https://www.simbrief.com/api/xml.fetcher.php?userid=${username}&json=1`
+      : `https://www.simbrief.com/api/xml.fetcher.php?username=${username}&json=1`;
+    const resp = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(api)}`);
+    const wrapper = await resp.json();
+    const data = JSON.parse(wrapper.contents);
+    if (data.fetch?.status === 'Error') throw new Error(data.fetch.statusMessage || 'SimBrief error');
+    sbData = data;
+    const orig = data.origin?.icao_code || '?', dest = data.destination?.icao_code || '?';
+    const route = data.general?.route || '';
+    const dist = data.general?.route_distance || '—';
+    const bt = data.times?.est_block || '';
+    const fuel = parseInt(data.fuel?.plan_ramp) || 0;
+    const ca = parseInt(data.general?.initial_altitude) || 0;
+    document.getElementById('sb-route-title').textContent = orig + ' → ' + dest;
+    document.getElementById('sb-ofp-date').textContent = data.params?.date_utc
+      ? new Date(data.params.date_utc * 1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    document.getElementById('sb-full-route').textContent = orig + ' ' + route + ' ' + dest;
+    document.getElementById('sb-dist').textContent = dist;
+    document.getElementById('sb-time').textContent = bt ? Math.floor(parseInt(bt)/60)+'h '+parseInt(bt)%60+'m' : '—';
+    document.getElementById('sb-fuel').textContent = fuel ? fuel.toLocaleString() : '—';
+    document.getElementById('sb-alt').textContent = ca ? 'FL'+Math.round(ca/100) : '—';
+    document.getElementById('sb-result').style.display = 'block';
+    if (isLoggedIn && currentUser) db.collection('pilots').doc(currentUser.uid).update({simBriefUsername:username}).catch(()=>{});
+  } catch(e) {
+    document.getElementById('sb-error').style.display = 'block';
+    document.getElementById('sb-error').innerHTML = `<div class="alert alert-error">${e.message || 'Could not fetch OFP'}</div>`;
+  } finally { document.getElementById('sb-loading').style.display = 'none'; }
+}
+
+function loadSimBriefIntoPlanner() {
+  if (!sbData) return;
+  const orig = sbData.origin?.icao_code||'', dest = sbData.destination?.icao_code||'';
+  const route = (sbData.general?.route||'').trim();
+  document.getElementById('fp-dep').value = orig;
+  document.getElementById('fp-arr').value = dest;
+  document.getElementById('fp-altitude').value = sbData.general?.initial_altitude||'';
+  document.getElementById('fp-speed').value = sbData.general?.cruise_tas||'';
+  waypoints = route.split(/\s+/).filter(Boolean);
+  renderWaypoints();
+  document.getElementById('sum-route').textContent = orig+' → '+dest;
+  document.getElementById('sum-distance').textContent = (sbData.general?.route_distance||'—')+' NM';
+  const bt = sbData.times?.est_block||'';
+  document.getElementById('sum-time').textContent = bt ? Math.floor(parseInt(bt)/60)+'h '+parseInt(bt)%60+'m' : '—';
+  document.getElementById('sum-alt').textContent = sbData.general?.initial_altitude ? 'FL'+Math.round(parseInt(sbData.general.initial_altitude)/100) : '—';
+  document.getElementById('sum-waypoints').textContent = waypoints.length;
+  document.getElementById('route-string').textContent = orig+' '+route+' '+dest;
+  renderTailOptions();
+  switchTab('custom');
+  toast('SimBrief OFP loaded ✓');
+}
+
+// ── ROUTE BUILDER ─────────────────────────────────────────────
+function addWaypoint() { waypoints.push(''); renderWaypoints(); }
+function removeWaypoint(i) { waypoints.splice(i,1); renderWaypoints(); updateRoute(); }
+function renderWaypoints() {
+  document.getElementById('fp-waypoints').innerHTML = waypoints.map((wp,i) => `
+    <div class="waypoint-row">
+      <div class="wp-num">${i+1}</div>
+      <input type="text" class="wp-input" value="${wp}" placeholder="Fix / VOR / airway"
+        oninput="waypoints[${i}]=this.value.toUpperCase();updateRoute()">
+      <button class="wp-remove" onclick="removeWaypoint(${i})">×</button>
+    </div>`).join('');
+}
+
+function updateRoute() {
+  const dep = (document.getElementById('fp-dep').value||'').trim().toUpperCase();
+  const arr = (document.getElementById('fp-arr').value||'').trim().toUpperCase();
+  const mid = waypoints.filter(w=>w.trim());
+  const parts = [dep,...mid,arr].filter(Boolean);
+  document.getElementById('route-string').textContent = parts.join(' ') || '—';
+  document.getElementById('sum-route').textContent = (dep&&arr) ? dep+' → '+arr : '—';
+  document.getElementById('sum-waypoints').textContent = mid.length;
+  document.getElementById('sum-aircraft').textContent = document.getElementById('fp-aircraft').value;
+  const alt = document.getElementById('fp-altitude').value;
+  document.getElementById('sum-alt').textContent = alt ? 'FL'+Math.round(parseInt(alt)/100) : '—';
+  if (!sbData && parts.length >= 2) {
+    const est = (parts.length-1)*180;
+    document.getElementById('sum-distance').textContent = '~'+est.toLocaleString()+' NM (est.)';
+    const speed = parseFloat(document.getElementById('fp-speed').value)||450;
+    const h = Math.floor(est/speed), m = Math.round((est/speed-Math.floor(est/speed))*60);
+    document.getElementById('sum-time').textContent = '~'+h+'h '+m+'m (est.)';
+  }
+}
+
+function copyRoute() {
+  const r = document.getElementById('route-string').textContent;
+  if (r==='—') { toast('Build a route first','error'); return; }
+  navigator.clipboard.writeText(r).then(()=>toast('Copied!'));
+}
+
+// ── MSFS EXPORT ───────────────────────────────────────────────
+function exportMSFS() {
+  const dep = (document.getElementById('fp-dep').value||'').trim().toUpperCase();
+  const arr = (document.getElementById('fp-arr').value||'').trim().toUpperCase();
+  if (!dep||!arr) { toast('Enter departure and arrival first','error'); return; }
+  const aircraft = document.getElementById('fp-aircraft').value;
+  const altitude = parseInt(document.getElementById('fp-altitude').value)||36000;
+  const mid = waypoints.filter(w=>w.trim());
+  const all = [dep,...mid,arr];
+  const icao = /^[A-Z]{4}$/;
+  const wpXML = all.map(fix => `    <ATCWaypoint id="${fix}">
+      <ATCWaypointType>${icao.test(fix)?'Airport':'Intersection'}</ATCWaypointType>
+      <WorldPosition>N000° 0' 0.00",E000° 0' 0.00",+000000.00</WorldPosition>
+      <ICAO><ICAOIdent>${fix}</ICAOIdent></ICAO>
+    </ATCWaypoint>`).join('\n');
+  const pln = `<?xml version="1.0" encoding="utf-8"?>
+<SimBase.Document Type="AceXML" version="1,0">
+  <Descr>VTAC GSC — ${dep} to ${arr}</Descr>
+  <FlightPlan.FlightPlan>
+    <Title>${dep} to ${arr}</Title>
+    <FPType>IFR</FPType>
+    <RouteType>HighAlt</RouteType>
+    <CruisingAlt>${altitude}</CruisingAlt>
+    <DepartureID>${dep}</DepartureID>
+    <DepartureLLA>N000° 0' 0.00",E000° 0' 0.00",+000000.00</DepartureLLA>
+    <DestinationID>${arr}</DestinationID>
+    <DestinationLLA>N000° 0' 0.00",E000° 0' 0.00",+000000.00</DestinationLLA>
+    <Descr>${aircraft} · VTAC GSC</Descr>
+    <DepartureName>${dep}</DepartureName>
+    <DestinationName>${arr}</DestinationName>
+    <AppVersion><AppVersionMajor>11</AppVersionMajor><AppVersionBuild>282174</AppVersionBuild></AppVersion>
+${wpXML}
+  </FlightPlan.FlightPlan>
+</SimBase.Document>`;
+  const blob = new Blob([pln],{type:'application/xml'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`VTAC_${dep}_${arr}.pln`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast(`✈ ${dep}→${arr}.pln downloaded`);
+}
+
+// ── SAVE / LOAD ───────────────────────────────────────────────
+async function savePlan() {
+  if (!isLoggedIn) { window.location.href='/pages/login.html'; return; }
+  const dep = (document.getElementById('fp-dep').value||'').trim().toUpperCase();
+  const arr = (document.getElementById('fp-arr').value||'').trim().toUpperCase();
+  if (!dep||!arr) { toast('Enter departure and arrival first','error'); return; }
+  const tailAc = getSelectedTail();
+  const plan = {
+    pilotUid: currentUser.uid,
+    pilotCallsign: currentPilot?.callsign||currentPilot?.displayName||'Unknown',
+    departure:dep, arrival:arr,
+    waypoints: waypoints.filter(w=>w.trim()),
+    route: document.getElementById('route-string').textContent,
+    aircraft: document.getElementById('fp-aircraft').value,
+    altitude: document.getElementById('fp-altitude').value,
+    speed: document.getElementById('fp-speed').value,
+    departureTime: document.getElementById('fp-deptime').value.trim(),
+    notes: document.getElementById('fp-notes').value.trim(),
+    distance: document.getElementById('sum-distance').textContent,
+    estTime: document.getElementById('sum-time').textContent,
+    fromSimBrief: !!sbData,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+  if (tailAc) { plan.fleetId = tailAc.id; plan.tail = tailAc.tail || ''; plan.tailNickname = tailAc.nickname || ''; }
+  try {
+    await db.collection('flightPlans').add(plan);
+    // Reserve the airframe: In Flight until the flight is logged.
+    if (tailAc) {
+      try {
+        await db.collection('fleet').doc(tailAc.id).update({
+          status: 'inflight',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedBy: currentPilot?.callsign || currentPilot?.displayName || '',
+        });
+        postWingFleetStatus(tailAc.wing);
+        toast('Plan saved — ' + tailAc.tail + ' reserved ✓');
+      } catch(e) {
+        console.warn('Airframe reserve skipped:', e.message);
+        toast('Flight plan saved ✓');
+      }
+      loadFleetAll();
+      loadWingFleet();
+    } else {
+      toast('Flight plan saved ✓');
+    }
+    loadSavedPlans();
+    sendDiscordFlightPlan(plan);
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+async function loadSavedPlans() {
+  if (!isLoggedIn) return;
+  try {
+    const snap = await db.collection('flightPlans')
+      .where('pilotUid','==',currentUser.uid)
+      .orderBy('createdAt','desc').limit(15).get();
+    const el = document.getElementById('saved-plans-list');
+    if (snap.empty) { el.innerHTML='<div class="empty-state" style="padding:20px"><p>No saved plans yet</p></div>'; return; }
+    el.innerHTML = snap.docs.map(d=>{const p=d.data();return `
+      <div class="saved-plan-card">
+        <div class="spc-route">${p.departure} → ${p.arrival}</div>
+        <div class="spc-meta">${p.aircraft||''}${p.tail?' · '+p.tail:''} · ${p.distance||''} · ${p.estTime||''}${p.fromSimBrief?' · <span style="color:var(--blue2)">SimBrief</span>':''}</div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-xs" onclick="loadPlan('${d.id}')">Load</button>
+          <button class="btn btn-outline btn-xs" onclick="exportPlanById('${d.id}')">🎮 MSFS</button>
+          <button class="btn btn-danger btn-xs" onclick="deletePlan('${d.id}')">Delete</button>
+        </div>
+      </div>`;}).join('');
+    window._plansCache = {};
+    snap.forEach(d=>window._plansCache[d.id]=d.data());
+  } catch(e) {}
+}
+
+function loadPlan(id) {
+  const p = window._plansCache?.[id]; if(!p) return;
+  sbData = null;
+  document.getElementById('fp-dep').value = p.departure||'';
+  document.getElementById('fp-arr').value = p.arrival||'';
+  waypoints = p.waypoints||[];
+  renderWaypoints();
+  document.getElementById('fp-aircraft').value = p.aircraft||'B-1B Lancer';
+  document.getElementById('fp-altitude').value = p.altitude||'';
+  document.getElementById('fp-speed').value = p.speed||'';
+  document.getElementById('fp-deptime').value = p.departureTime||'';
+  document.getElementById('fp-notes').value = p.notes||'';
+  updateRoute();
+  renderTailOptions();
+  document.getElementById('sum-distance').textContent = p.distance||'—';
+  document.getElementById('sum-time').textContent = p.estTime||'—';
+  showOps('plan');
+  switchTab('custom');
+  toast('Plan loaded');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function exportPlanById(id){const p=window._plansCache?.[id];if(!p)return;loadPlan(id);setTimeout(exportMSFS,100);}
+async function deletePlan(id){
+  if(!confirm('Delete this plan?'))return;
+  await db.collection('flightPlans').doc(id).delete();
+  toast('Deleted'); loadSavedPlans();
+}
+
+async function sendDiscordFlightPlan(plan) {
+  try {
+    const s = await db.collection('settings').doc('webhooks').get();
+    const url = s.exists ? (s.data()?.channels?.flight_plans?.url||'') : '';
+    if (!url) return;
+    const embed = {embeds:[{color:0xc8a951,title:'📋 Flight Plan Saved',fields:[
+      {name:'Pilot',value:plan.pilotCallsign,inline:true},
+      {name:'Aircraft',value:plan.aircraft+(plan.tail?' · '+plan.tail+(plan.tailNickname?' "'+plan.tailNickname+'"':''):''),inline:true},
+      {name:'Route',value:'`'+plan.departure+' → '+plan.arrival+'`',inline:false},
+      {name:'Distance',value:plan.distance||'—',inline:true},
+      {name:'Est. Time',value:plan.estTime||'—',inline:true},
+    ],footer:{text:plan.fromSimBrief?'SimBrief OFP':'Manual route'},timestamp:new Date().toISOString()}]};
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(embed)}).catch(()=>{});
+  } catch(e){}
+}
+
+// ── COMMUNITY ROUTES ─────────────────────────────────────────
+const WING_COLORS_CR = {
+  '7bw': 'var(--gold)', '509bw': 'var(--blue)', '2bw': 'var(--green)',
+  'cross': 'var(--amber)', 'training': 'var(--blue2)', 'other': 'var(--text3)'
+};
+const CATEGORY_LABELS = {
+  '7bw':'7th BW', '509bw':'509th BW', '2bw':'2nd BW',
+  'cross':'Cross-Wing', 'training':'Training', 'other':'Other'
+};
+
+async function loadCommunityRoutes() {
+  const el = document.getElementById('community-routes-list');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state" style="padding:20px"><p>Loading…</p></div>';
+  const wingFilter = document.getElementById('cr-wing-filter')?.value || '';
+  try {
+    let q = db.collection('communityRoutes').orderBy('createdAt', 'desc').limit(50);
+    if (wingFilter) q = q.where('category', '==', wingFilter);
+    const snap = await q.get();
+    if (snap.empty) {
+      el.innerHTML = '<div class="empty-state" style="padding:20px"><div class="icon">🗺</div><p>No community routes yet. Be the first to submit one!</p></div>';
+      return;
+    }
+    el.innerHTML = snap.docs.map(d => {
+      const r = d.data();
+      window._crCache[d.id] = r;
+      const color = WING_COLORS_CR[r.category] || 'var(--text3)';
+      const canDelete = isLoggedIn && (currentUser && currentUser.uid === r.pilotUid || canDelAny);
+      const routeHtml = r.route ? '<div class="cr-airway">' + r.route + '</div>' : '';
+      const notesHtml = r.notes ? '<div class="cr-notes-text">' + r.notes + '</div>' : '';
+      const deleteBtn = canDelete ? '<button class="btn btn-danger btn-xs" onclick="deleteCommunityRoute(\'' + d.id + '\')">Delete</button>' : '';
+      const copyVal  = (r.route || r.departure + ' ' + r.arrival).replace(/'/g, '&#39;');
+      return '<div class="cr-card" id="cr-' + d.id + '">'
+        + '<div class="cr-card-top">'
+        + '<div style="flex:1">'
+        + '<div class="cr-route-str">' + r.departure + ' → ' + r.arrival + '</div>'
+        + '<div class="cr-meta">'
+        + (r.aircraft || '—') + ' · '
+        + (r.altitude ? 'FL' + Math.round(r.altitude/100) : '—') + ' · '
+        + (r.dist ? r.dist + ' NM · ' : '') + (r.description || '') + ' · '
+        + '<span style="color:var(--text2)">' + (r.pilotCallsign || 'Unknown') + '</span>'
+        + '</div></div>'
+        + '<span class="cr-badge" style="background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44">'
+        + (CATEGORY_LABELS[r.category] || r.category) + '</span>'
+        + '</div>'
+        + routeHtml
+        + notesHtml
+        + '<div class="cr-actions">'
+        + '<button class="btn btn-primary btn-xs" onclick="loadCommunityRouteById(\'' + d.id + '\')">Load Route</button>'
+        + '<button class="btn btn-outline btn-xs" onclick="copyToClipboard(\'' + copyVal + '\')">📋 Copy</button>'
+        + deleteBtn
+        + '</div></div>';
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="alert alert-error">Error loading routes: ' + e.message + '</div>';
+  }
+}
+
+// Cache for community route data
+window._crCache = {};
+
+async function loadCommunityRouteById(id) {
+  let r = window._crCache[id];
+  if (!r) {
+    try {
+      const doc = await db.collection('communityRoutes').doc(id).get();
+      if (!doc.exists) { toast('Route not found', 'error'); return; }
+      r = doc.data();
+      window._crCache[id] = r;
+    } catch(e) { toast('Error: ' + e.message, 'error'); return; }
+  }
+  sbData = null;
+  const parts = (r.route || r.departure + ' ' + r.arrival).trim().split(/\s+/);
+  const dep = parts[0];
+  const arr = parts[parts.length - 1];
+  const mid = parts.length > 2 ? parts.slice(1, -1) : [];
+  document.getElementById('fp-dep').value = dep;
+  document.getElementById('fp-arr').value = arr;
+  if (r.aircraft && r.aircraft !== 'Any') document.getElementById('fp-aircraft').value = r.aircraft;
+  if (r.altitude) document.getElementById('fp-altitude').value = r.altitude;
+  waypoints = mid;
+  renderWaypoints();
+  updateRoute();
+  renderTailOptions();
+  if (r.dist) {
+    document.getElementById('sum-distance').textContent = r.dist + ' NM';
+    document.getElementById('sum-route').textContent = dep + ' → ' + arr;
+    const speed = ACFT_SPEEDS[r.aircraft] || 450;
+    const h = Math.floor(r.dist/speed), m = Math.round((r.dist/speed - Math.floor(r.dist/speed))*60);
+    document.getElementById('sum-time').textContent = h + 'h ' + m + 'm';
+  }
+  switchTab('custom');
+  toast('Route loaded: ' + (r.description || dep + ' → ' + arr));
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => toast('Copied!'));
+}
+
+function openSubmitRouteModal() {
+  if (!isLoggedIn) { window.location.href = '/pages/login.html'; return; }
+  const dep = document.getElementById('fp-dep').value.trim().toUpperCase();
+  const arr = document.getElementById('fp-arr').value.trim().toUpperCase();
+  const routeStr = document.getElementById('route-string').textContent;
+  const acft = document.getElementById('fp-aircraft').value;
+  const alt = document.getElementById('fp-altitude').value;
+  if (dep) document.getElementById('cr-dep').value = dep;
+  if (arr) document.getElementById('cr-arr').value = arr;
+  if (routeStr && routeStr !== '—') document.getElementById('cr-route').value = routeStr;
+  if (acft) document.getElementById('cr-acft').value = acft;
+  if (alt) document.getElementById('cr-alt').value = alt;
+  document.getElementById('submit-route-modal').classList.add('open');
+}
+
+function closeSubmitModal() {
+  document.getElementById('submit-route-modal').classList.remove('open');
+}
+
+async function submitCommunityRoute() {
+  const dep = document.getElementById('cr-dep').value.trim().toUpperCase();
+  const arr = document.getElementById('cr-arr').value.trim().toUpperCase();
+  const route = document.getElementById('cr-route').value.trim().toUpperCase();
+  const desc = document.getElementById('cr-desc').value.trim();
+  if (!dep || !arr) { toast('Enter departure and arrival', 'error'); return; }
+  if (!desc) { toast('Add a short description', 'error'); return; }
+  const dist = parseInt(document.getElementById('cr-dist').value) || 0;
+  const r = {
+    departure: dep,
+    arrival: arr,
+    route: route || (dep + ' ' + arr),
+    aircraft: document.getElementById('cr-acft').value,
+    altitude: parseInt(document.getElementById('cr-alt').value) || 36000,
+    category: document.getElementById('cr-category').value,
+    dist: dist || null,
+    description: desc,
+    notes: document.getElementById('cr-notes').value.trim(),
+    pilotUid: currentUser.uid,
+    pilotCallsign: currentPilot?.callsign || currentPilot?.displayName || 'Unknown',
+    wing: currentPilot?.wing || '',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+  try {
+    await db.collection('communityRoutes').add(r);
+    toast('Route submitted! It is now visible to all pilots.');
+    closeSubmitModal();
+    ['cr-dep','cr-arr','cr-route','cr-desc','cr-notes','cr-dist'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    loadCommunityRoutes();
+    sendDiscordCommunityRoute(r);
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function deleteCommunityRoute(id) {
+  if (!confirm('Delete this community route?')) return;
+  try {
+    await db.collection('communityRoutes').doc(id).delete();
+    document.getElementById('cr-' + id)?.remove();
+    toast('Route deleted');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function sendDiscordCommunityRoute(r) {
+  try {
+    const s = await db.collection('settings').doc('webhooks').get();
+    const url = s.exists ? (s.data()?.channels?.flight_plans?.url || '') : '';
+    if (!url) return;
+    const embed = {embeds:[{color:0x4a90d9,title:'🗺 Community Route Submitted',fields:[
+      {name:'Pilot',value:r.pilotCallsign,inline:true},
+      {name:'Aircraft',value:r.aircraft,inline:true},
+      {name:'Route',value:'`' + r.departure + ' → ' + r.arrival + '`',inline:false},
+      {name:'Airways',value:'`' + r.route + '`',inline:false},
+      ...(r.dist ? [{name:'Distance',value:r.dist+' NM',inline:true}] : []),
+      {name:'Description',value:r.description,inline:false},
+    ],footer:{text:'VTAC GSC Community Routes'},timestamp:new Date().toISOString()}]};
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(embed)}).catch(()=>{});
+  } catch(e){}
+}
+
+// Close modals on backdrop click
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('open');
+});
+
+// ── INIT ──────────────────────────────────────────────────────
+buildSquadronRoutes();
+renderWaypoints();
+updateRoute();
+</script>
+</body>
+</html>
