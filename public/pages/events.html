@@ -83,33 +83,6 @@
 
   <div id="events-list"><div class="empty-state"><p>Loading events…</p></div></div>
 
-  <!-- DISCORD TASKING — command staff only -->
-  <div class="card" id="tasking-card" style="display:none;margin-top:28px">
-    <div class="card-header"><div class="card-icon blue">📌</div><div class="card-title">Discord tasking — ping a wing, squadron, or pilot</div></div>
-    <div class="card-body">
-      <div class="alert alert-info" style="font-size:12px;margin-bottom:14px">
-        Sends a tasking order to the selected Discord channel. To ping people, put a mention in the mention box:
-        <strong>@everyone</strong>, a role mention like <strong>&lt;@&amp;ROLE_ID&gt;</strong>, or a user mention like <strong>&lt;@USER_ID&gt;</strong>.
-        Get IDs in Discord: Settings → Advanced → Developer Mode → right-click a role/user → Copy ID.
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Send to channel</label>
-          <select id="task-channel"></select>
-        </div>
-        <div class="form-group">
-          <label>Mention <span style="color:var(--text3)">(who gets pinged)</span></label>
-          <input type="text" id="task-mention" placeholder="@everyone or <@&123456789>" style="font-family:var(--mono)">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Tasking order</label>
-        <textarea id="task-msg" rows="3" placeholder="e.g. 28th BS: launch two B-1Bs from KDYS to KBAD by 2100Z tonight. Report ready status in ops channel."></textarea>
-      </div>
-      <button class="btn btn-primary" onclick="sendTasking()">📡 Send tasking</button>
-    </div>
-  </div>
-
 </div>
 
 <footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
@@ -141,19 +114,6 @@ const EV_WINGS = {
   '509bw': { label: '509th BW — B-2', color: '#4a90d9' },
   '2bw':   { label: '2nd BW — B-52H', color: '#3dba6e' },
 };
-// Channels the tasking tool can post to (label → webhook channel key
-// from Master Admin → Discord Webhooks)
-const TASK_CHANNELS = {
-  tasking:      'Tasking channel',
-  events:       'Events channel',
-  fleet_7bw:    '7th BW fleet channel',
-  fleet_509bw:  '509th BW fleet channel',
-  fleet_2bw:    '2nd BW fleet channel',
-  flights_7bw:  '7th BW flight log channel',
-  flights_509bw:'509th BW flight log channel',
-  flights_2bw:  '2nd BW flight log channel',
-  admin_all:    'Admin — all events channel',
-};
 
 let isStaff = false, events = [], whChannels = {};
 
@@ -162,12 +122,11 @@ function onAuthReady(user, pilot) {
   isStaff = canManageEvents(pilot);
   if (isStaff) {
     document.getElementById('ev-add-card').style.display = 'block';
-    document.getElementById('tasking-card').style.display = 'block';
     document.getElementById('ev-ping').addEventListener('change', function() {
       document.getElementById('ev-mention-wrap').style.display = this.value ? 'block' : 'none';
     });
   }
-  loadWebhooks().then(function() { if (isStaff) renderTaskChannels(); });
+  loadWebhooks();
   loadEvents();
 }
 
@@ -176,14 +135,6 @@ async function loadWebhooks() {
     const s = await db.collection('settings').doc('webhooks').get();
     whChannels = s.exists ? (s.data().channels || {}) : {};
   } catch(e) { whChannels = {}; }
-}
-
-function renderTaskChannels() {
-  const sel = document.getElementById('task-channel');
-  const opts = Object.entries(TASK_CHANNELS)
-    .filter(function(e){ return whChannels[e[0]] && whChannels[e[0]].url; })
-    .map(function(e){ return '<option value="' + e[0] + '">' + e[1] + '</option>'; });
-  sel.innerHTML = opts.length ? opts.join('') : '<option value="">No webhooks configured — set them in Master Admin</option>';
 }
 
 async function loadEvents() {
@@ -306,41 +257,6 @@ async function deleteEvent(id) {
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
 
-// ── DISCORD TASKING ──────────────────────────────────────────
-async function sendTasking() {
-  const chKey   = document.getElementById('task-channel').value;
-  const mention = document.getElementById('task-mention').value.trim();
-  const msg     = document.getElementById('task-msg').value.trim();
-  if (!chKey) { toast('No webhook channels configured yet', 'error'); return; }
-  if (!msg)   { toast('Write the tasking order first', 'error'); return; }
-  const ch = whChannels[chKey];
-  if (!ch || !ch.url) { toast('That channel has no webhook URL set', 'error'); return; }
-  const payload = {
-    content: mention || undefined,
-    embeds: [{
-      color: 0xe09030,
-      title: '📌 Tasking Order',
-      description: msg,
-      footer: { text: 'Issued by ' + (currentPilot?.displayName || currentPilot?.callsign || 'Command') + ' · VTAC Global Strike Command' },
-      timestamp: new Date().toISOString(),
-    }]
-  };
-  try {
-    const resp = await fetch(ch.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    if (resp.ok || resp.status === 204) {
-      toast('Tasking sent ✓');
-      document.getElementById('task-msg').value = '';
-      try {
-        await db.collection('auditLog').add({
-          eventType: 'tasking_sent',
-          actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
-          details: { notes: 'Tasking → ' + (TASK_CHANNELS[chKey] || chKey) + ': ' + msg.slice(0, 80) },
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch(e) {}
-    } else toast('Discord returned ' + resp.status, 'error');
-  } catch(e) { toast('Tasking failed: ' + e.message, 'error'); }
-}
 </script>
 </body>
 </html>

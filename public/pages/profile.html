@@ -103,7 +103,7 @@
     <button class="tab-btn" onclick="showTab('callsigns',this)">📻 Callsigns</button>
     <button class="tab-btn" onclick="showTab('wings-tab',this)">🎖 Pilot Wings</button>
     <button class="tab-btn" onclick="showTab('appearance',this)">🎨 Appearance</button>
-    <button class="tab-btn" id="tasking-tab-btn" style="display:none" onclick="showTab('tasking',this)">📌 Tasking</button>
+    <button class="tab-btn" id="tasking-tab-btn" style="display:none" onclick="window.location.href='/pages/tasking.html'">📌 Mission Tasking</button>
   </div>
 
   <!-- EDIT PROFILE -->
@@ -289,32 +289,8 @@
     </div>
   </div>
 
-  <!-- TASKING — GSC / Wing / Squadron Commanders only -->
-  <div id="tab-tasking" class="tab-content">
-    <div class="edit-section">
-      <div class="edit-section-title">📌 Discord tasking — ping a wing, squadron, or pilot</div>
-      <div class="alert alert-info" style="font-size:12px;margin-bottom:14px">
-        Sends a tasking order to the selected Discord channel. To ping people, put a mention in the mention box:
-        <strong>@everyone</strong>, a role mention like <strong>&lt;@&amp;ROLE_ID&gt;</strong>, or a user mention like <strong>&lt;@USER_ID&gt;</strong>.
-        Get IDs in Discord: Settings → Advanced → Developer Mode → right-click a role/user → Copy ID.
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Send to channel</label>
-          <select id="task-channel"></select>
-        </div>
-        <div class="form-group">
-          <label>Mention <span style="color:var(--text3)">(who gets pinged)</span></label>
-          <input type="text" id="task-mention" placeholder="@everyone or <@&123456789>" style="font-family:var(--mono)">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Tasking order</label>
-        <textarea class="bio-area" id="task-msg" rows="3" placeholder="e.g. 28th BS: launch two B-1Bs from KDYS to KBAD by 2100Z tonight. Report ready status in ops channel."></textarea>
-      </div>
-      <button class="btn btn-primary" onclick="sendTasking()">📡 Send tasking</button>
-    </div>
-  </div>
+  <!-- TASKING lives on its own page now: /pages/tasking.html
+       (the 📌 button above jumps there — commanders only) -->
 
 </div>
 
@@ -346,12 +322,11 @@ function onAuthReady(user, pilot) {
   if (!user) { window.location.href = '/pages/login.html'; return; }
   pilotData = pilot;
   populateProfile(pilot);
-  // TASKING tab — only for the GSC Commander, Wing Commanders,
-  // Squadron Commanders, and master admin. Everyone else never
-  // sees the tab.
+  // MISSION TASKING button — only for the GSC Commander, Wing
+  // Commanders, Squadron Commanders, and master admin. Jumps to
+  // the dedicated tasking page. Everyone else never sees it.
   if (canSendTasking(pilot)) {
     document.getElementById('tasking-tab-btn').style.display = 'inline-block';
-    loadTaskWebhooks();
   }
 }
 
@@ -370,70 +345,6 @@ function canSendTasking(pilot) {
         || /wing\s*commander/i.test(role.name || '')
         || /squadron\s*commander/i.test(role.name || '');
   });
-}
-
-// Channels the tasking tool can post to (label → webhook channel key
-// from Master Admin → Discord Webhooks). Only channels with a URL
-// configured appear in the dropdown.
-const TASK_CHANNELS = {
-  tasking:      'Tasking channel',
-  events:       'Events channel',
-  fleet_7bw:    '7th BW fleet channel',
-  fleet_509bw:  '509th BW fleet channel',
-  fleet_2bw:    '2nd BW fleet channel',
-  flights_7bw:  '7th BW flight log channel',
-  flights_509bw:'509th BW flight log channel',
-  flights_2bw:  '2nd BW flight log channel',
-  admin_all:    'Admin — all events channel',
-};
-let taskWhChannels = {};
-
-async function loadTaskWebhooks() {
-  try {
-    const s = await db.collection('settings').doc('webhooks').get();
-    taskWhChannels = s.exists ? (s.data().channels || {}) : {};
-  } catch(e) { taskWhChannels = {}; }
-  const sel = document.getElementById('task-channel');
-  const opts = Object.entries(TASK_CHANNELS)
-    .filter(function(e){ return taskWhChannels[e[0]] && taskWhChannels[e[0]].url; })
-    .map(function(e){ return '<option value="' + e[0] + '">' + e[1] + '</option>'; });
-  sel.innerHTML = opts.length ? opts.join('') : '<option value="">No webhooks configured — set them in Master Admin</option>';
-}
-
-async function sendTasking() {
-  if (!canSendTasking(pilotData)) { toast('Tasking is restricted to GSC, Wing, and Squadron Commanders', 'error'); return; }
-  const chKey   = document.getElementById('task-channel').value;
-  const mention = document.getElementById('task-mention').value.trim();
-  const msg     = document.getElementById('task-msg').value.trim();
-  if (!chKey) { toast('No webhook channels configured yet', 'error'); return; }
-  if (!msg)   { toast('Write the tasking order first', 'error'); return; }
-  const ch = taskWhChannels[chKey];
-  if (!ch || !ch.url) { toast('That channel has no webhook URL set', 'error'); return; }
-  const payload = {
-    content: mention || undefined,
-    embeds: [{
-      color: 0xe09030,
-      title: '📌 Tasking Order',
-      description: msg,
-      footer: { text: 'Issued by ' + (pilotData?.displayName || pilotData?.callsign || 'Command') + ' · VTAC Global Strike Command' },
-      timestamp: new Date().toISOString(),
-    }]
-  };
-  try {
-    const resp = await fetch(ch.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    if (resp.ok || resp.status === 204) {
-      toast('Tasking sent ✓');
-      document.getElementById('task-msg').value = '';
-      try {
-        await db.collection('auditLog').add({
-          eventType: 'tasking_sent',
-          actor: { uid: currentUser.uid, callsign: pilotData?.displayName || pilotData?.callsign || '—' },
-          details: { notes: 'Tasking → ' + (TASK_CHANNELS[chKey] || chKey) + ': ' + msg.slice(0, 80) },
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch(e) {}
-    } else toast('Discord returned ' + resp.status, 'error');
-  } catch(e) { toast('Tasking failed: ' + e.message, 'error'); }
 }
 
 function populateProfile(p) {

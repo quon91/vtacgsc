@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Tasking — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.tk-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.target-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:22px}
+.target-card{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;text-align:center;transition:all .14s;font-family:var(--sans)}
+.target-card:hover{transform:translateY(-2px)}
+.target-name{font-size:15px;font-weight:800;color:var(--text)}
+.target-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.target-ch{font-size:10px;font-family:var(--mono);margin-top:8px}
+.ch-ok{color:var(--green2)}
+.ch-missing{color:var(--amber)}
+.tk-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);border:1px solid rgba(224,144,48,.4);background:rgba(224,144,48,.08);border-radius:14px;padding:4px 12px;margin-top:12px}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links"></div>
+    <div class="nav-right" id="nav-right-area"></div>
+    <button class="nav-mobile-btn" onclick="document.getElementById('nav-links').classList.toggle('open')">☰</button>
+  </div>
+</nav>
+
+<div class="tk-hero">
+  <div class="hero-eyebrow">Command &amp; Control</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Mission <span>Tasking</span></h1>
+  <p class="hero-sub" style="font-size:14px">Issue tasking orders to wings, squadrons, and pilots — each unit is pinged in its own Discord channel.</p>
+  <div class="tk-badge">📌 Command staff only — GSC, Wing &amp; Squadron Commanders</div>
+</div>
+
+<div class="container page-body" style="max-width:860px">
+
+  <!-- TARGET SELECTION -->
+  <div style="font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);margin-bottom:10px">1 · Select target unit</div>
+  <div class="target-grid" id="target-grid"></div>
+
+  <!-- ORDER -->
+  <div class="card">
+    <div class="card-header"><div class="card-icon blue">📌</div><div class="card-title" id="order-title">2 · Tasking order</div></div>
+    <div class="card-body">
+      <div class="alert alert-info" style="font-size:12px;margin-bottom:14px" id="route-info">Select a target unit above.</div>
+      <div class="form-group">
+        <label>Mention <span style="color:var(--text3)">(who gets pinged — @everyone, &lt;@&amp;ROLE_ID&gt;, or &lt;@USER_ID&gt;)</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="task-mention" placeholder="@everyone or <@&123456789>" style="font-family:var(--mono);flex:1;min-width:200px">
+          <button class="btn btn-outline btn-sm" onclick="saveDefaultMention()" title="Save this mention as the default for the selected unit">💾 Save as unit default</button>
+        </div>
+        <div class="form-hint">Get IDs in Discord: Settings → Advanced → Developer Mode → right-click a role/user → Copy ID. Saved defaults auto-fill when you pick that unit.</div>
+      </div>
+      <div class="form-group">
+        <label>Tasking order</label>
+        <textarea id="task-msg" rows="4" placeholder="e.g. 28th BS: launch two B-1Bs from KDYS to KBAD by 2100Z tonight. Report ready status in ops channel."></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="sendTasking()">📡 Send tasking order</button>
+    </div>
+  </div>
+
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+// ── ACCESS: GSC Commander (by role name), Wing Commanders,
+// Squadron Commanders, and master admin. Nobody else can open
+// this page — everyone else is bounced to their profile.
+function canSendTasking(pilot) {
+  if (!pilot) return false;
+  if (typeof isMasterAdminPilot === 'function' && isMasterAdminPilot(pilot)) return true;
+  return getPilotRoleIds(pilot).some(function(rid) {
+    const role = ROLES[rid];
+    if (!role || role.isMasterAdmin) return false;
+    if (rid === 'wing_commander' || rid === 'sq_commander') return true;
+    return /gsc\s*commander/i.test(role.name || '')
+        || /wing\s*commander/i.test(role.name || '')
+        || /squadron\s*commander/i.test(role.name || '');
+  });
+}
+
+// Each target routes to ITS OWN Discord channel (set in Master
+// Admin → Discord Webhooks → Tasking group). If a wing has no
+// dedicated tasking webhook yet, orders fall back to the
+// command-wide tasking channel.
+const TARGETS = {
+  all:     { name: 'All Command',     sub: 'Every wing — command-wide', color: '#c8a951', channel: 'tasking' },
+  '7bw':   { name: '7th Bomb Wing',   sub: 'B-1B Lancer · KDYS',        color: '#c8a951', channel: 'tasking_7bw' },
+  '509bw': { name: '509th Bomb Wing', sub: 'B-2 Spirit · KSZL',         color: '#4a90d9', channel: 'tasking_509bw' },
+  '2bw':   { name: '2nd Bomb Wing',   sub: 'B-52H Stratofortress · KBAD', color: '#3dba6e', channel: 'tasking_2bw' },
+};
+
+let me = null;
+let whChannels = {};
+let savedMentions = {};   // settings/tasking → { mentions: { all, 7bw, 509bw, 2bw } }
+let activeTarget = null;
+
+function onAuthReady(user, pilot) {
+  if (!user) { window.location.replace('/pages/login.html'); return; }
+  if (!canSendTasking(pilot)) { window.location.replace('/pages/profile.html'); return; }
+  me = pilot;
+  Promise.all([loadWebhooks(), loadSavedMentions()]).then(function() {
+    renderTargets();
+    selectTarget('all');
+  });
+}
+
+async function loadWebhooks() {
+  try {
+    const s = await db.collection('settings').doc('webhooks').get();
+    whChannels = s.exists ? (s.data().channels || {}) : {};
+  } catch(e) { whChannels = {}; }
+}
+
+async function loadSavedMentions() {
+  try {
+    const s = await db.collection('settings').doc('tasking').get();
+    savedMentions = s.exists ? (s.data().mentions || {}) : {};
+  } catch(e) { savedMentions = {}; }
+}
+
+// Resolve which webhook a target actually posts to (own channel →
+// command-wide fallback). Returns {key,url} or null.
+function resolveChannel(targetId) {
+  const t = TARGETS[targetId];
+  if (whChannels[t.channel] && whChannels[t.channel].url) return { key: t.channel, url: whChannels[t.channel].url, fallback: false };
+  if (whChannels.tasking && whChannels.tasking.url) return { key: 'tasking', url: whChannels.tasking.url, fallback: targetId !== 'all' };
+  return null;
+}
+
+function renderTargets() {
+  const el = document.getElementById('target-grid');
+  el.innerHTML = Object.entries(TARGETS).map(function(entry) {
+    const id = entry[0], t = entry[1];
+    const ch = resolveChannel(id);
+    const chLine = ch
+      ? (ch.fallback
+          ? '<div class="target-ch ch-missing">⚠ no own channel — falls back to All Command</div>'
+          : '<div class="target-ch ch-ok">✓ own Discord channel connected</div>')
+      : '<div class="target-ch ch-missing">✗ no webhook set — configure in Master Admin</div>';
+    const sel = activeTarget === id;
+    return '<button class="target-card" id="tgt-' + id + '" style="' + (sel ? 'border-color:' + t.color + ';background:' + t.color + '10' : '') + '" onclick="selectTarget(\'' + id + '\')">'
+      + '<div class="target-name" style="color:' + t.color + '">' + t.name + '</div>'
+      + '<div class="target-sub">' + t.sub + '</div>'
+      + chLine
+      + '</button>';
+  }).join('');
+}
+
+function selectTarget(id) {
+  activeTarget = id;
+  renderTargets();
+  const t = TARGETS[id];
+  const ch = resolveChannel(id);
+  const info = document.getElementById('route-info');
+  document.getElementById('order-title').textContent = '2 · Tasking order — ' + t.name;
+  if (!ch) {
+    info.innerHTML = '<strong style="color:var(--amber)">No webhook configured.</strong> Set a URL for <strong>' + t.name + '</strong> (or the command-wide Tasking channel) in Master Admin → Discord Webhooks → Tasking.';
+  } else if (ch.fallback) {
+    info.innerHTML = 'This order will post to the <strong>All Command tasking channel</strong> — ' + t.name + ' has no dedicated tasking webhook yet. Add one in Master Admin → Discord Webhooks to give the wing its own channel.';
+  } else {
+    info.innerHTML = 'This order posts to the <strong>' + t.name + '</strong> Discord tasking channel. The mention below controls who gets pinged there.';
+  }
+  // Auto-fill the saved default mention for this unit
+  document.getElementById('task-mention').value = savedMentions[id] || '';
+}
+
+async function saveDefaultMention() {
+  if (!activeTarget) { toast('Select a target unit first', 'error'); return; }
+  const mention = document.getElementById('task-mention').value.trim();
+  savedMentions[activeTarget] = mention;
+  try {
+    await db.collection('settings').doc('tasking').set({ mentions: savedMentions }, { merge: true });
+    toast(mention ? 'Default mention saved for ' + TARGETS[activeTarget].name : 'Default mention cleared');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function sendTasking() {
+  if (!canSendTasking(me)) { toast('Tasking is restricted to GSC, Wing, and Squadron Commanders', 'error'); return; }
+  if (!activeTarget) { toast('Select a target unit first', 'error'); return; }
+  const msg = document.getElementById('task-msg').value.trim();
+  if (!msg) { toast('Write the tasking order first', 'error'); return; }
+  const ch = resolveChannel(activeTarget);
+  if (!ch) { toast('No webhook configured for this target — set one in Master Admin', 'error'); return; }
+  const t = TARGETS[activeTarget];
+  const mention = document.getElementById('task-mention').value.trim();
+  const payload = {
+    content: mention || undefined,
+    embeds: [{
+      color: parseInt(t.color.replace('#',''), 16),
+      title: '📌 Tasking Order — ' + t.name,
+      description: msg,
+      footer: { text: 'Issued by ' + (me?.displayName || me?.callsign || 'Command') + ' · VTAC Global Strike Command' },
+      timestamp: new Date().toISOString(),
+    }]
+  };
+  try {
+    const resp = await fetch(ch.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (resp.ok || resp.status === 204) {
+      toast('Tasking sent to ' + t.name + ' ✓');
+      document.getElementById('task-msg').value = '';
+      try {
+        await db.collection('auditLog').add({
+          eventType: 'tasking_sent',
+          actor: { uid: currentUser.uid, callsign: me?.displayName || me?.callsign || '—' },
+          details: { notes: 'Tasking → ' + t.name + ': ' + msg.slice(0, 80) },
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch(e) {}
+    } else toast('Discord returned ' + resp.status, 'error');
+  } catch(e) { toast('Tasking failed: ' + e.message, 'error'); }
+}
+</script>
+</body>
+</html>
