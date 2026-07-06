@@ -105,6 +105,18 @@ let whChannels = {};
 let savedMentions = {};   // settings/tasking → { mentions: { all, 7bw, 509bw, 2bw } }
 let activeTarget = null;
 
+// ── EMBED TEMPLATES (Master Admin → Discord Webhooks → Embed Appearance)
+let _embedTpls = null;
+async function getEmbedTpl(key) {
+  if (_embedTpls === null) {
+    try { const s = await db.collection('settings').doc('embedTemplates').get(); _embedTpls = s.exists ? (s.data().templates || {}) : {}; }
+    catch(e) { _embedTpls = {}; }
+  }
+  return _embedTpls[key] || {};
+}
+function fillTpl(str, vars) { return String(str).replace(/\{(\w+)\}/g, function(m,k){ return (vars[k]!==undefined&&vars[k]!==null)?vars[k]:m; }); }
+function tplColor(hex, fallback) { return (hex && /^#[0-9a-fA-F]{6}$/.test(hex)) ? parseInt(hex.slice(1),16) : fallback; }
+
 function onAuthReady(user, pilot) {
   if (!user) { window.location.replace('/pages/login.html'); return; }
   if (!canSendTasking(pilot)) { window.location.replace('/pages/profile.html'); return; }
@@ -194,13 +206,15 @@ async function sendTasking() {
   if (!ch) { toast('No webhook configured for this target — set one in Master Admin', 'error'); return; }
   const t = TARGETS[activeTarget];
   const mention = document.getElementById('task-mention').value.trim();
+  const tpl = await getEmbedTpl('tasking');
+  const vars = { unit: t.name, by: me?.displayName || me?.callsign || 'Command' };
   const payload = {
     content: mention || undefined,
     embeds: [{
-      color: parseInt(t.color.replace('#',''), 16),
-      title: '📌 Tasking Order — ' + t.name,
+      color: tplColor(tpl.color, parseInt(t.color.replace('#',''), 16)),
+      title: fillTpl(tpl.title || '📌 Tasking Order — {unit}', vars),
       description: msg,
-      footer: { text: 'Issued by ' + (me?.displayName || me?.callsign || 'Command') + ' · VTAC Global Strike Command' },
+      footer: { text: fillTpl(tpl.footer || 'Issued by {by} · VTAC Global Strike Command', vars) },
       timestamp: new Date().toISOString(),
     }]
   };
