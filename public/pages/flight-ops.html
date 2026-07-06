@@ -304,6 +304,13 @@ select.search-input{min-width:140px;flex:0}
 <div class="modal-overlay" id="log-modal">
   <div class="modal">
     <div class="modal-title">Log a Flight</div>
+    <div class="form-group">
+      <label>Fill from</label>
+      <select id="lf-fill" onchange="applyLogFill()">
+        <option value="">— manual entry —</option>
+      </select>
+      <div class="form-hint">Pick one of your saved flight plans or your fetched SimBrief OFP — route, aircraft, tail, and duration fill in automatically.</div>
+    </div>
     <div class="form-row">
       <div class="form-group"><label>Departure (ICAO)</label><input type="text" id="lf-dep" placeholder="KDYS" maxlength="6" style="text-transform:uppercase"></div>
       <div class="form-group"><label>Arrival (ICAO)</label><input type="text" id="lf-arr" placeholder="KTIK" maxlength="6" style="text-transform:uppercase"></div>
@@ -312,7 +319,12 @@ select.search-input{min-width:140px;flex:0}
       <div class="form-group"><label>Aircraft</label>
         <select id="lf-acft"><option>B-1B Lancer</option><option>B-2 Spirit</option><option>B-52H Stratofortress</option></select>
       </div>
-      <div class="form-group"><label>Duration (minutes)</label><input type="number" id="lf-dur" placeholder="90" min="1"></div>
+      <div class="form-group"><label>Flight time</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="number" id="lf-durh" placeholder="1" min="0" max="48" style="width:70px"> <span style="color:var(--text3);font-size:12px">h</span>
+          <input type="number" id="lf-durm" placeholder="30" min="0" max="59" style="width:70px"> <span style="color:var(--text3);font-size:12px">m</span>
+        </div>
+      </div>
     </div>
     <div class="form-group" id="lf-tail-wrap" style="display:none">
       <label>Airframe flown (tail number)</label>
@@ -539,8 +551,25 @@ async function delFlight(id){
 function openLogModal(){
   if(!myPilot){window.location.href='/pages/login.html';return;}
   ['lf-dep','lf-arr','lf-notes'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('lf-dur').value='';
+  document.getElementById('lf-durh').value='';
+  document.getElementById('lf-durm').value='';
   if(myPilot.wing){const m={'7bw':'B-1B Lancer','509bw':'B-2 Spirit','2bw':'B-52H Stratofortress'};document.getElementById('lf-acft').value=m[myPilot.wing]||'B-1B Lancer';}
+  // "Fill from" — the pilot's saved flight plans + the SimBrief OFP
+  // fetched in the Planner deck. Picking one auto-fills everything.
+  const fillSel=document.getElementById('lf-fill');
+  let opts='<option value="">— manual entry —</option>';
+  if(sbData){
+    const o=sbData.origin?.icao_code||'?',d=sbData.destination?.icao_code||'?';
+    opts+='<option value="simbrief">🛰 SimBrief OFP — '+o+' → '+d+'</option>';
+  }
+  const plans=window._plansCache||{};
+  Object.entries(plans).forEach(function(e){
+    const p=e[1];
+    opts+='<option value="plan:'+e[0]+'">📋 '+p.departure+' → '+p.arrival+' · '+(p.aircraft||'')+(p.tail?' · '+p.tail:'')+'</option>';
+  });
+  fillSel.innerHTML=opts;
+  fillSel.value='';
+  // Tail number picker — shown only when the wing has a registered fleet
   const tw=document.getElementById('lf-tail-wrap');
   if(wingFleet.length){
     tw.style.display='block';
@@ -552,18 +581,62 @@ function openLogModal(){
   }else{tw.style.display='none';}
   document.getElementById('log-modal').classList.add('open');
 }
+
+// Parse "0h 45m", "~1h 2m (est.)", "318" style duration strings → minutes
+function parseEstMinutes(str){
+  if(!str)return 0;
+  const m=String(str).match(/(\d+)\s*h(?:\s*(\d+)\s*m)?/i);
+  if(m)return parseInt(m[1])*60+(parseInt(m[2])||0);
+  const m2=String(str).match(/(\d+)\s*m/i);
+  if(m2)return parseInt(m2[1]);
+  return 0;
+}
+function setLogDuration(mins){
+  document.getElementById('lf-durh').value=Math.floor(mins/60)||'';
+  document.getElementById('lf-durm').value=mins%60||(mins?0:'');
+}
+
+// Auto-fill the log form from a saved flight plan or the SimBrief OFP
+function applyLogFill(){
+  const v=document.getElementById('lf-fill').value;
+  if(!v)return;
+  if(v==='simbrief'&&sbData){
+    document.getElementById('lf-dep').value=sbData.origin?.icao_code||'';
+    document.getElementById('lf-arr').value=sbData.destination?.icao_code||'';
+    const bt=parseInt(sbData.times?.est_block)||0;              // SimBrief block time is in seconds
+    if(bt)setLogDuration(Math.round(bt/60));
+    return;
+  }
+  if(v.startsWith('plan:')){
+    const p=(window._plansCache||{})[v.slice(5)];
+    if(!p)return;
+    document.getElementById('lf-dep').value=p.departure||'';
+    document.getElementById('lf-arr').value=p.arrival||'';
+    if(p.aircraft)document.getElementById('lf-acft').value=p.aircraft;
+    setLogDuration(parseEstMinutes(p.estTime));
+    // Match the plan's reserved tail in the picker
+    if(p.fleetId&&wingFleet.some(function(a){return a.id===p.fleetId;})){
+      document.getElementById('lf-tail').value=p.fleetId;
+    }
+  }
+}
 function closeModal(){document.getElementById('log-modal').classList.remove('open');}
 
 async function submitFlight(){
   const dep=document.getElementById('lf-dep').value.trim().toUpperCase();
   const arr=document.getElementById('lf-arr').value.trim().toUpperCase();
-  const dur=parseInt(document.getElementById('lf-dur').value)||0;
-  if(!dep||!arr||!dur){toast('Fill in departure, arrival, and duration','error');return;}
+  const durH=parseInt(document.getElementById('lf-durh').value)||0;
+  const durM=parseInt(document.getElementById('lf-durm').value)||0;
+  const dur=durH*60+durM;
+  if(!dep||!arr||!dur){toast('Fill in departure, arrival, and flight time','error');return;}
+  const fillV=document.getElementById('lf-fill').value;
   const tailSel=document.getElementById('lf-tail');
   const fleetId=(wingFleet.length&&tailSel)?tailSel.value:'';
   const ac=fleetId?wingFleet.find(a=>a.id===fleetId):null;
   const flight={pilotUid:currentUser.uid,pilotCallsign:myPilot.callsign||myPilot.displayName||'Unknown',wing:myPilot.wing,squadron:myPilot.squadron,departure:dep,arrival:arr,aircraft:document.getElementById('lf-acft').value,durationMins:dur,notes:document.getElementById('lf-notes').value.trim(),loggedAt:firebase.firestore.FieldValue.serverTimestamp()};
   if(ac){flight.fleetId=ac.id;flight.tail=ac.tail||'';flight.tailNickname=ac.nickname||'';}
+  if(fillV&&fillV.startsWith('plan:'))flight.planId=fillV.slice(5);
+  if(fillV==='simbrief')flight.fromSimBrief=true;
   try{
     await db.collection('flights').add(flight);
     await db.collection('pilots').doc(currentUser.uid).update({totalFlights:firebase.firestore.FieldValue.increment(1),flightHours:firebase.firestore.FieldValue.increment(dur/60)});
