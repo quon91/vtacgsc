@@ -66,9 +66,12 @@
     </a>
     <div class="nav-links" id="nav-links">
       <a href="/index.html" class="active">Home</a>
+      <a href="/pages/wings.html">Wings</a>
       <a href="/pages/roster.html">Roster</a>
-      <a href="/pages/history.html">History</a>
       <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/fleet.html">Fleet</a>
+      <a href="/pages/events.html">Events</a>
+      <a href="/pages/sop.html">SOPs</a>
       <a href="/pages/training/index.html">Training</a>
       <a href="/pages/flights.html">Flight Log</a>
       <a href="/pages/flight-plan.html">Flight Planner</a>
@@ -110,7 +113,7 @@
   <h1 class="hero-title">Global Strike <span>Command</span></h1>
   <p class="hero-sub" id="hero-sub-text">Elite virtual bomber operations across MSFS 2020 and 2024. Three wings. Six squadrons. One command.</p>
   <div class="hero-actions">
-    <a href="/pages/history.html" class="btn btn-outline">Our History</a>
+    <a href="/pages/sop.html" class="btn btn-outline">📘 Standard Operating Procedures</a>
     <a href="/pages/training/index.html" class="btn btn-outline">Training Guides</a>
   </div>
 </section>
@@ -197,15 +200,18 @@
 <script>
 function toggleMobileNav() { document.getElementById('nav-links').classList.toggle('open'); }
 
+// IMPORTANT: with the site lockdown, ALL Firestore reads must wait
+// until auth is confirmed. The old version fired loadStats/loadNews/
+// loadSlideshow/loadRecentFlights immediately at page load — a race
+// where reads sent before the auth token attaches get denied by the
+// security rules, silently leaving stats, news, and the slideshow
+// empty. They now run inside onAuthReady, after auth is resolved.
+// (Nav auth UI is handled entirely by nav.js updateNavUI.)
 function onAuthReady(user, pilot) {
-  if (user && pilot && pilot.status === 'active') {
-    document.getElementById('nav-auth-area').style.display = 'none';
-    const ua = document.getElementById('nav-user-area');
-    ua.style.display = 'flex';
-    document.getElementById('nav-pilot-name').textContent = pilot.callsign || pilot.displayName || '';
-    document.getElementById('nav-rank-badge').textContent = getRankAbbr(pilot.rank || 'ab');
-    if (pilot.avatarUrl) document.getElementById('nav-avatar').src = pilot.avatarUrl;
-  }
+  loadStats();
+  loadRecentFlights();
+  loadNews();
+  loadSlideshow();
 }
 
 async function loadStats() {
@@ -287,11 +293,6 @@ function ssApply() {
   if(t) t.style.transform='translateX(-' + (ssIdx*100) + '%)';
   document.querySelectorAll('.ss-dot').forEach((d,i)=>d.classList.toggle('active',i===ssIdx));
 }
-
-loadStats();
-loadRecentFlights();
-loadNews();
-loadSlideshow();
 </script>
 </body>
 </html>
