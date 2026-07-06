@@ -1765,9 +1765,9 @@ const EMBED_TYPES = {
     def: { title: '📅 {title}', footer: 'Scheduled by {by} · VTAC GSC Events' }, hasDesc: false,
   },
   tasking: {
-    label: '📌 Tasking Order', where: 'tasking channels',
-    vars: '{unit} {by}',
-    def: { title: '📌 Tasking Order — {unit}', footer: 'Issued by {by} · VTAC Global Strike Command' }, hasDesc: false,
+    label: '📌 Mission Tasking', where: 'tasking channels',
+    vars: '{unit} {unitShort} {by} {missionId} {pilot}',
+    def: { title: 'Mission Tasking', footer: 'v{unitShort} Mission Operations' }, hasDesc: false,
   },
   community_route: {
     label: '🗺 Community Route Submitted', where: 'flight plans channel',
@@ -1779,7 +1779,8 @@ const EMBED_SAMPLE_VARS = {
   pilot:'Quon', route:'KDYS → KBAD', aircraft:'B-1B Lancer', tail:'86-0110',
   wing:'7th Bomb Wing', count:'4', base:'Dyess AFB (KDYS)', by:'Quon',
   title:'Night Strike — Nellis Range', when:'Friday, July 10 · 2100Z',
-  unit:'7th Bomb Wing', distance:'318 NM', time:'0h 45m', source:'Manual route',
+  unit:'7th Bomb Wing', unitShort:'7th BW', missionId:'M012',
+  distance:'318 NM', time:'0h 45m', source:'Manual route',
 };
 let _adminEmbedTpls = {};
 
