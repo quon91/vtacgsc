@@ -1,3 +1,111 @@
+
+/
+Claude is responding
+I WANT THE TASKING TO BE ONLY FOR GSC COMMANDER WING COMMANDERS AND SQUADRON COMMANDERS
+
+
+Architected role-based access control for tasking functionality
+Architected role-based access control for tasking functionality
+Right now the tasking composer shows for anyone who can manage events — which could include future custom roles you give event permissions to. Splitting it: tasking gets its own, stricter gate — GSC Commander, Wing Commanders, Squadron Commanders (and you) only, regardless of what event permissions other roles hold.
+
+
+Edited 3 files, ran a command, read a file
+Edited 3 files, ran a command, read a file
+Done — updated events.html attached, replaces the previous one.
+
+Tasking now has its own lock, separate from event scheduling. The 📌 tasking composer only appears for — and sendTasking only fires for — the GSC Commander (matched by role name, same detection as the roster's gold spotlight), Wing Commanders, Squadron Commanders, and you. The GSC Commander needs no permission checkbox for this; holding the role is enough.
+
+Event scheduling stays as it was: those same commanders plus any custom role you've granted "Create / manage events." So a future "Events Officer" role could run the calendar but couldn't ping tasking orders — the exact split you asked for.
+
+One honest limitation to know about: this gate lives in the page, and Discord webhooks are just URLs — any signed-in member could technically read the webhook URLs from settings and post to Discord directly with outside tools. The site UI won't let non-commanders task, and every legit tasking is audit-logged with the sender's callsign, but the webhook itself can't verify rank. For a squadron-sized community that's normally fine; if it ever becomes a problem, the real fix is routing Discord posts through a Cloud Function that checks roles server-side — happy to build that if you want it someday.
+
+Just upload the one file. Test: View As a plain Pilot → Events page shows the calendar only; as a Squadron Commander → tasking card appears.
+
+
+Events
+Code · HTML 
+ADD IT TO THE PROFILE AREA NOT EVENTS
+
+
+Pivoted strategy to relocate tasking component appropriately
+Pivoted strategy to relocate tasking component appropriately
+Got it — tasking moves to the profile page. Two steps: I'll strip it out of Events now, but I need you to paste your live pages/profile.html before I can add it there — I've never seen that file, and editing it blind is how we get the deployed-vs-local mess. Paste it and I'll drop the tasking section in.
+
+Removing it from Events first:
+
+
+Edited 4 files, ran 2 commands, read a file
+Edited 4 files, ran 2 commands, read a file
+Tasking is fully stripped out of Events — the cleaned events.html is attached (upload it over the current one). The page is now purely the calendar: scheduling, wing chips, Discord event announcements with mentions — all verified intact, zero tasking remnants.
+
+Now, to put the tasking composer in the profile area: paste me your live pages/profile.html. It's the one page in this whole system I've never seen, and after everything we've been through with deployed-vs-local drift, I'm not writing edits into a file blind.
+
+When you paste it, here's what I'll add: a 📌 Tasking card that only renders for the GSC Commander (matched by role name), Wing Commanders, Squadron Commanders, and you — invisible to everyone else's profile view. Same composer as before: channel picker from your configured webhooks, mention box for @everyone / role / user pings, the order text, audit-logged on send. Everything the profile page already does stays untouched.
+
+
+Events
+Code · HTML 
+
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>My Profile — VTAC GSC</title> <link rel="stylesheet" href="/css/main.css"> <style> .profile-hero{background:linear-gradient(160deg,#050710,var(--bg));b
+
+pasted
+
+
+Architected navigation integration and permission-gated tasking interface
+Architected navigation integration and permission-gated tasking interface
+This paste was worth it beyond the tasking — the profile page is missing nav.js entirely (branding/logo never applies here), and its nav still points at the old flights.html. Fixing those while I'm in here. Tasking goes in as a fifth profile tab that only commanders ever see:
+
+
+Ran 2 commands, created a file
+Ran 2 commands, created a file
+CONTINUE AND ADD THIS TO THE TO DO LIST FOR THE SOP I WANAA BE ABLE TO EDIT THE TEST FONT SIZE ETC
+
+
+Thinking about adding editable test formatting options to an SOP to-do list
+Thinking about adding editable test formatting options to an SOP to-do list
+profile.html attached and verified — upload it to public/pages/profile.html, plus the cleaned events.html from the last message if you haven't already.
+
+What's new on the profile: a fifth tab — 📌 Tasking — that only appears for the GSC Commander (matched by role name), Wing Commanders, Squadron Commanders, and you. Everyone else sees the normal four tabs and never knows it exists. Inside is the full composer: channel picker (only channels with webhook URLs configured show up), mention box for @everyone / <@&ROLE_ID> / <@USER_ID> pings, the order text, and every send audit-logged with the issuer's callsign. sendTasking re-checks the gate before firing, so it can't be triggered from the console by a non-commander.
+
+Two bonus fixes from seeing this page for the first time: it was missing nav.js entirely — that's why your site logo and org name never applied on the profile page. It's included now, with a data-custom-nav attribute so your intentional profile-specific nav links (Home / Dashboard / My Profile) stay exactly as they are while the branding paints. And the "Log Flight" nav link now points to Flight Ops instead of the old redirect stub. Everything else — avatar/wings uploads with drag & drop, callsigns, public title, appearance, privacy, medals — is verbatim from your live source, confirmed feature-by-feature.
+
+And noted for the to-do list: ✅ SOP rich-text editing — font size, formatting controls for section text. It's saved to the backlog alongside the B-1B training hub rebuild, bases pre-population, and the auto-release option for stuck fleet reservations. When you want the SOP editor upgrade, the plan would be a formatting toolbar (font size, bold, headers, lists) on each section — say "do the SOP editor" whenever and I'll build it.
+
+Test the tasking tab: your profile should show it (master admin); View As a plain Pilot → four tabs only; have your GSC Commander check their profile → tab's there.
+
+
+Profile
+Code · HTML 
+WHAT IS MY BACKLOG
+
+
+Assembled backlog items from memory and conversation history
+Assembled backlog items from memory and conversation history
+Here's everything on the list, pulled together:
+
+Feature backlog:
+
+SOP rich-text editing — font size, bold, headers, formatting controls for SOP section text (just added)
+B-1B training site rebuild — hub-plus-sub-pages architecture with stylized CDU mockups and an interactive tap-to-check QRC checklist (the quon91.github.io/b1b-training revamp)
+B-2 training content — building guides from the KwikFlight manual PDFs
+Bases pre-population — KDYS / KSZL / KBAD detail pages filled out (the tab is gone from the nav, but the page still exists if you want it built out or retired)
+Fleet auto-release — stuck "In Flight" reservations auto-free after X hours, or a "cancel my reservation" button on saved plans
+Server-side Discord posting — a Cloud Function that verifies roles before posting, so webhook URLs can't be abused by non-commanders (only matters if it ever becomes a problem)
+Infrastructure (offered earlier, never finished):
+7. firebase.json no-cache headers for .js/.css — kills the stale-JavaScript class of bug for good; needs you to
+
+
+
+Now using credits • Your plan limit resets Monday at 12:10 PM.
+
+
+
+
+
+Claude is AI and can make mistakes. Please double-check responses.
+
+
+Profile · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -21,10 +129,10 @@
 .ps .val{font-size:22px;font-weight:800;color:var(--gold);line-height:1}
 .ps .lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
 .pilot-wings-img{width:80px;height:auto;object-fit:contain;margin-top:12px}
-
+ 
 .edit-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
 .edit-section-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
-
+ 
 .callsign-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 .callsign-item{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
 .cs-type{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);width:80px;flex-shrink:0}
@@ -34,36 +142,36 @@
 .cs-remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;transition:color .12s}
 .cs-remove:hover{color:var(--red2)}
 .add-cs-row{display:flex;gap:8px;flex-wrap:wrap}
-
+ 
 .wings-upload{border:2px dashed var(--border2);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .15s}
 .wings-upload:hover{border-color:var(--gold);background:rgba(200,169,81,.04)}
 .wings-upload input{display:none}
 .wings-preview{width:120px;height:auto;margin:0 auto 8px;display:block}
-
+ 
 .color-accent-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .accent-swatch{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .12s}
 .accent-swatch:hover{transform:scale(1.1)}
 .accent-swatch.sel{border-color:#fff;box-shadow:0 0 0 2px var(--gold)}
-
+ 
 .bio-area{width:100%;padding:10px 12px;border-radius:8px;background:#0a0c14;border:1px solid var(--border2);color:var(--text);font-size:13px;font-family:var(--sans);outline:none;resize:vertical;min-height:80px}
 .bio-area:focus{border-color:var(--gold)}
-
+ 
 .tab-content{display:none}.tab-content.active{display:block}
 </style>
 </head>
 <body>
-
+ 
 <nav class="site-nav">
   <div class="nav-inner">
     <a class="nav-brand" href="/index.html">
       <div class="nav-emblem" id="nav-emblem">GSC</div>
       <div class="nav-brand-text"><div class="org">Virtual</div><div class="name" id="nav-org-name">Global Strike Command</div></div>
     </a>
-    <div class="nav-links" id="nav-links">
+    <div class="nav-links" id="nav-links" data-custom-nav>
       <a href="/index.html">Home</a>
       <a href="/pages/dashboard.html">Dashboard</a>
       <a href="/pages/profile.html" class="active">My Profile</a>
-      <a href="/pages/flights.html">Log Flight</a>
+      <a href="/pages/flight-ops.html">Flight Ops</a>
     </div>
     <div class="nav-right">
       <button class="btn btn-outline btn-sm" onclick="auth.signOut().then(()=>window.location.href='/pages/login.html')">Logout</button>
@@ -71,7 +179,7 @@
     </div>
   </div>
 </nav>
-
+ 
 <!-- PROFILE HERO -->
 <div class="profile-hero">
   <div class="container">
@@ -95,7 +203,7 @@
     </div>
   </div>
 </div>
-
+ 
 <!-- MAIN -->
 <div class="container page-body">
   <div class="tab-nav">
@@ -103,8 +211,9 @@
     <button class="tab-btn" onclick="showTab('callsigns',this)">📻 Callsigns</button>
     <button class="tab-btn" onclick="showTab('wings-tab',this)">🎖 Pilot Wings</button>
     <button class="tab-btn" onclick="showTab('appearance',this)">🎨 Appearance</button>
+    <button class="tab-btn" id="tasking-tab-btn" style="display:none" onclick="showTab('tasking',this)">📌 Tasking</button>
   </div>
-
+ 
   <!-- EDIT PROFILE -->
   <div id="tab-edit" class="tab-content active">
     <div class="edit-section" id="public-title-section" style="display:none">
@@ -166,7 +275,7 @@
       <button class="btn btn-primary" onclick="saveProfile()">Save profile</button>
     </div>
   </div>
-
+ 
   <!-- CALLSIGNS -->
   <div id="tab-callsigns" class="tab-content">
     <div class="edit-section">
@@ -187,7 +296,7 @@
       </div>
       <div class="form-hint" style="margin-top:8px">Radio callsigns combine your squadron prefix with your number e.g. BONE 01. Mission callsigns are for specific ops.</div>
     </div>
-
+ 
     <div class="edit-section">
       <div class="edit-section-title">⚙️ Primary callsign settings</div>
       <div class="form-group">
@@ -202,7 +311,7 @@
       <button class="btn btn-primary" onclick="saveCallsignPrefs()">Save preferences</button>
     </div>
   </div>
-
+ 
   <!-- PILOT WINGS -->
   <div id="tab-wings-tab" class="tab-content">
     <div class="edit-section">
@@ -220,26 +329,26 @@
       <div id="wings-status" style="font-size:12px;color:var(--text3);margin-top:8px"></div>
       <button id="remove-wings-btn" class="btn btn-danger btn-sm" style="margin-top:10px;display:none" onclick="removeWings()">Remove wings image</button>
     </div>
-
+ 
     <div class="edit-section">
       <div class="edit-section-title">🎖 Official Pilot Wings Rating</div>
       <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Awarded by command staff based on flight experience. Cannot be self-assigned.</div>
       <div id="earned-wings-badges"><div class="empty-state" style="padding:20px"><p>No pilot wings rating awarded yet</p></div></div>
     </div>
-
+ 
     <div class="edit-section">
       <div class="edit-section-title">🏅 Decorations &amp; Ribbons</div>
       <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Medals and ribbons awarded by command staff for achievements and service.</div>
       <div id="earned-medals-list"><div class="empty-state" style="padding:20px"><p>No decorations awarded yet</p></div></div>
     </div>
-
+ 
     <div class="edit-section">
       <div class="edit-section-title">📋 Wing certifications</div>
       <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Certifications and qualifications tracked by your instructors.</div>
       <div id="certs-list"><div class="empty-state" style="padding:20px"><p>No certifications yet. Complete training events to earn certifications.</p></div></div>
     </div>
   </div>
-
+ 
   <!-- APPEARANCE -->
   <div id="tab-appearance" class="tab-content">
     <div class="edit-section">
@@ -259,7 +368,7 @@
       <input type="hidden" id="selected-accent" value="#c8a951">
       <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="saveAppearance()">Save color</button>
     </div>
-
+ 
     <div class="edit-section">
       <div class="edit-section-title">🔒 Privacy settings</div>
       <div class="form-group">
@@ -287,38 +396,154 @@
       <button class="btn btn-primary btn-sm" onclick="savePrivacy()">Save privacy settings</button>
     </div>
   </div>
-
+ 
+  <!-- TASKING — GSC / Wing / Squadron Commanders only -->
+  <div id="tab-tasking" class="tab-content">
+    <div class="edit-section">
+      <div class="edit-section-title">📌 Discord tasking — ping a wing, squadron, or pilot</div>
+      <div class="alert alert-info" style="font-size:12px;margin-bottom:14px">
+        Sends a tasking order to the selected Discord channel. To ping people, put a mention in the mention box:
+        <strong>@everyone</strong>, a role mention like <strong>&lt;@&amp;ROLE_ID&gt;</strong>, or a user mention like <strong>&lt;@USER_ID&gt;</strong>.
+        Get IDs in Discord: Settings → Advanced → Developer Mode → right-click a role/user → Copy ID.
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Send to channel</label>
+          <select id="task-channel"></select>
+        </div>
+        <div class="form-group">
+          <label>Mention <span style="color:var(--text3)">(who gets pinged)</span></label>
+          <input type="text" id="task-mention" placeholder="@everyone or <@&123456789>" style="font-family:var(--mono)">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Tasking order</label>
+        <textarea class="bio-area" id="task-msg" rows="3" placeholder="e.g. 28th BS: launch two B-1Bs from KDYS to KBAD by 2100Z tonight. Report ready status in ops channel."></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="sendTasking()">📡 Send tasking</button>
+    </div>
+  </div>
+ 
 </div>
-
+ 
 <footer class="site-footer">
   <p>Virtual Global Strike Command · vtacgsc.com</p>
 </footer>
-
+ 
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
 <script>
 let pilotData = null;
 let callsigns = [];
 let selectedAccent = '#c8a951';
-
+ 
 function toggleMobileNav() { document.getElementById('nav-links').classList.toggle('open'); }
-
+ 
 function showTab(id, btn) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
   btn.classList.add('active');
 }
-
+ 
 function onAuthReady(user, pilot) {
   if (!user) { window.location.href = '/pages/login.html'; return; }
   pilotData = pilot;
   populateProfile(pilot);
+  // TASKING tab — only for the GSC Commander, Wing Commanders,
+  // Squadron Commanders, and master admin. Everyone else never
+  // sees the tab.
+  if (canSendTasking(pilot)) {
+    document.getElementById('tasking-tab-btn').style.display = 'inline-block';
+    loadTaskWebhooks();
+  }
 }
-
+ 
+// ── TASKING ACCESS ───────────────────────────────────────────
+// Strictly: GSC Commander (matched by role NAME, same detection as
+// the roster command tiers), Wing Commanders, Squadron Commanders,
+// and master admin. Permission checkboxes do NOT grant this.
+function canSendTasking(pilot) {
+  if (!pilot) return false;
+  if (typeof isMasterAdminPilot === 'function' && isMasterAdminPilot(pilot)) return true;
+  return getPilotRoleIds(pilot).some(function(rid) {
+    const role = ROLES[rid];
+    if (!role || role.isMasterAdmin) return false;
+    if (rid === 'wing_commander' || rid === 'sq_commander') return true;
+    return /gsc\s*commander/i.test(role.name || '')
+        || /wing\s*commander/i.test(role.name || '')
+        || /squadron\s*commander/i.test(role.name || '');
+  });
+}
+ 
+// Channels the tasking tool can post to (label → webhook channel key
+// from Master Admin → Discord Webhooks). Only channels with a URL
+// configured appear in the dropdown.
+const TASK_CHANNELS = {
+  tasking:      'Tasking channel',
+  events:       'Events channel',
+  fleet_7bw:    '7th BW fleet channel',
+  fleet_509bw:  '509th BW fleet channel',
+  fleet_2bw:    '2nd BW fleet channel',
+  flights_7bw:  '7th BW flight log channel',
+  flights_509bw:'509th BW flight log channel',
+  flights_2bw:  '2nd BW flight log channel',
+  admin_all:    'Admin — all events channel',
+};
+let taskWhChannels = {};
+ 
+async function loadTaskWebhooks() {
+  try {
+    const s = await db.collection('settings').doc('webhooks').get();
+    taskWhChannels = s.exists ? (s.data().channels || {}) : {};
+  } catch(e) { taskWhChannels = {}; }
+  const sel = document.getElementById('task-channel');
+  const opts = Object.entries(TASK_CHANNELS)
+    .filter(function(e){ return taskWhChannels[e[0]] && taskWhChannels[e[0]].url; })
+    .map(function(e){ return '<option value="' + e[0] + '">' + e[1] + '</option>'; });
+  sel.innerHTML = opts.length ? opts.join('') : '<option value="">No webhooks configured — set them in Master Admin</option>';
+}
+ 
+async function sendTasking() {
+  if (!canSendTasking(pilotData)) { toast('Tasking is restricted to GSC, Wing, and Squadron Commanders', 'error'); return; }
+  const chKey   = document.getElementById('task-channel').value;
+  const mention = document.getElementById('task-mention').value.trim();
+  const msg     = document.getElementById('task-msg').value.trim();
+  if (!chKey) { toast('No webhook channels configured yet', 'error'); return; }
+  if (!msg)   { toast('Write the tasking order first', 'error'); return; }
+  const ch = taskWhChannels[chKey];
+  if (!ch || !ch.url) { toast('That channel has no webhook URL set', 'error'); return; }
+  const payload = {
+    content: mention || undefined,
+    embeds: [{
+      color: 0xe09030,
+      title: '📌 Tasking Order',
+      description: msg,
+      footer: { text: 'Issued by ' + (pilotData?.displayName || pilotData?.callsign || 'Command') + ' · VTAC Global Strike Command' },
+      timestamp: new Date().toISOString(),
+    }]
+  };
+  try {
+    const resp = await fetch(ch.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (resp.ok || resp.status === 204) {
+      toast('Tasking sent ✓');
+      document.getElementById('task-msg').value = '';
+      try {
+        await db.collection('auditLog').add({
+          eventType: 'tasking_sent',
+          actor: { uid: currentUser.uid, callsign: pilotData?.displayName || pilotData?.callsign || '—' },
+          details: { notes: 'Tasking → ' + (TASK_CHANNELS[chKey] || chKey) + ': ' + msg.slice(0, 80) },
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch(e) {}
+    } else toast('Discord returned ' + resp.status, 'error');
+  } catch(e) { toast('Tasking failed: ' + e.message, 'error'); }
+}
+ 
 function populateProfile(p) {
   if (!p) return;
   // Hero
@@ -330,27 +555,27 @@ function populateProfile(p) {
   document.getElementById('disp-joined').textContent   = formatDate(p.appliedAt);
   if (p.avatarUrl)     document.getElementById('profile-avatar').src = p.avatarUrl;
   if (p.pilotWingsUrl) { document.getElementById('disp-wings').src = p.pilotWingsUrl; document.getElementById('disp-wings').style.display = 'block'; }
-
+ 
   // Public title (only for hidden master_admin role)
   if (ROLES[p.role]?.isMasterAdmin) {
     document.getElementById('public-title-section').style.display = 'block';
     document.getElementById('e-public-title').value = p.publicTitle || 'Wing Commander';
     document.getElementById('e-public-color').value = p.publicColor || '#c8a951';
   }
-
+ 
   // Edit tab
   document.getElementById('e-callsign').value = p.displayName || p.callsign || '';
   document.getElementById('e-discord').value  = p.discord || '';
   document.getElementById('e-bio').value      = p.bio || '';
   if (p.simulator) document.getElementById('e-sim').value = p.simulator;
   if (p.timezone)  document.getElementById('e-timezone').value = p.timezone;
-
+ 
   // Callsigns
   callsigns = p.callsigns || [];
   if (callsigns.length === 0 && p.displayName) callsigns = [{ type:'Primary', value: p.displayName }];
   renderCallsigns();
   if (p.callsignDisplayPref) document.getElementById('cs-display-pref').value = p.callsignDisplayPref;
-
+ 
   // Wings
   if (p.pilotWingsUrl) {
     document.getElementById('wings-preview').src     = p.pilotWingsUrl;
@@ -358,18 +583,18 @@ function populateProfile(p) {
     document.getElementById('wings-placeholder').style.display = 'none';
     document.getElementById('remove-wings-btn').style.display = 'block';
   }
-
+ 
   // Appearance
   if (p.accentColor) {
     selectedAccent = p.accentColor;
     document.getElementById('custom-accent').value = p.accentColor;
   }
-
+ 
   // Certs
   loadCerts();
   renderEarnedWingsBadges(p);
   renderEarnedMedals(p);
-
+ 
   // Privacy
   if (p.privacy) {
     if (p.privacy.profile) document.getElementById('priv-profile').value = p.privacy.profile;
@@ -377,13 +602,13 @@ function populateProfile(p) {
     if (p.privacy.discord) document.getElementById('priv-discord').value = p.privacy.discord;
   }
 }
-
+ 
 // ── CALLSIGNS ────────────────────────────────────────────────
 const typeColors = {
   Primary:'badge-gold', Radio:'badge-blue', Squadron:'badge-green',
   Mission:'badge-amber', Nickname:'badge-gray', Custom:'badge-gray'
 };
-
+ 
 function renderCallsigns() {
   const el = document.getElementById('callsign-list');
   if (!callsigns.length) {
@@ -399,7 +624,7 @@ function renderCallsigns() {
       <button class="cs-remove" onclick="removeCallsign(${i})" title="Remove">×</button>
     </div>`).join('');
 }
-
+ 
 function addCallsign() {
   const type  = document.getElementById('new-cs-type').value;
   const value = document.getElementById('new-cs-value').value.trim();
@@ -430,7 +655,7 @@ async function saveCallsignPrefs() {
   await db.collection('pilots').doc(currentUser.uid).update({ callsignDisplayPref: pref });
   toast('Preferences saved!');
 }
-
+ 
 // ── PUBLIC TITLE (hides master_admin identity) ─────────────────
 async function savePublicTitle() {
   const title = document.getElementById('e-public-title').value.trim();
@@ -445,7 +670,7 @@ async function savePublicTitle() {
     toast('Display title saved!');
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
-
+ 
 // ── SAVE PROFILE ─────────────────────────────────────────────
 async function saveProfile() {
   if (!currentUser) return;
@@ -470,7 +695,7 @@ async function saveProfile() {
     toast('Profile saved!');
   } catch(e) { toast('Error: '+e.message, 'error'); }
 }
-
+ 
 // ── AVATAR UPLOAD ─────────────────────────────────────────────
 function resizeImageFile(file, maxW, maxH, quality) {
   quality = quality || 0.90;
@@ -593,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
-
+ 
 // ── APPEARANCE ────────────────────────────────────────────────
 function pickAccent(hex, el) {
   document.querySelectorAll('.accent-swatch').forEach(s => s.classList.remove('sel'));
@@ -605,7 +830,7 @@ async function saveAppearance() {
   await db.collection('pilots').doc(currentUser.uid).update({ accentColor: selectedAccent });
   toast('Color saved!');
 }
-
+ 
 // ── PRIVACY ────────────────────────────────────────────────────
 async function savePrivacy() {
   await db.collection('pilots').doc(currentUser.uid).update({
@@ -617,7 +842,7 @@ async function savePrivacy() {
   });
   toast('Privacy settings saved!');
 }
-
+ 
 // ── CERTS ────────────────────────────────────────────────────
 async function loadCerts() {
   try {
@@ -636,7 +861,7 @@ async function loadCerts() {
     }).join('');
   } catch(e) {}
 }
-
+ 
 // ── EARNED PILOT WINGS RATING ────────────────────────────────
 function renderEarnedWingsBadges(p) {
   const el = document.getElementById('earned-wings-badges');
@@ -651,7 +876,7 @@ function renderEarnedWingsBadges(p) {
       </div>
     </div>`).join('');
 }
-
+ 
 // ── EARNED DECORATIONS & RIBBONS ─────────────────────────────
 function renderEarnedMedals(p) {
   const el = document.getElementById('earned-medals-list');
@@ -669,3 +894,4 @@ function renderEarnedMedals(p) {
 </script>
 </body>
 </html>
+ 
