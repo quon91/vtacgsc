@@ -43,22 +43,84 @@
 
   <!-- ORDER -->
   <div class="card">
-    <div class="card-header"><div class="card-icon blue">📌</div><div class="card-title" id="order-title">2 · Tasking order</div></div>
+    <div class="card-header"><div class="card-icon blue">📌</div><div class="card-title" id="order-title">2 · Mission tasking</div></div>
     <div class="card-body">
       <div class="alert alert-info" style="font-size:12px;margin-bottom:14px" id="route-info">Select a target unit above.</div>
-      <div class="form-group">
-        <label>Mention <span style="color:var(--text3)">(who gets pinged — @everyone, &lt;@&amp;ROLE_ID&gt;, or &lt;@USER_ID&gt;)</span></label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input type="text" id="task-mention" placeholder="@everyone or <@&123456789>" style="font-family:var(--mono);flex:1;min-width:200px">
-          <button class="btn btn-outline btn-sm" onclick="saveDefaultMention()" title="Save this mention as the default for the selected unit">💾 Save as unit default</button>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Mission ID</label>
+          <input type="text" id="tk-mid" maxlength="12" style="font-family:var(--mono)" placeholder="M001">
+          <div class="form-hint">Auto-numbered — edit if needed</div>
         </div>
-        <div class="form-hint">Get IDs in Discord: Settings → Advanced → Developer Mode → right-click a role/user → Copy ID. Saved defaults auto-fill when you pick that unit.</div>
+        <div class="form-group">
+          <label>Assigned to</label>
+          <input type="text" id="tk-assigned" list="tk-pilot-list" placeholder="Pick a pilot or type a name / flight" maxlength="40">
+          <datalist id="tk-pilot-list"></datalist>
+        </div>
       </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Airframe (tail #)</label>
+          <select id="tk-tail"><option value="">— none assigned —</option></select>
+        </div>
+        <div class="form-group">
+          <label>Aircraft</label>
+          <input type="text" id="tk-aircraft" placeholder="B-1B" maxlength="30">
+        </div>
+      </div>
+
       <div class="form-group">
-        <label>Tasking order</label>
-        <textarea id="task-msg" rows="4" placeholder="e.g. 28th BS: launch two B-1Bs from KDYS to KBAD by 2100Z tonight. Report ready status in ops channel."></textarea>
+        <label>Route</label>
+        <input type="text" id="tk-route" placeholder="KDYS PNH TBE PUB FQF CYS KRCA" style="font-family:var(--mono);text-transform:uppercase">
       </div>
-      <button class="btn btn-primary" onclick="sendTasking()">📡 Send tasking order</button>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Step time (Zulu)</label>
+          <input type="text" id="tk-step" placeholder="2200Z" maxlength="10" style="font-family:var(--mono)">
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="tk-priority">
+            <option>NORMAL</option>
+            <option>PRIORITY</option>
+            <option>URGENT</option>
+            <option>IMMEDIATE</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Mission type</label>
+          <input type="text" id="tk-type" list="tk-type-list" placeholder="Cross Country" maxlength="40">
+          <datalist id="tk-type-list">
+            <option>Cross Country</option>
+            <option>Low-Level / Terrain</option>
+            <option>Strike</option>
+            <option>Training</option>
+            <option>Air Refueling</option>
+            <option>Ferry</option>
+            <option>Local Area Orientation</option>
+          </datalist>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Notes <span style="color:var(--text3)">(optional)</span></label>
+        <textarea id="tk-notes" rows="2" placeholder="Weapons load, weather, special instructions…"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Ping &amp; message line</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="task-mention" placeholder="@everyone or <@&123456789>" style="font-family:var(--mono);width:220px">
+          <input type="text" id="tk-msgline" style="flex:1;min-width:220px" value="You have been tasked with a mission. Please respond." maxlength="140">
+          <button class="btn btn-outline btn-sm" onclick="saveDefaultMention()" title="Save this mention as the default for the selected unit">💾 Unit default</button>
+        </div>
+        <div class="form-hint">The ping + message appear above the embed, like "@Quon You have been tasked with a mission." Get IDs: Discord → Settings → Advanced → Developer Mode → right-click role/user → Copy ID.</div>
+      </div>
+
+      <button class="btn btn-primary" onclick="sendTasking()">📡 Send mission tasking</button>
     </div>
   </div>
 
@@ -104,6 +166,7 @@ let me = null;
 let whChannels = {};
 let savedMentions = {};   // settings/tasking → { mentions: { all, 7bw, 509bw, 2bw } }
 let activeTarget = null;
+let missionNum = 1;       // settings/tasking → nextMissionNum (auto mission IDs)
 
 // ── EMBED TEMPLATES (Master Admin → Discord Webhooks → Embed Appearance)
 let _embedTpls = null;
@@ -121,7 +184,7 @@ function onAuthReady(user, pilot) {
   if (!user) { window.location.replace('/pages/login.html'); return; }
   if (!canSendTasking(pilot)) { window.location.replace('/pages/profile.html'); return; }
   me = pilot;
-  Promise.all([loadWebhooks(), loadSavedMentions()]).then(function() {
+  Promise.all([loadWebhooks(), loadSavedMentions(), loadFleet(), loadPilots(), loadMissionCounter()]).then(function() {
     renderTargets();
     selectTarget('all');
   });
@@ -138,7 +201,62 @@ async function loadSavedMentions() {
   try {
     const s = await db.collection('settings').doc('tasking').get();
     savedMentions = s.exists ? (s.data().mentions || {}) : {};
-  } catch(e) { savedMentions = {}; }
+    missionNum = s.exists ? (s.data().nextMissionNum || 1) : 1;
+  } catch(e) { savedMentions = {}; missionNum = 1; }
+}
+async function loadMissionCounter() { /* counter comes with loadSavedMentions */ }
+
+// The wing fleets feed the Tail # dropdown; assigning a tail
+// auto-fills the Aircraft box from the airframe's type.
+let fleetByWing = {};
+async function loadFleet() {
+  try {
+    const snap = await db.collection('fleet').get();
+    fleetByWing = {};
+    snap.docs.forEach(function(d) {
+      const a = Object.assign({id: d.id}, d.data());
+      (fleetByWing[a.wing] = fleetByWing[a.wing] || []).push(a);
+    });
+    Object.values(fleetByWing).forEach(function(l){ l.sort(function(a,b){ return (a.tail||'').localeCompare(b.tail||''); }); });
+  } catch(e) { fleetByWing = {}; }
+}
+
+// Active roster feeds the "Assigned to" pilot picker, filtered to
+// the selected wing (All Command shows everyone).
+let rosterPilots = [];
+async function loadPilots() {
+  try {
+    const snap = await db.collection('pilots').where('status','==','active').get();
+    rosterPilots = snap.docs.map(function(d){ return d.data(); });
+  } catch(e) { rosterPilots = []; }
+}
+
+const WING_ACFT = { '7bw': 'B-1B', '509bw': 'B-2', '2bw': 'B-52H' };
+const UNIT_SHORT = { all: 'GSC', '7bw': '7th BW', '509bw': '509th BW', '2bw': '2nd BW' };
+
+function fillFormForTarget(id) {
+  // Mission ID
+  document.getElementById('tk-mid').value = 'M' + String(missionNum).padStart(3, '0');
+  // Aircraft default for the wing
+  if (id !== 'all') document.getElementById('tk-aircraft').value = WING_ACFT[id] || '';
+  // Tail dropdown from that wing's fleet (All Command = every wing)
+  const tails = id === 'all'
+    ? Object.values(fleetByWing).reduce(function(acc,l){ return acc.concat(l); }, [])
+    : (fleetByWing[id] || []);
+  const sel = document.getElementById('tk-tail');
+  sel.innerHTML = '<option value="">— none assigned —</option>' + tails.map(function(a) {
+    const tag = a.status === 'maintenance' ? ' — MAINTENANCE' : a.status === 'inflight' ? ' — in flight' : '';
+    return '<option value="' + a.id + '" data-type="' + (a.type||'') + '">' + a.tail + (a.nickname ? ' "' + a.nickname + '"' : '') + ' · 📍' + (a.location||'?') + tag + '</option>';
+  }).join('');
+  sel.onchange = function() {
+    const opt = sel.options[sel.selectedIndex];
+    if (opt && opt.dataset.type) document.getElementById('tk-aircraft').value = opt.dataset.type.split(' ')[0];
+  };
+  // Pilot picker for this wing
+  const pilots = id === 'all' ? rosterPilots : rosterPilots.filter(function(p){ return p.wing === id; });
+  document.getElementById('tk-pilot-list').innerHTML = pilots.map(function(p) {
+    return '<option value="' + (p.displayName || p.callsign || '') + '">';
+  }).join('');
 }
 
 // Resolve which webhook a target actually posts to (own channel →
@@ -175,16 +293,17 @@ function selectTarget(id) {
   const t = TARGETS[id];
   const ch = resolveChannel(id);
   const info = document.getElementById('route-info');
-  document.getElementById('order-title').textContent = '2 · Tasking order — ' + t.name;
+  document.getElementById('order-title').textContent = '2 · Mission tasking — ' + t.name;
   if (!ch) {
     info.innerHTML = '<strong style="color:var(--amber)">No webhook configured.</strong> Set a URL for <strong>' + t.name + '</strong> (or the command-wide Tasking channel) in Master Admin → Discord Webhooks → Tasking.';
   } else if (ch.fallback) {
-    info.innerHTML = 'This order will post to the <strong>All Command tasking channel</strong> — ' + t.name + ' has no dedicated tasking webhook yet. Add one in Master Admin → Discord Webhooks to give the wing its own channel.';
+    info.innerHTML = 'This tasking will post to the <strong>All Command tasking channel</strong> — ' + t.name + ' has no dedicated tasking webhook yet. Add one in Master Admin → Discord Webhooks to give the wing its own channel.';
   } else {
-    info.innerHTML = 'This order posts to the <strong>' + t.name + '</strong> Discord tasking channel. The mention below controls who gets pinged there.';
+    info.innerHTML = 'This tasking posts to the <strong>' + t.name + '</strong> Discord tasking channel. The mention below controls who gets pinged there.';
   }
-  // Auto-fill the saved default mention for this unit
+  // Auto-fill the saved default mention for this unit + the form
   document.getElementById('task-mention').value = savedMentions[id] || '';
+  fillFormForTarget(id);
 }
 
 async function saveDefaultMention() {
@@ -200,34 +319,67 @@ async function saveDefaultMention() {
 async function sendTasking() {
   if (!canSendTasking(me)) { toast('Tasking is restricted to GSC, Wing, and Squadron Commanders', 'error'); return; }
   if (!activeTarget) { toast('Select a target unit first', 'error'); return; }
-  const msg = document.getElementById('task-msg').value.trim();
-  if (!msg) { toast('Write the tasking order first', 'error'); return; }
   const ch = resolveChannel(activeTarget);
   if (!ch) { toast('No webhook configured for this target — set one in Master Admin', 'error'); return; }
   const t = TARGETS[activeTarget];
-  const mention = document.getElementById('task-mention').value.trim();
+
+  const mid      = document.getElementById('tk-mid').value.trim() || ('M' + String(missionNum).padStart(3, '0'));
+  const assigned = document.getElementById('tk-assigned').value.trim();
+  const tailSel  = document.getElementById('tk-tail');
+  const tailOpt  = tailSel.options[tailSel.selectedIndex];
+  const tailTxt  = tailSel.value && tailOpt ? tailOpt.text.split(' · ')[0] : '';
+  const acft     = document.getElementById('tk-aircraft').value.trim() || (WING_ACFT[activeTarget] || '—');
+  const route    = document.getElementById('tk-route').value.trim().toUpperCase();
+  const step     = document.getElementById('tk-step').value.trim();
+  const prio     = document.getElementById('tk-priority').value;
+  const mtype    = document.getElementById('tk-type').value.trim() || '—';
+  const notes    = document.getElementById('tk-notes').value.trim();
+  if (!assigned && !route) { toast('Fill in at least the assigned pilot or a route', 'error'); return; }
+
+  const mention  = document.getElementById('task-mention').value.trim();
+  const msgline  = document.getElementById('tk-msgline').value.trim();
   const tpl = await getEmbedTpl('tasking');
-  const vars = { unit: t.name, by: me?.displayName || me?.callsign || 'Command' };
+  const unitShort = UNIT_SHORT[activeTarget] || t.name;
+  const vars = { unit: t.name, unitShort: unitShort, by: me?.displayName || me?.callsign || 'Command', missionId: mid, pilot: assigned || '—' };
+
   const payload = {
-    content: mention || undefined,
+    content: (mention || msgline) ? ((mention ? mention + ' ' : '') + msgline) : undefined,
     embeds: [{
       color: tplColor(tpl.color, parseInt(t.color.replace('#',''), 16)),
-      title: fillTpl(tpl.title || '📌 Tasking Order — {unit}', vars),
-      description: msg,
-      footer: { text: fillTpl(tpl.footer || 'Issued by {by} · VTAC Global Strike Command', vars) },
+      title: fillTpl(tpl.title || 'Mission Tasking', vars),
+      fields: [
+        { name: 'Mission ID', value: mid, inline: true },
+        { name: 'Assigned', value: assigned || '—', inline: true },
+        { name: 'Aircraft', value: acft, inline: true },
+        { name: 'Tail #', value: tailTxt || '—', inline: false },
+        { name: 'Route', value: route || '—', inline: false },
+        { name: 'Step Time', value: step || '—', inline: true },
+        { name: 'Priority', value: prio, inline: true },
+        { name: 'Mission Type', value: mtype, inline: true },
+        { name: 'Notes', value: notes || 'None', inline: false },
+      ],
+      footer: { text: fillTpl(tpl.footer || 'v{unitShort} Mission Operations', vars) },
       timestamp: new Date().toISOString(),
     }]
   };
   try {
     const resp = await fetch(ch.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     if (resp.ok || resp.status === 204) {
-      toast('Tasking sent to ' + t.name + ' ✓');
-      document.getElementById('task-msg').value = '';
+      toast('Mission ' + mid + ' tasked to ' + (assigned || t.name) + ' ✓');
+      // Advance the auto mission counter (only when the auto ID was used)
+      if (mid === 'M' + String(missionNum).padStart(3, '0')) {
+        missionNum++;
+        db.collection('settings').doc('tasking').set({ nextMissionNum: missionNum }, { merge: true }).catch(function(){});
+        document.getElementById('tk-mid').value = 'M' + String(missionNum).padStart(3, '0');
+      }
+      document.getElementById('tk-route').value = '';
+      document.getElementById('tk-notes').value = '';
+      document.getElementById('tk-assigned').value = '';
       try {
         await db.collection('auditLog').add({
           eventType: 'tasking_sent',
           actor: { uid: currentUser.uid, callsign: me?.displayName || me?.callsign || '—' },
-          details: { notes: 'Tasking → ' + t.name + ': ' + msg.slice(0, 80) },
+          details: { notes: 'Mission ' + mid + ' → ' + t.name + (assigned ? ' · ' + assigned : '') + (route ? ' · ' + route.slice(0, 50) : '') },
           timestamp: firebase.firestore.FieldValue.serverTimestamp(),
         });
       } catch(e) {}
