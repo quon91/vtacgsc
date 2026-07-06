@@ -426,6 +426,18 @@ let allFlights=[], activeTab='all', wingFleet=[];
 let waypoints=[], sbData=null;
 let fleetByWing={};
 
+// ── EMBED TEMPLATES (Master Admin → Discord Webhooks → Embed Appearance)
+let _embedTpls=null;
+async function getEmbedTpl(key){
+  if(_embedTpls===null){
+    try{const s=await db.collection('settings').doc('embedTemplates').get();_embedTpls=s.exists?(s.data().templates||{}):{};}
+    catch(e){_embedTpls={};}
+  }
+  return _embedTpls[key]||{};
+}
+function fillTpl(str,vars){return String(str).replace(/\{(\w+)\}/g,function(m,k){return (vars[k]!==undefined&&vars[k]!==null)?vars[k]:m;});}
+function tplColor(hex,fallback){return (hex&&/^#[0-9a-fA-F]{6}$/.test(hex))?parseInt(hex.slice(1),16):fallback;}
+
 function onAuthReady(user,pilot){
   const p=pilot||(typeof currentPilot!=='undefined'?currentPilot:null);
   if(user&&p&&p.status==='active'){
@@ -565,7 +577,17 @@ async function submitFlight(){
     }
     closeModal();toast('Flight logged ✓');loadFlights();loadWingFleet();loadFleetAll();
     // Discord webhook — wing flight log channel
-    try{const s=await db.collection('settings').doc('webhooks').get();const u=s.exists&&s.data()?.channels?.['flights_'+myPilot.wing]?.url;if(u)fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({embeds:[{color:0xc8a951,title:'✈ Flight Logged',fields:[{name:'Pilot',value:myPilot.callsign||'Unknown',inline:true},{name:'Route',value:dep+' → '+arr,inline:true},{name:'Aircraft',value:flight.aircraft+(ac?' · '+ac.tail+(ac.nickname?' "'+ac.nickname+'"':''):''),inline:true}],timestamp:new Date().toISOString()}]})}).catch(()=>{});}catch(e){}
+    try{
+      const s=await db.collection('settings').doc('webhooks').get();
+      const u=s.exists&&s.data()?.channels?.['flights_'+myPilot.wing]?.url;
+      if(u){
+        const tpl=await getEmbedTpl('flight_logged');
+        const vars={pilot:myPilot.callsign||'Unknown',route:dep+' → '+arr,aircraft:flight.aircraft,tail:ac?ac.tail:'',wing:getWingAbbr(myPilot.wing)};
+        const emb={color:tplColor(tpl.color,0xc8a951),title:fillTpl(tpl.title||'✈ Flight Logged',vars),fields:[{name:'Pilot',value:vars.pilot,inline:true},{name:'Route',value:vars.route,inline:true},{name:'Aircraft',value:flight.aircraft+(ac?' · '+ac.tail+(ac.nickname?' "'+ac.nickname+'"':''):''),inline:true}],timestamp:new Date().toISOString()};
+        if(tpl.footer)emb.footer={text:fillTpl(tpl.footer,vars)};
+        fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({embeds:[emb]})}).catch(()=>{});
+      }
+    }catch(e){}
   }catch(e){toast('Error: '+e.message,'error');}
 }
 
@@ -604,8 +626,10 @@ async function postWingFleetStatus(wing){
     const list=snap.docs.map(d=>d.data()).sort((a,b)=>(a.tail||'').localeCompare(b.tail||''));
     const W={'7bw':{name:'7th Bomb Wing',color:0xc8a951},'509bw':{name:'509th Bomb Wing',color:0x4a90d9},'2bw':{name:'2nd Bomb Wing',color:0x3dba6e}};
     const ST={available:'🟢 Available',inflight:'🔵 In Flight',maintenance:'🟠 Maintenance'};
+    const tpl=await getEmbedTpl('fleet_status');
+    const vars={wing:(W[wing]||{}).name||wing,count:String(list.length),aircraft:'',base:'',by:myPilot?.callsign||myPilot?.displayName||'Pilot'};
     const fields=list.slice(0,25).map(a=>({name:a.tail+(a.nickname?' — "'+a.nickname+'"':''),value:(ST[a.status]||ST.available)+' · 📍 **'+(a.location||'Unknown')+'**',inline:true}));
-    const payload={embeds:[{color:(W[wing]||{}).color||0xc8a951,title:'🛩 '+((W[wing]||{}).name||wing)+' — Fleet Status',description:list.length+' aircraft on strength',fields:fields,footer:{text:'Updated by '+(myPilot?.callsign||myPilot?.displayName||'Pilot')+' · VTAC Global Strike Command'},timestamp:new Date().toISOString()}]};
+    const payload={embeds:[{color:tplColor(tpl.color,(W[wing]||{}).color||0xc8a951),title:fillTpl(tpl.title||'🛩 {wing} — Fleet Status',vars),description:fillTpl(tpl.desc||'{count} aircraft on strength',vars),fields:fields,footer:{text:fillTpl(tpl.footer||'Updated by {by} · VTAC Global Strike Command',vars)},timestamp:new Date().toISOString()}]};
     upsertFleetMessage(wing,url,payload);
   }catch(e){}
 }
@@ -1000,13 +1024,15 @@ async function sendDiscordFlightPlan(plan) {
     const s = await db.collection('settings').doc('webhooks').get();
     const url = s.exists ? (s.data()?.channels?.flight_plans?.url||'') : '';
     if (!url) return;
-    const embed = {embeds:[{color:0xc8a951,title:'📋 Flight Plan Saved',fields:[
+    const tpl = await getEmbedTpl('flight_plan');
+    const vars = {pilot:plan.pilotCallsign,aircraft:plan.aircraft,tail:plan.tail||'',route:plan.departure+' → '+plan.arrival,distance:plan.distance||'—',time:plan.estTime||'—',source:plan.fromSimBrief?'SimBrief OFP':'Manual route'};
+    const embed = {embeds:[{color:tplColor(tpl.color,0xc8a951),title:fillTpl(tpl.title||'📋 Flight Plan Saved',vars),fields:[
       {name:'Pilot',value:plan.pilotCallsign,inline:true},
       {name:'Aircraft',value:plan.aircraft+(plan.tail?' · '+plan.tail+(plan.tailNickname?' "'+plan.tailNickname+'"':''):''),inline:true},
       {name:'Route',value:'`'+plan.departure+' → '+plan.arrival+'`',inline:false},
       {name:'Distance',value:plan.distance||'—',inline:true},
       {name:'Est. Time',value:plan.estTime||'—',inline:true},
-    ],footer:{text:plan.fromSimBrief?'SimBrief OFP':'Manual route'},timestamp:new Date().toISOString()}]};
+    ],footer:{text:fillTpl(tpl.footer||'{source}',vars)},timestamp:new Date().toISOString()}]};
     fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(embed)}).catch(()=>{});
   } catch(e){}
 }
@@ -1179,14 +1205,16 @@ async function sendDiscordCommunityRoute(r) {
     const s = await db.collection('settings').doc('webhooks').get();
     const url = s.exists ? (s.data()?.channels?.flight_plans?.url || '') : '';
     if (!url) return;
-    const embed = {embeds:[{color:0x4a90d9,title:'🗺 Community Route Submitted',fields:[
+    const tpl = await getEmbedTpl('community_route');
+    const vars = {pilot:r.pilotCallsign,aircraft:r.aircraft,route:r.departure+' → '+r.arrival};
+    const embed = {embeds:[{color:tplColor(tpl.color,0x4a90d9),title:fillTpl(tpl.title||'🗺 Community Route Submitted',vars),fields:[
       {name:'Pilot',value:r.pilotCallsign,inline:true},
       {name:'Aircraft',value:r.aircraft,inline:true},
       {name:'Route',value:'`' + r.departure + ' → ' + r.arrival + '`',inline:false},
       {name:'Airways',value:'`' + r.route + '`',inline:false},
       ...(r.dist ? [{name:'Distance',value:r.dist+' NM',inline:true}] : []),
       {name:'Description',value:r.description,inline:false},
-    ],footer:{text:'VTAC GSC Community Routes'},timestamp:new Date().toISOString()}]};
+    ],footer:{text:fillTpl(tpl.footer||'VTAC GSC Community Routes',vars)},timestamp:new Date().toISOString()}]};
     fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(embed)}).catch(()=>{});
   } catch(e){}
 }
