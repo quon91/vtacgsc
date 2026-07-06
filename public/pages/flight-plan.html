@@ -68,8 +68,9 @@
   <div class="nav-inner">
     <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
     <div class="nav-links" id="nav-links">
-      <a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a>
-      <a href="/pages/bases.html">Bases</a><a href="/pages/training/index.html">Training</a>
+      <a href="/index.html">Home</a><a href="/pages/wings.html">Wings</a><a href="/pages/roster.html">Roster</a>
+      <a href="/pages/bases.html">Bases</a><a href="/pages/fleet.html">Fleet</a><a href="/pages/events.html">Events</a>
+      <a href="/pages/sop.html">SOPs</a><a href="/pages/training/index.html">Training</a>
       <a href="/pages/flights.html">Flight Log</a><a href="/pages/flight-plan.html" class="active">Flight Planner</a>
     </div>
     <div class="nav-right" id="nav-right-area"><a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a></div>
@@ -192,7 +193,7 @@
         <div class="fp-card-title">📋 Mission Details</div>
         <div class="form-row">
           <div class="form-group"><label>Aircraft</label>
-            <select id="fp-aircraft" onchange="updateRoute()">
+            <select id="fp-aircraft" onchange="updateRoute();renderTailOptions()">
               <option value="B-1B Lancer">B-1B Lancer</option>
               <option value="B-2 Spirit">B-2 Spirit</option>
               <option value="B-52H Stratofortress">B-52H Stratofortress</option>
@@ -201,6 +202,11 @@
           <div class="form-group"><label>Cruise altitude (ft)</label>
             <input type="number" id="fp-altitude" placeholder="36000" step="1000" oninput="updateRoute()">
           </div>
+        </div>
+        <div class="form-group" id="fp-tail-wrap" style="display:none">
+          <label>Airframe (tail number)</label>
+          <select id="fp-tail"></select>
+          <div class="form-hint">Pick a jet from the wing's fleet — airframes already in flight or in maintenance are locked so two pilots never fly the same aircraft. Saving the plan reserves it; logging the flight in the Flight Log releases it at your destination.</div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Cruise speed (KTAS)</label>
@@ -226,6 +232,7 @@
         <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px">Plan Summary</div>
         <div class="fp-stat-row"><span class="fp-stat-lbl">Route</span><span class="fp-stat-val" id="sum-route">—</span></div>
         <div class="fp-stat-row"><span class="fp-stat-lbl">Aircraft</span><span class="fp-stat-val" id="sum-aircraft">—</span></div>
+        <div class="fp-stat-row"><span class="fp-stat-lbl">Airframe</span><span class="fp-stat-val" id="sum-tail">—</span></div>
         <div class="fp-stat-row"><span class="fp-stat-lbl">Cruise alt</span><span class="fp-stat-val" id="sum-alt">—</span></div>
         <div class="fp-stat-row"><span class="fp-stat-lbl">Waypoints</span><span class="fp-stat-val" id="sum-waypoints">0</span></div>
         <div class="fp-stat-row"><span class="fp-stat-lbl">Distance</span><span class="fp-stat-val" id="sum-distance">—</span></div>
@@ -315,6 +322,7 @@ function loadSquadronRoute(wing, idx) {
   waypoints = mid;
   renderWaypoints();
   updateRoute();
+  renderTailOptions();
   // Override summary with real data
   document.getElementById('sum-distance').textContent = r.dist ? r.dist + ' NM' : 'Local';
   document.getElementById('sum-route').textContent = dep + ' → ' + arr;
@@ -355,6 +363,7 @@ function onAuthReady(user, pilot) {
     canDeleteAny = (typeof isMasterAdminPilot === 'function' && isMasterAdminPilot(activePilot)) ||
                    (typeof hasPermission === 'function' && hasPermission(activePilot, 'delete_flights'));
     loadSavedPlans();
+    loadFleetAll();
     if (activePilot.simBriefUsername) {
       const sbEl = document.getElementById('sb-username');
       if (sbEl) sbEl.value = activePilot.simBriefUsername;
@@ -362,6 +371,60 @@ function onAuthReady(user, pilot) {
     const sbtn = document.getElementById('submit-route-btn');
     if (sbtn) sbtn.style.display = 'block';
   }
+}
+
+// ── FLEET TIE-IN ──────────────────────────────────────────────
+// The wing fleets (managed on the Fleet page) feed the Airframe
+// picker. Jets already In Flight or in Maintenance are locked out,
+// so two pilots can never plan the same aircraft. Saving a plan
+// with a tail selected reserves that jet (status → In Flight) and
+// posts the updated fleet picture to the wing's Discord channel.
+const TYPE_WING = { 'B-1B Lancer':'7bw', 'B-2 Spirit':'509bw', 'B-52H Stratofortress':'2bw' };
+let fleetByWing = {};
+
+async function loadFleetAll() {
+  try {
+    const snap = await db.collection('fleet').get();
+    fleetByWing = {};
+    snap.docs.forEach(d => {
+      const a = {id: d.id, ...d.data()};
+      (fleetByWing[a.wing] = fleetByWing[a.wing] || []).push(a);
+    });
+    Object.values(fleetByWing).forEach(l => l.sort((a,b)=>(a.tail||'').localeCompare(b.tail||'')));
+  } catch(e) { fleetByWing = {}; }
+  renderTailOptions();
+}
+
+function renderTailOptions() {
+  const wrap = document.getElementById('fp-tail-wrap');
+  if (!wrap) return;
+  const wing = TYPE_WING[document.getElementById('fp-aircraft').value];
+  const list = fleetByWing[wing] || [];
+  if (!list.length) { wrap.style.display = 'none'; updateTailSummary(); return; }
+  wrap.style.display = 'block';
+  const sel = document.getElementById('fp-tail');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— no airframe assignment —</option>' + list.map(a => {
+    const busy = a.status === 'inflight' || a.status === 'maintenance';
+    const tag = a.status === 'inflight' ? ' — IN FLIGHT' : a.status === 'maintenance' ? ' — MAINTENANCE' : '';
+    return `<option value="${a.id}" ${busy ? 'disabled' : ''}>${a.tail}${a.nickname ? ' "' + a.nickname + '"' : ''} · 📍${a.location || '?'}${tag}</option>`;
+  }).join('');
+  // keep the previous selection if that jet is still available
+  if (prev && [...sel.options].some(o => o.value === prev && !o.disabled)) sel.value = prev;
+  sel.onchange = updateTailSummary;
+  updateTailSummary();
+}
+
+function getSelectedTail() {
+  const sel = document.getElementById('fp-tail');
+  if (!sel || document.getElementById('fp-tail-wrap').style.display === 'none' || !sel.value) return null;
+  const wing = TYPE_WING[document.getElementById('fp-aircraft').value];
+  return (fleetByWing[wing] || []).find(a => a.id === sel.value) || null;
+}
+
+function updateTailSummary() {
+  const ac = getSelectedTail();
+  document.getElementById('sum-tail').textContent = ac ? ac.tail + (ac.nickname ? ' "' + ac.nickname + '"' : '') : '—';
 }
 
 // ── SIMBRIEF ──────────────────────────────────────────────────
@@ -420,6 +483,7 @@ function loadSimBriefIntoPlanner() {
   document.getElementById('sum-alt').textContent = sbData.general?.initial_altitude ? 'FL'+Math.round(parseInt(sbData.general.initial_altitude)/100) : '—';
   document.getElementById('sum-waypoints').textContent = waypoints.length;
   document.getElementById('route-string').textContent = orig+' '+route+' '+dest;
+  renderTailOptions();
   switchTab('custom');
   toast('SimBrief OFP loaded ✓');
 }
@@ -512,6 +576,7 @@ async function savePlan() {
   const dep = (document.getElementById('fp-dep').value||'').trim().toUpperCase();
   const arr = (document.getElementById('fp-arr').value||'').trim().toUpperCase();
   if (!dep||!arr) { toast('Enter departure and arrival first','error'); return; }
+  const tailAc = getSelectedTail();
   const plan = {
     pilotUid: currentUser.uid,
     pilotCallsign: currentPilot?.callsign||currentPilot?.displayName||'Unknown',
@@ -528,13 +593,51 @@ async function savePlan() {
     fromSimBrief: !!sbData,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
   };
+  if (tailAc) { plan.fleetId = tailAc.id; plan.tail = tailAc.tail || ''; plan.tailNickname = tailAc.nickname || ''; }
   try {
     await db.collection('flightPlans').add(plan);
-    toast('Flight plan saved ✓');
+    // Reserve the airframe: mark it In Flight so nobody else can
+    // plan the same jet. Released by logging the flight in the
+    // Flight Log (which also moves it to the arrival field).
+    if (tailAc) {
+      try {
+        await db.collection('fleet').doc(tailAc.id).update({
+          status: 'inflight',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedBy: currentPilot?.callsign || currentPilot?.displayName || '',
+        });
+        postWingFleetStatus(tailAc.wing);
+        toast('Plan saved — ' + tailAc.tail + ' reserved ✓');
+      } catch(e) {
+        console.warn('Airframe reserve skipped:', e.message);
+        toast('Flight plan saved ✓');
+      }
+      loadFleetAll();
+    } else {
+      toast('Flight plan saved ✓');
+    }
     loadSavedPlans();
     // Discord webhook
     sendDiscordFlightPlan(plan);
   } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// Posts the wing's full fleet picture to its Discord fleet channel —
+// same format as the Fleet page, so the channel is the single source
+// of truth for where every jet is.
+async function postWingFleetStatus(wing) {
+  try {
+    const s = await db.collection('settings').doc('webhooks').get();
+    const url = s.exists ? (s.data()?.channels?.['fleet_'+wing]?.url || '') : '';
+    if (!url) return;
+    const snap = await db.collection('fleet').where('wing','==',wing).get();
+    const list = snap.docs.map(d=>d.data()).sort((a,b)=>(a.tail||'').localeCompare(b.tail||''));
+    const W = {'7bw':{name:'7th Bomb Wing',color:0xc8a951},'509bw':{name:'509th Bomb Wing',color:0x4a90d9},'2bw':{name:'2nd Bomb Wing',color:0x3dba6e}};
+    const ST = {available:'🟢 Available',inflight:'🔵 In Flight',maintenance:'🟠 Maintenance'};
+    const fields = list.slice(0,25).map(a=>({name:a.tail+(a.nickname?' — "'+a.nickname+'"':''),value:(ST[a.status]||ST.available)+' · 📍 **'+(a.location||'Unknown')+'**',inline:true}));
+    const payload = {embeds:[{color:(W[wing]||{}).color||0xc8a951,title:'🛩 '+((W[wing]||{}).name||wing)+' — Fleet Status',description:list.length+' aircraft on strength',fields:fields,footer:{text:'Updated by '+(currentPilot?.callsign||currentPilot?.displayName||'Pilot')+' · VTAC Global Strike Command'},timestamp:new Date().toISOString()}]};
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+  } catch(e) {}
 }
 
 async function loadSavedPlans() {
@@ -548,7 +651,7 @@ async function loadSavedPlans() {
     el.innerHTML = snap.docs.map(d=>{const p=d.data();return `
       <div class="saved-plan-card">
         <div class="spc-route">${p.departure} → ${p.arrival}</div>
-        <div class="spc-meta">${p.aircraft||''} · ${p.distance||''} · ${p.estTime||''}${p.fromSimBrief?' · <span style="color:var(--blue2)">SimBrief</span>':''}</div>
+        <div class="spc-meta">${p.aircraft||''}${p.tail?' · '+p.tail:''} · ${p.distance||''} · ${p.estTime||''}${p.fromSimBrief?' · <span style="color:var(--blue2)">SimBrief</span>':''}</div>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
           <button class="btn btn-outline btn-xs" onclick="loadPlan('${d.id}')">Load</button>
           <button class="btn btn-outline btn-xs" onclick="exportPlanById('${d.id}')">🎮 MSFS</button>
@@ -573,6 +676,7 @@ function loadPlan(id) {
   document.getElementById('fp-deptime').value = p.departureTime||'';
   document.getElementById('fp-notes').value = p.notes||'';
   updateRoute();
+  renderTailOptions();
   document.getElementById('sum-distance').textContent = p.distance||'—';
   document.getElementById('sum-time').textContent = p.estTime||'—';
   switchTab('custom');
@@ -593,7 +697,7 @@ async function sendDiscordFlightPlan(plan) {
     if (!url) return;
     const embed = {embeds:[{color:0xc8a951,title:'📋 Flight Plan Saved',fields:[
       {name:'Pilot',value:plan.pilotCallsign,inline:true},
-      {name:'Aircraft',value:plan.aircraft,inline:true},
+      {name:'Aircraft',value:plan.aircraft+(plan.tail?' · '+plan.tail+(plan.tailNickname?' "'+plan.tailNickname+'"':''):''),inline:true},
       {name:'Route',value:'`'+plan.departure+' → '+plan.arrival+'`',inline:false},
       {name:'Distance',value:plan.distance||'—',inline:true},
       {name:'Est. Time',value:plan.estTime||'—',inline:true},
@@ -627,6 +731,7 @@ async function loadCommunityRoutes() {
     }
     el.innerHTML = snap.docs.map(d => {
       const r = d.data();
+      window._crCache[d.id] = r;
       const color = WING_COLORS_CR[r.category] || 'var(--text3)';
       const canDelete = isLoggedIn && (currentUser && currentUser.uid === r.pilotUid || canDeleteAny);
       const routeHtml = r.route ? '<div class="cr-airway">' + r.route + '</div>' : '';
@@ -686,6 +791,7 @@ async function loadCommunityRouteById(id) {
   waypoints = mid;
   renderWaypoints();
   updateRoute();
+  renderTailOptions();
   if (r.dist) {
     document.getElementById('sum-distance').textContent = r.dist + ' NM';
     document.getElementById('sum-route').textContent = dep + ' → ' + arr;
