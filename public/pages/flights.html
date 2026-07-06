@@ -33,7 +33,7 @@ select.search-input{min-width:140px;flex:0}
 <body>
 <nav class="site-nav"><div class="nav-inner">
   <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
-  <div class="nav-links" id="nav-links"><a href="/index.html">Home</a><a href="/pages/roster.html">Roster</a><a href="/pages/history.html">History</a><a href="/pages/bases.html">Bases</a><a href="/pages/training/index.html">Training</a><a href="/pages/flights.html" class="active">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a></div>
+  <div class="nav-links" id="nav-links"><a href="/index.html">Home</a><a href="/pages/wings.html">Wings</a><a href="/pages/roster.html">Roster</a><a href="/pages/bases.html">Bases</a><a href="/pages/fleet.html">Fleet</a><a href="/pages/events.html">Events</a><a href="/pages/sop.html">SOPs</a><a href="/pages/training/index.html">Training</a><a href="/pages/flights.html" class="active">Flight Log</a><a href="/pages/flight-plan.html">Flight Planner</a></div>
   <div class="nav-right" id="nav-right-area"><a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a></div>
   <button class="nav-mobile-btn" onclick="document.getElementById('nav-links').classList.toggle('open')">☰</button>
 </div></nav>
@@ -86,6 +86,11 @@ select.search-input{min-width:140px;flex:0}
       </div>
       <div class="form-group"><label>Duration (minutes)</label><input type="number" id="lf-dur" placeholder="90" min="1"></div>
     </div>
+    <div class="form-group" id="lf-tail-wrap" style="display:none">
+      <label>Airframe flown (tail number)</label>
+      <select id="lf-tail"></select>
+      <div class="form-hint">From your wing's fleet. Logging the flight moves this jet to the arrival field and marks it Available again — the wing's Discord fleet channel gets the update.</div>
+    </div>
     <div class="form-group"><label>Notes (optional)</label><textarea id="lf-notes" placeholder="Mission type, training event…"></textarea></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -103,7 +108,7 @@ select.search-input{min-width:140px;flex:0}
 <script src="/js/nav.js"></script>
 <script>
 const WING_COLORS={'7bw':'var(--gold)','509bw':'var(--blue)','2bw':'var(--green)'};
-let allFlights=[], activeTab='all', myPilot=null, canDelAny=false;
+let allFlights=[], activeTab='all', myPilot=null, canDelAny=false, wingFleet=[];
 
 function onAuthReady(user,pilot){
   const p=pilot||(typeof currentPilot!=='undefined'?currentPilot:null);
@@ -112,8 +117,23 @@ function onAuthReady(user,pilot){
     canDelAny=(typeof isMasterAdminPilot==='function'&&isMasterAdminPilot(p))||(typeof hasPermission==='function'&&hasPermission(p,'delete_flights'));
     document.getElementById('log-btn-wrap').style.display='block';
     document.getElementById('my-tab').style.display='block';
+    loadWingFleet();
   }
   loadFlights();
+}
+
+// ── FLEET TIE-IN ─────────────────────────────────────────────
+// The pilot's wing fleet (from the Fleet page) feeds the tail
+// number picker in the log modal. Logging a flight with a tail
+// releases that airframe: location → arrival ICAO, status →
+// Available, and the wing's Discord fleet channel is updated.
+async function loadWingFleet(){
+  if(!myPilot||!myPilot.wing){wingFleet=[];return;}
+  try{
+    const snap=await db.collection('fleet').where('wing','==',myPilot.wing).get();
+    wingFleet=snap.docs.map(d=>({id:d.id,...d.data()}));
+    wingFleet.sort((a,b)=>(a.tail||'').localeCompare(b.tail||''));
+  }catch(e){wingFleet=[];}
 }
 
 async function loadFlights(){
@@ -144,18 +164,19 @@ function render(){
   if(activeTab==='mine'&&myPilot) list=list.filter(f=>f.pilotUid===myPilot.uid);
   else if(activeTab!=='all') list=list.filter(f=>f.wing===activeTab);
   if(af) list=list.filter(f=>f.aircraft===af);
-  if(q) list=list.filter(f=>(f.pilotCallsign||'').toLowerCase().includes(q)||(f.departure||'').toLowerCase().includes(q)||(f.arrival||'').toLowerCase().includes(q)||(f.notes||'').toLowerCase().includes(q));
+  if(q) list=list.filter(f=>(f.pilotCallsign||'').toLowerCase().includes(q)||(f.departure||'').toLowerCase().includes(q)||(f.arrival||'').toLowerCase().includes(q)||(f.notes||'').toLowerCase().includes(q)||(f.tail||'').toLowerCase().includes(q));
   const el=document.getElementById('flights-list');
   if(!list.length){el.innerHTML='<div class="empty-state"><div class="icon">✈️</div><p>No flights match this filter.</p></div>';return;}
   el.innerHTML=list.map(f=>{
     const h=Math.floor((f.durationMins||0)/60),m=(f.durationMins||0)%60;
     const col=WING_COLORS[f.wing]||'var(--text3)';
     const canDel=canDelAny||(myPilot&&f.pilotUid===myPilot.uid);
+    const tailStr=f.tail?` · <span style="font-family:var(--mono)">${f.tail}</span>${f.tailNickname?' <span style="font-style:italic;color:var(--gold2)">"'+f.tailNickname+'"</span>':''}`:'';
     return `<div class="flight-row">
       <div class="wing-dot" style="background:${col}"></div>
       <div style="flex:1">
         <div class="flight-route">${f.departure||'?'} → ${f.arrival||'?'}</div>
-        <div class="flight-meta">${f.pilotCallsign||'Unknown'} · ${f.aircraft||'—'} · <span style="color:${col}">${getWingName(f.wing)||f.wing||''}</span></div>
+        <div class="flight-meta">${f.pilotCallsign||'Unknown'} · ${f.aircraft||'—'}${tailStr} · <span style="color:${col}">${getWingName(f.wing)||f.wing||''}</span></div>
         ${f.notes?`<div style="font-size:11px;color:var(--text3);margin-top:3px">${f.notes}</div>`:''}
       </div>
       <div style="font-size:14px;font-weight:600;color:var(--text2);flex-shrink:0">${h}h ${m}m</div>
@@ -188,6 +209,16 @@ function openLogModal(){
   ['lf-dep','lf-arr','lf-notes'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('lf-dur').value='';
   if(myPilot.wing){const m={'7bw':'B-1B Lancer','509bw':'B-2 Spirit','2bw':'B-52H Stratofortress'};document.getElementById('lf-acft').value=m[myPilot.wing]||'B-1B Lancer';}
+  // Tail number picker — shown only when the wing has a registered fleet
+  const tw=document.getElementById('lf-tail-wrap');
+  if(wingFleet.length){
+    tw.style.display='block';
+    const sel=document.getElementById('lf-tail');
+    sel.innerHTML='<option value="">— no assigned airframe —</option>'+wingFleet.map(a=>{
+      const tag=a.status==='maintenance'?' — MAINTENANCE':a.status==='inflight'?' — in flight (yours?)':'';
+      return `<option value="${a.id}" ${a.status==='maintenance'?'disabled':''}>${a.tail}${a.nickname?' "'+a.nickname+'"':''} · 📍${a.location||'?'}${tag}</option>`;
+    }).join('');
+  }else{tw.style.display='none';}
   document.getElementById('log-modal').classList.add('open');
 }
 function closeModal(){document.getElementById('log-modal').classList.remove('open');}
@@ -197,14 +228,45 @@ async function submitFlight(){
   const arr=document.getElementById('lf-arr').value.trim().toUpperCase();
   const dur=parseInt(document.getElementById('lf-dur').value)||0;
   if(!dep||!arr||!dur){toast('Fill in departure, arrival, and duration','error');return;}
+  const tailSel=document.getElementById('lf-tail');
+  const fleetId=(wingFleet.length&&tailSel)?tailSel.value:'';
+  const ac=fleetId?wingFleet.find(a=>a.id===fleetId):null;
   const flight={pilotUid:currentUser.uid,pilotCallsign:myPilot.callsign||myPilot.displayName||'Unknown',wing:myPilot.wing,squadron:myPilot.squadron,departure:dep,arrival:arr,aircraft:document.getElementById('lf-acft').value,durationMins:dur,notes:document.getElementById('lf-notes').value.trim(),loggedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  if(ac){flight.fleetId=ac.id;flight.tail=ac.tail||'';flight.tailNickname=ac.nickname||'';}
   try{
     await db.collection('flights').add(flight);
     await db.collection('pilots').doc(currentUser.uid).update({totalFlights:firebase.firestore.FieldValue.increment(1),flightHours:firebase.firestore.FieldValue.increment(dur/60)});
-    closeModal();toast('Flight logged ✓');loadFlights();
-    // Discord webhook
-    try{const s=await db.collection('settings').doc('webhooks').get();const u=s.exists&&s.data()?.channels?.['flights_'+myPilot.wing]?.url;if(u)fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({embeds:[{color:0xc8a951,title:'✈ Flight Logged',fields:[{name:'Pilot',value:myPilot.callsign||'Unknown',inline:true},{name:'Route',value:dep+' → '+arr,inline:true},{name:'Aircraft',value:flight.aircraft,inline:true}],timestamp:new Date().toISOString()}]})}).catch(()=>{});}catch(e){}
+    // Release the airframe at the destination: it landed at ARR and
+    // is available again. Any active member can do this — the fleet
+    // rule allows staff writes, so do it best-effort and don't fail
+    // the flight log if the fleet write is denied.
+    if(ac){
+      try{
+        await db.collection('fleet').doc(ac.id).update({location:arr,status:'available',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:myPilot.callsign||myPilot.displayName||''});
+        postWingFleetStatus(myPilot.wing);
+      }catch(e){console.warn('Fleet update skipped:',e.message);}
+    }
+    closeModal();toast('Flight logged ✓');loadFlights();loadWingFleet();
+    // Discord webhook — wing flight log channel
+    try{const s=await db.collection('settings').doc('webhooks').get();const u=s.exists&&s.data()?.channels?.['flights_'+myPilot.wing]?.url;if(u)fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({embeds:[{color:0xc8a951,title:'✈ Flight Logged',fields:[{name:'Pilot',value:myPilot.callsign||'Unknown',inline:true},{name:'Route',value:dep+' → '+arr,inline:true},{name:'Aircraft',value:flight.aircraft+(ac?' · '+ac.tail+(ac.nickname?' "'+ac.nickname+'"':''):''),inline:true}],timestamp:new Date().toISOString()}]})}).catch(()=>{});}catch(e){}
   }catch(e){toast('Error: '+e.message,'error');}
+}
+
+// Posts the wing's full fleet picture to its Discord fleet channel
+// (fleet_7bw / fleet_509bw / fleet_2bw) — same format as the Fleet page.
+async function postWingFleetStatus(wing){
+  try{
+    const s=await db.collection('settings').doc('webhooks').get();
+    const url=s.exists?(s.data()?.channels?.['fleet_'+wing]?.url||''):'';
+    if(!url)return;
+    const snap=await db.collection('fleet').where('wing','==',wing).get();
+    const list=snap.docs.map(d=>d.data()).sort((a,b)=>(a.tail||'').localeCompare(b.tail||''));
+    const W={'7bw':{name:'7th Bomb Wing',color:0xc8a951},'509bw':{name:'509th Bomb Wing',color:0x4a90d9},'2bw':{name:'2nd Bomb Wing',color:0x3dba6e}};
+    const ST={available:'🟢 Available',inflight:'🔵 In Flight',maintenance:'🟠 Maintenance'};
+    const fields=list.slice(0,25).map(a=>({name:a.tail+(a.nickname?' — "'+a.nickname+'"':''),value:(ST[a.status]||ST.available)+' · 📍 **'+(a.location||'Unknown')+'**',inline:true}));
+    const payload={embeds:[{color:(W[wing]||{}).color||0xc8a951,title:'🛩 '+((W[wing]||{}).name||wing)+' — Fleet Status',description:list.length+' aircraft on strength',fields:fields,footer:{text:'Updated by '+(myPilot?.callsign||myPilot?.displayName||'Pilot')+' · VTAC Global Strike Command'},timestamp:new Date().toISOString()}]};
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+  }catch(e){}
 }
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 </script>
