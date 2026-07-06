@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fleet — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.fleet-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.wing-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.wt-btn{padding:8px 18px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--border2);background:var(--card);color:var(--text3);font-family:var(--sans);transition:all .12s}
+.ac-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.ac-icon{width:46px;height:46px;border-radius:10px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.ac-info{flex:1;min-width:200px}
+.ac-tail{font-size:16px;font-weight:800;color:var(--text);font-family:var(--mono)}
+.ac-nick{font-size:13px;font-style:italic;color:var(--gold2)}
+.ac-meta{font-size:11px;color:var(--text3);margin-top:4px;font-family:var(--mono)}
+.ac-status{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-radius:12px;padding:3px 10px}
+.st-available{background:rgba(61,186,110,.12);color:var(--green2);border:1px solid rgba(61,186,110,.35)}
+.st-inflight{background:rgba(74,144,217,.12);color:var(--blue2);border:1px solid rgba(74,144,217,.35)}
+.st-maintenance{background:rgba(224,144,48,.12);color:var(--amber);border:1px solid rgba(224,144,48,.35)}
+.ac-edit-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%;padding-top:10px;margin-top:6px;border-top:1px dashed var(--border)}
+.ac-edit-row input,.ac-edit-row select{font-size:12px;padding:6px 10px}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links"></div>
+    <div class="nav-right" id="nav-right-area"></div>
+    <button class="nav-mobile-btn" onclick="document.getElementById('nav-links').classList.toggle('open')">☰</button>
+  </div>
+</nav>
+
+<div class="fleet-hero">
+  <div class="hero-eyebrow">Order of Battle — Aircraft</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Wing <span>Fleet</span></h1>
+  <p class="hero-sub" style="font-size:14px">Every airframe in the command — tail numbers, nicknames, current location, and availability.</p>
+</div>
+
+<div class="container page-body">
+
+  <div class="wing-tabs" id="wing-tabs"></div>
+
+  <!-- ADD AIRCRAFT — command staff only -->
+  <div class="card" id="ac-add-card" style="display:none;margin-bottom:20px">
+    <div class="card-header"><div class="card-icon">➕</div><div class="card-title">Add aircraft to this wing</div></div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tail number</label>
+          <input type="text" id="ac-tail" placeholder="e.g. 86-0110" maxlength="20" style="font-family:var(--mono)">
+        </div>
+        <div class="form-group">
+          <label>Nickname <span style="color:var(--text3)">(nose art name)</span></label>
+          <input type="text" id="ac-nick" placeholder='e.g. "Lets Roll"' maxlength="40">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Current location (ICAO)</label>
+          <input type="text" id="ac-loc" placeholder="e.g. KDYS" maxlength="8" style="font-family:var(--mono);text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="ac-status">
+            <option value="available">Available</option>
+            <option value="inflight">In Flight</option>
+            <option value="maintenance">Maintenance</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="addAircraft()">+ Add aircraft</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+    <div id="fleet-count" style="font-size:12px;color:var(--text3)"></div>
+    <div style="flex:1"></div>
+    <button class="btn btn-outline btn-sm" id="post-discord-btn" style="display:none" onclick="postFleetStatus(true)">📡 Post fleet status to Discord</button>
+  </div>
+
+  <div id="fleet-list"><div class="empty-state"><p>Loading fleet…</p></div></div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+// Fleet managers: Wing Commanders, Squadron Commanders, Master
+// Admin, and any custom role holding manage_fleet (GSC Commander).
+// Mirrors the fleet Firestore rule.
+function canManageFleet(pilot) {
+  if (!pilot) return false;
+  if (typeof hasPermission === 'function' && hasPermission(pilot, 'manage_fleet')) return true;
+  return getPilotRoleIds(pilot).some(function(rid) {
+    return rid === 'wing_commander' || rid === 'sq_commander';
+  });
+}
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+const STATUS = {
+  available:   { label: 'Available',   cls: 'st-available',   emoji: '🟢' },
+  inflight:    { label: 'In Flight',   cls: 'st-inflight',    emoji: '🔵' },
+  maintenance: { label: 'Maintenance', cls: 'st-maintenance', emoji: '🟠' },
+};
+
+let activeWing = '7bw';
+let fleet = [];        // aircraft for the active wing
+let canEdit = false;
+let whChannels = {};   // Discord webhook config from settings/webhooks
+
+function onAuthReady(user, pilot) {
+  if (!user) { window.location.replace('/pages/login.html'); return; }
+  canEdit = canManageFleet(pilot);
+  if (canEdit) {
+    document.getElementById('ac-add-card').style.display = 'block';
+    document.getElementById('post-discord-btn').style.display = 'inline-flex';
+  }
+  renderWingTabs();
+  loadWebhooks();
+  loadFleet();
+}
+
+function renderWingTabs() {
+  const el = document.getElementById('wing-tabs');
+  el.innerHTML = Object.entries(WINGS).map(function(entry) {
+    const wid = entry[0], w = entry[1];
+    const active = wid === activeWing;
+    return '<button class="wt-btn" style="' + (active ? 'border-color:' + w.color + ';color:' + w.color + ';background:' + w.color + '14' : '') + '" onclick="switchWing(\'' + wid + '\')">'
+      + w.name + ' · ' + (w.aircraft && w.aircraft[0] ? w.aircraft[0] : '') + '</button>';
+  }).join('');
+}
+
+function switchWing(wid) {
+  activeWing = wid;
+  renderWingTabs();
+  loadFleet();
+}
+
+async function loadWebhooks() {
+  try {
+    const s = await db.collection('settings').doc('webhooks').get();
+    whChannels = s.exists ? (s.data().channels || {}) : {};
+  } catch(e) { whChannels = {}; }
+}
+
+async function loadFleet() {
+  document.getElementById('fleet-list').innerHTML = '<div class="empty-state"><p>Loading fleet…</p></div>';
+  try {
+    const snap = await db.collection('fleet').where('wing','==',activeWing).get();
+    fleet = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
+    fleet.sort(function(a,b){ return (a.tail||'').localeCompare(b.tail||''); });
+  } catch(e) { fleet = []; }
+  renderFleet();
+}
+
+function renderFleet() {
+  const w = WINGS[activeWing] || {};
+  const el = document.getElementById('fleet-list');
+  document.getElementById('fleet-count').textContent = fleet.length + ' aircraft · ' + (w.name || '') + ' · ' + (w.base || '');
+  if (!fleet.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🛩</div><p>No aircraft registered for this wing yet' + (canEdit ? ' — add the first one above' : '') + '</p></div>';
+    return;
+  }
+  el.innerHTML = fleet.map(function(a) {
+    const st = STATUS[a.status] || STATUS.available;
+    const staffRow = canEdit
+      ? '<div class="ac-edit-row">'
+        + '<input type="text" id="loc-' + a.id + '" value="' + esc(a.location || '') + '" placeholder="ICAO" maxlength="8" style="width:90px;font-family:var(--mono);text-transform:uppercase">'
+        + '<select id="st-' + a.id + '">'
+        +   Object.entries(STATUS).map(function(e){ return '<option value="' + e[0] + '"' + (a.status===e[0]?' selected':'') + '>' + e[1].label + '</option>'; }).join('')
+        + '</select>'
+        + '<button class="btn btn-primary btn-xs" onclick="updateAircraft(\'' + a.id + '\')">Update</button>'
+        + '<div style="flex:1"></div>'
+        + '<button class="btn btn-danger btn-xs" onclick="deleteAircraft(\'' + a.id + '\')">Remove</button>'
+        + '</div>'
+      : '';
+    return '<div class="ac-card" style="border-left:3px solid ' + (w.color || '#c8a951') + '">'
+      + '<div class="ac-icon">🛩</div>'
+      + '<div class="ac-info">'
+      +   '<div class="ac-tail">' + esc(a.tail || '—') + (a.nickname ? ' <span class="ac-nick">&ldquo;' + esc(a.nickname) + '&rdquo;</span>' : '') + '</div>'
+      +   '<div class="ac-meta">' + esc(a.type || (w.aircraft && w.aircraft[0]) || '') + ' · 📍 ' + esc(a.location || 'Unknown') + (a.updatedBy ? ' · updated by ' + esc(a.updatedBy) : '') + '</div>'
+      + '</div>'
+      + '<span class="ac-status ' + st.cls + '">' + st.label + '</span>'
+      + staffRow
+      + '</div>';
+  }).join('');
+}
+
+async function addAircraft() {
+  const tail = document.getElementById('ac-tail').value.trim();
+  const nick = document.getElementById('ac-nick').value.trim().replace(/^["\u201c]|["\u201d]$/g, '');
+  const loc  = document.getElementById('ac-loc').value.trim().toUpperCase();
+  const st   = document.getElementById('ac-status').value;
+  if (!tail) { toast('Enter a tail number', 'error'); return; }
+  if (fleet.some(function(a){ return (a.tail||'').toLowerCase() === tail.toLowerCase(); })) {
+    toast('That tail number is already in this wing\'s fleet', 'error'); return;
+  }
+  const w = WINGS[activeWing] || {};
+  try {
+    await db.collection('fleet').add({
+      wing: activeWing,
+      tail: tail,
+      nickname: nick,
+      type: (w.aircraft && w.aircraft[0]) || '',
+      location: loc || (w.base ? w.base.match(/\(([A-Z0-9]+)\)/)?.[1] || '' : ''),
+      status: st,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '',
+    });
+    logAudit('fleet_aircraft_added', 'Aircraft added to ' + (w.name||activeWing) + ': ' + tail + (nick ? ' "' + nick + '"' : ''));
+    document.getElementById('ac-tail').value = '';
+    document.getElementById('ac-nick').value = '';
+    document.getElementById('ac-loc').value = '';
+    toast('Aircraft added!');
+    await loadFleet();
+    postFleetStatus(false);
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function updateAircraft(id) {
+  const loc = document.getElementById('loc-' + id).value.trim().toUpperCase();
+  const st  = document.getElementById('st-' + id).value;
+  const ac  = fleet.find(function(a){ return a.id === id; });
+  try {
+    await db.collection('fleet').doc(id).update({
+      location: loc,
+      status: st,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '',
+    });
+    logAudit('fleet_aircraft_updated', 'Aircraft updated: ' + (ac ? ac.tail : id) + ' → 📍 ' + (loc||'—') + ' · ' + (STATUS[st]?STATUS[st].label:st));
+    toast('Aircraft updated');
+    await loadFleet();
+    postFleetStatus(false);
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function deleteAircraft(id) {
+  const ac = fleet.find(function(a){ return a.id === id; });
+  if (!confirm('Remove ' + (ac ? ac.tail + (ac.nickname ? ' "' + ac.nickname + '"' : '') : 'this aircraft') + ' from the fleet?')) return;
+  try {
+    await db.collection('fleet').doc(id).delete();
+    logAudit('fleet_aircraft_removed', 'Aircraft removed: ' + (ac ? ac.tail : id));
+    toast('Aircraft removed');
+    await loadFleet();
+    postFleetStatus(false);
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function logAudit(type, notes) {
+  try {
+    await db.collection('auditLog').add({
+      eventType: type,
+      actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
+      details: { notes: notes },
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch(e) {}
+}
+
+// ── DISCORD FLEET STATUS ─────────────────────────────────────
+// Posts the current wing's full fleet — every aircraft with its
+// location and status — to that wing's fleet webhook channel
+// (fleet_7bw / fleet_509bw / fleet_2bw, set in Master Admin →
+// Discord Webhooks). Fires automatically on any fleet change and
+// manually via the 📡 button. Each wing posts to its OWN channel.
+async function postFleetStatus(manual) {
+  const ch = whChannels['fleet_' + activeWing];
+  const url = ch && ch.url;
+  if (!url) {
+    if (manual) toast('No fleet webhook set for this wing — add one in Master Admin → Discord Webhooks', 'warn');
+    return;
+  }
+  const w = WINGS[activeWing] || {};
+  const colorInt = parseInt((w.color || '#c8a951').replace('#',''), 16);
+  const fields = fleet.slice(0, 25).map(function(a) {
+    const st = STATUS[a.status] || STATUS.available;
+    return {
+      name: a.tail + (a.nickname ? ' — "' + a.nickname + '"' : ''),
+      value: st.emoji + ' ' + st.label + ' · 📍 **' + (a.location || 'Unknown') + '**',
+      inline: true,
+    };
+  });
+  const payload = {
+    embeds: [{
+      color: colorInt,
+      title: '🛩 ' + (w.name || activeWing) + ' — Fleet Status',
+      description: fleet.length
+        ? fleet.length + ' aircraft on strength · ' + (w.aircraft && w.aircraft[0] ? w.aircraft[0] : '') + ' · ' + (w.base || '')
+        : 'No aircraft currently registered.',
+      fields: fields,
+      footer: { text: 'Updated by ' + (currentPilot?.displayName || currentPilot?.callsign || 'Command') + ' · VTAC Global Strike Command' },
+      timestamp: new Date().toISOString(),
+    }]
+  };
+  try {
+    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (manual) {
+      if (resp.ok || resp.status === 204) toast('Fleet status posted to Discord ✓');
+      else toast('Discord returned ' + resp.status, 'error');
+    }
+  } catch(e) { if (manual) toast('Discord post failed: ' + e.message, 'error'); }
+}
+</script>
+</body>
+</html>

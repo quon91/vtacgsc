@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Events — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.ev-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.ev-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:12px;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.ev-date{flex-shrink:0;width:64px;text-align:center;background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:8px 4px}
+.ev-date .d{font-size:22px;font-weight:900;color:var(--gold);line-height:1}
+.ev-date .m{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-top:2px}
+.ev-info{flex:1;min-width:220px}
+.ev-title{font-size:16px;font-weight:800;color:var(--text)}
+.ev-when{font-size:12px;color:var(--text2);font-family:var(--mono);margin-top:2px}
+.ev-desc{font-size:13px;color:var(--text2);line-height:1.7;margin-top:8px;white-space:pre-wrap}
+.ev-wing-chip{font-size:9px;font-weight:800;letter-spacing:.06em;border-radius:9px;padding:2px 8px;text-transform:uppercase;display:inline-block;margin-top:6px}
+.ev-past{opacity:.5}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links"></div>
+    <div class="nav-right" id="nav-right-area"></div>
+    <button class="nav-mobile-btn" onclick="document.getElementById('nav-links').classList.toggle('open')">☰</button>
+  </div>
+</nav>
+
+<div class="ev-hero">
+  <div class="hero-eyebrow">Operations Calendar</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Command <span>Events</span></h1>
+  <p class="hero-sub" style="font-size:14px">Group flights, training nights, and command-wide operations.</p>
+</div>
+
+<div class="container page-body" style="max-width:900px">
+
+  <!-- CREATE EVENT — command staff only -->
+  <div class="card" id="ev-add-card" style="display:none;margin-bottom:20px">
+    <div class="card-header"><div class="card-icon">➕</div><div class="card-title">Schedule an event</div></div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Event title</label>
+          <input type="text" id="ev-title" placeholder="e.g. 7th BW Night Strike — KDYS to Nellis Range" maxlength="100">
+        </div>
+        <div class="form-group">
+          <label>Date &amp; time</label>
+          <input type="datetime-local" id="ev-when">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>For</label>
+          <select id="ev-wing">
+            <option value="all">All Wings — command-wide</option>
+            <option value="7bw">7th Bomb Wing — B-1B</option>
+            <option value="509bw">509th Bomb Wing — B-2</option>
+            <option value="2bw">2nd Bomb Wing — B-52H</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ping Discord?</label>
+          <select id="ev-ping">
+            <option value="">No announcement</option>
+            <option value="yes">Announce to Events channel</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Details <span style="color:var(--text3)">(briefing, route, time zone, voice channel…)</span></label>
+        <textarea id="ev-desc" rows="4" placeholder="What, where, when — everything pilots need to show up ready."></textarea>
+      </div>
+      <div class="form-group" id="ev-mention-wrap" style="display:none">
+        <label>Discord mention <span style="color:var(--text3)">(optional — @everyone, &lt;@&amp;ROLE_ID&gt;, or &lt;@USER_ID&gt;)</span></label>
+        <input type="text" id="ev-mention" placeholder="@everyone" style="font-family:var(--mono)">
+      </div>
+      <button class="btn btn-primary" onclick="addEvent()">+ Schedule event</button>
+    </div>
+  </div>
+
+  <div id="events-list"><div class="empty-state"><p>Loading events…</p></div></div>
+
+  <!-- DISCORD TASKING — command staff only -->
+  <div class="card" id="tasking-card" style="display:none;margin-top:28px">
+    <div class="card-header"><div class="card-icon blue">📌</div><div class="card-title">Discord tasking — ping a wing, squadron, or pilot</div></div>
+    <div class="card-body">
+      <div class="alert alert-info" style="font-size:12px;margin-bottom:14px">
+        Sends a tasking order to the selected Discord channel. To ping people, put a mention in the mention box:
+        <strong>@everyone</strong>, a role mention like <strong>&lt;@&amp;ROLE_ID&gt;</strong>, or a user mention like <strong>&lt;@USER_ID&gt;</strong>.
+        Get IDs in Discord: Settings → Advanced → Developer Mode → right-click a role/user → Copy ID.
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Send to channel</label>
+          <select id="task-channel"></select>
+        </div>
+        <div class="form-group">
+          <label>Mention <span style="color:var(--text3)">(who gets pinged)</span></label>
+          <input type="text" id="task-mention" placeholder="@everyone or <@&123456789>" style="font-family:var(--mono)">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Tasking order</label>
+        <textarea id="task-msg" rows="3" placeholder="e.g. 28th BS: launch two B-1Bs from KDYS to KBAD by 2100Z tonight. Report ready status in ops channel."></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="sendTasking()">📡 Send tasking</button>
+    </div>
+  </div>
+
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+// Event managers / taskers: Wing Commanders, Squadron Commanders,
+// Master Admin, plus any custom role with manage_events (GSC
+// Commander). Mirrors the events Firestore rule.
+function canManageEvents(pilot) {
+  if (!pilot) return false;
+  if (typeof hasPermission === 'function' && hasPermission(pilot, 'manage_events')) return true;
+  return getPilotRoleIds(pilot).some(function(rid) {
+    return rid === 'wing_commander' || rid === 'sq_commander';
+  });
+}
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+const EV_WINGS = {
+  all:     { label: 'All Wings', color: '#c8a951' },
+  '7bw':   { label: '7th BW — B-1B', color: '#c8a951' },
+  '509bw': { label: '509th BW — B-2', color: '#4a90d9' },
+  '2bw':   { label: '2nd BW — B-52H', color: '#3dba6e' },
+};
+// Channels the tasking tool can post to (label → webhook channel key
+// from Master Admin → Discord Webhooks)
+const TASK_CHANNELS = {
+  tasking:      'Tasking channel',
+  events:       'Events channel',
+  fleet_7bw:    '7th BW fleet channel',
+  fleet_509bw:  '509th BW fleet channel',
+  fleet_2bw:    '2nd BW fleet channel',
+  flights_7bw:  '7th BW flight log channel',
+  flights_509bw:'509th BW flight log channel',
+  flights_2bw:  '2nd BW flight log channel',
+  admin_all:    'Admin — all events channel',
+};
+
+let isStaff = false, events = [], whChannels = {};
+
+function onAuthReady(user, pilot) {
+  if (!user) { window.location.replace('/pages/login.html'); return; }
+  isStaff = canManageEvents(pilot);
+  if (isStaff) {
+    document.getElementById('ev-add-card').style.display = 'block';
+    document.getElementById('tasking-card').style.display = 'block';
+    document.getElementById('ev-ping').addEventListener('change', function() {
+      document.getElementById('ev-mention-wrap').style.display = this.value ? 'block' : 'none';
+    });
+  }
+  loadWebhooks().then(function() { if (isStaff) renderTaskChannels(); });
+  loadEvents();
+}
+
+async function loadWebhooks() {
+  try {
+    const s = await db.collection('settings').doc('webhooks').get();
+    whChannels = s.exists ? (s.data().channels || {}) : {};
+  } catch(e) { whChannels = {}; }
+}
+
+function renderTaskChannels() {
+  const sel = document.getElementById('task-channel');
+  const opts = Object.entries(TASK_CHANNELS)
+    .filter(function(e){ return whChannels[e[0]] && whChannels[e[0]].url; })
+    .map(function(e){ return '<option value="' + e[0] + '">' + e[1] + '</option>'; });
+  sel.innerHTML = opts.length ? opts.join('') : '<option value="">No webhooks configured — set them in Master Admin</option>';
+}
+
+async function loadEvents() {
+  try {
+    const snap = await db.collection('events').orderBy('when', 'asc').get();
+    events = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
+  } catch(e) {
+    try {
+      const snap = await db.collection('events').get();
+      events = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
+      events.sort(function(a,b){ return evDate(a) - evDate(b); });
+    } catch(e2) { events = []; }
+  }
+  renderEvents();
+}
+
+function evDate(e) {
+  if (!e.when) return new Date(0);
+  return e.when.toDate ? e.when.toDate() : new Date(e.when);
+}
+
+function renderEvents() {
+  const el = document.getElementById('events-list');
+  if (!events.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">📅</div><p>No events scheduled' + (isStaff ? ' — schedule the first one above' : ' — check back soon') + '</p></div>';
+    return;
+  }
+  const now = new Date();
+  const upcoming = events.filter(function(e){ return evDate(e) >= now; });
+  const past = events.filter(function(e){ return evDate(e) < now; }).reverse().slice(0, 5);
+
+  function card(e, isPast) {
+    const d = evDate(e);
+    const w = EV_WINGS[e.wing || 'all'] || EV_WINGS.all;
+    return '<div class="ev-card' + (isPast ? ' ev-past' : '') + '" style="border-left:3px solid ' + w.color + '">'
+      + '<div class="ev-date"><div class="d">' + d.getDate() + '</div><div class="m">' + d.toLocaleDateString('en-US',{month:'short'}) + '</div></div>'
+      + '<div class="ev-info">'
+      +   '<div class="ev-title">' + esc(e.title) + '</div>'
+      +   '<div class="ev-when">' + d.toLocaleString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) + '</div>'
+      +   '<span class="ev-wing-chip" style="background:' + w.color + '22;color:' + w.color + ';border:1px solid ' + w.color + '55">' + w.label + '</span>'
+      +   (e.description ? '<div class="ev-desc">' + esc(e.description) + '</div>' : '')
+      +   (e.createdBy ? '<div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:8px">Posted by ' + esc(e.createdBy) + '</div>' : '')
+      + '</div>'
+      + (isStaff ? '<button class="btn btn-danger btn-xs" onclick="deleteEvent(\'' + e.id + '\')">Delete</button>' : '')
+      + '</div>';
+  }
+
+  el.innerHTML =
+    (upcoming.length
+      ? upcoming.map(function(e){ return card(e, false); }).join('')
+      : '<div class="empty-state"><div class="icon">📅</div><p>No upcoming events' + (isStaff ? ' — schedule one above' : '') + '</p></div>')
+    + (past.length
+      ? '<div style="font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);margin:26px 0 10px">Recent past events</div>'
+        + past.map(function(e){ return card(e, true); }).join('')
+      : '');
+}
+
+async function addEvent() {
+  const title = document.getElementById('ev-title').value.trim();
+  const whenV = document.getElementById('ev-when').value;
+  const wing  = document.getElementById('ev-wing').value;
+  const desc  = document.getElementById('ev-desc').value.trim();
+  const ping  = document.getElementById('ev-ping').value === 'yes';
+  if (!title) { toast('Enter an event title', 'error'); return; }
+  if (!whenV) { toast('Pick a date and time', 'error'); return; }
+  const when = new Date(whenV);
+  try {
+    await db.collection('events').add({
+      title: title, when: when, wing: wing, description: desc,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '',
+      createdByUid: currentUser ? currentUser.uid : null,
+    });
+    try {
+      await db.collection('auditLog').add({
+        eventType: 'event_created',
+        actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
+        details: { notes: 'Event scheduled: ' + title },
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch(e) {}
+    if (ping) announceEvent(title, when, wing, desc);
+    document.getElementById('ev-title').value = '';
+    document.getElementById('ev-when').value = '';
+    document.getElementById('ev-desc').value = '';
+    toast('Event scheduled!');
+    loadEvents();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function announceEvent(title, when, wing, desc) {
+  const ch = whChannels.events || whChannels.admin_all;
+  if (!ch || !ch.url) { toast('Event saved, but no Events webhook is set — add one in Master Admin → Discord Webhooks', 'warn'); return; }
+  const w = EV_WINGS[wing] || EV_WINGS.all;
+  const mention = document.getElementById('ev-mention').value.trim();
+  const payload = {
+    content: mention || undefined,
+    embeds: [{
+      color: parseInt(w.color.replace('#',''), 16),
+      title: '📅 ' + title,
+      description: (desc ? desc + '\n\n' : '') + '🕐 **' + when.toLocaleString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}) + '**\n🎯 ' + w.label,
+      footer: { text: 'Scheduled by ' + (currentPilot?.displayName || currentPilot?.callsign || 'Command') + ' · VTAC GSC Events' },
+      timestamp: new Date().toISOString(),
+    }]
+  };
+  try {
+    const resp = await fetch(ch.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (resp.ok || resp.status === 204) toast('Event announced on Discord ✓');
+    else toast('Discord returned ' + resp.status, 'error');
+  } catch(e) { toast('Discord announce failed: ' + e.message, 'error'); }
+}
+
+async function deleteEvent(id) {
+  const ev = events.find(function(e){ return e.id === id; });
+  if (!confirm('Delete "' + (ev ? ev.title : 'this event') + '"?')) return;
+  try {
+    await db.collection('events').doc(id).delete();
+    toast('Event deleted');
+    loadEvents();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// ── DISCORD TASKING ──────────────────────────────────────────
+async function sendTasking() {
+  const chKey   = document.getElementById('task-channel').value;
+  const mention = document.getElementById('task-mention').value.trim();
+  const msg     = document.getElementById('task-msg').value.trim();
+  if (!chKey) { toast('No webhook channels configured yet', 'error'); return; }
+  if (!msg)   { toast('Write the tasking order first', 'error'); return; }
+  const ch = whChannels[chKey];
+  if (!ch || !ch.url) { toast('That channel has no webhook URL set', 'error'); return; }
+  const payload = {
+    content: mention || undefined,
+    embeds: [{
+      color: 0xe09030,
+      title: '📌 Tasking Order',
+      description: msg,
+      footer: { text: 'Issued by ' + (currentPilot?.displayName || currentPilot?.callsign || 'Command') + ' · VTAC Global Strike Command' },
+      timestamp: new Date().toISOString(),
+    }]
+  };
+  try {
+    const resp = await fetch(ch.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (resp.ok || resp.status === 204) {
+      toast('Tasking sent ✓');
+      document.getElementById('task-msg').value = '';
+      try {
+        await db.collection('auditLog').add({
+          eventType: 'tasking_sent',
+          actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
+          details: { notes: 'Tasking → ' + (TASK_CHANNELS[chKey] || chKey) + ': ' + msg.slice(0, 80) },
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch(e) {}
+    } else toast('Discord returned ' + resp.status, 'error');
+  } catch(e) { toast('Tasking failed: ' + e.message, 'error'); }
+}
+</script>
+</body>
+</html>

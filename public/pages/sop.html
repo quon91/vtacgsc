@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Standard Operating Procedures — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.sop-hero{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.sop-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px 24px;margin-bottom:14px}
+.sop-num{font-size:10px;font-weight:800;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:4px}
+.sop-title{font-size:17px;font-weight:800;color:var(--text);margin-bottom:10px}
+.sop-body{font-size:13.5px;color:var(--text2);line-height:1.8;white-space:pre-wrap}
+.sop-updated{font-size:11px;color:var(--text3);font-family:var(--mono);text-align:center;margin-top:20px}
+.sop-edit-section{background:var(--card2);border:1px dashed var(--border2);border-radius:12px;padding:16px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links"></div>
+    <div class="nav-right" id="nav-right-area"></div>
+    <button class="nav-mobile-btn" onclick="document.getElementById('nav-links').classList.toggle('open')">☰</button>
+  </div>
+</nav>
+
+<div class="sop-hero">
+  <div class="hero-eyebrow">Command Directive</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,5vw,44px)">Standard Operating <span>Procedures</span></h1>
+  <p class="hero-sub" style="font-size:14px">vGSC official procedures — required reading for all pilots across every wing.</p>
+  <button class="btn btn-outline btn-sm" id="sop-edit-btn" style="display:none;margin-top:14px" onclick="enterEditMode()">✏️ Edit SOPs</button>
+</div>
+
+<div class="container page-body" style="max-width:860px">
+  <div id="sop-view"><div class="empty-state"><p>Loading procedures…</p></div></div>
+
+  <!-- EDIT MODE — command staff only -->
+  <div id="sop-edit" style="display:none">
+    <div class="alert alert-info" style="margin-bottom:16px;font-size:12px">Editing the official SOPs. Each section has a title and body — line breaks are preserved. Changes go live for every member the moment you save.</div>
+    <div id="sop-edit-sections"></div>
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" onclick="addEditSection()">+ Add section</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-outline" onclick="cancelEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSop()">💾 Save &amp; publish</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+// Editors: Wing Commanders, Squadron Commanders, Master Admin, and
+// any custom role holding the edit_sop permission (GSC Commander).
+// Mirrors the settings/sop Firestore rule.
+function canEditSop(pilot) {
+  if (!pilot) return false;
+  if (typeof hasPermission === 'function' && hasPermission(pilot, 'edit_sop')) return true;
+  return getPilotRoleIds(pilot).some(function(rid) {
+    return rid === 'wing_commander' || rid === 'sq_commander';
+  });
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let sopData = { sections: [] };
+
+function onAuthReady(user, pilot) {
+  if (!user) { window.location.replace('/pages/login.html'); return; }
+  if (canEditSop(pilot)) document.getElementById('sop-edit-btn').style.display = 'inline-flex';
+  loadSop();
+}
+
+async function loadSop() {
+  try {
+    const doc = await db.collection('settings').doc('sop').get();
+    sopData = doc.exists ? doc.data() : { sections: [] };
+    if (!Array.isArray(sopData.sections)) sopData.sections = [];
+  } catch(e) { sopData = { sections: [] }; }
+  renderSop();
+}
+
+function renderSop() {
+  const el = document.getElementById('sop-view');
+  if (!sopData.sections.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">📘</div><p>No procedures published yet.' +
+      (document.getElementById('sop-edit-btn').style.display !== 'none' ? '<br>Use the Edit button above to write the first SOP.' : '') + '</p></div>';
+    return;
+  }
+  el.innerHTML = sopData.sections.map(function(s, i) {
+    return '<div class="sop-section">'
+      + '<div class="sop-num">Section ' + (i+1) + '</div>'
+      + '<div class="sop-title">' + esc(s.title) + '</div>'
+      + '<div class="sop-body">' + esc(s.body) + '</div>'
+      + '</div>';
+  }).join('')
+  + (sopData.updatedAt && sopData.updatedAt.toDate
+      ? '<div class="sop-updated">Last updated ' + sopData.updatedAt.toDate().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}) + (sopData.updatedBy ? ' by ' + esc(sopData.updatedBy) : '') + '</div>'
+      : '');
+}
+
+// ── EDIT MODE ────────────────────────────────────────────────
+function enterEditMode() {
+  document.getElementById('sop-view').style.display = 'none';
+  document.getElementById('sop-edit').style.display = 'block';
+  document.getElementById('sop-edit-btn').style.display = 'none';
+  const wrap = document.getElementById('sop-edit-sections');
+  wrap.innerHTML = '';
+  (sopData.sections.length ? sopData.sections : [{title:'', body:''}]).forEach(function(s){ appendEditSection(s.title, s.body); });
+}
+
+function appendEditSection(title, body) {
+  const wrap = document.getElementById('sop-edit-sections');
+  const div = document.createElement('div');
+  div.className = 'sop-edit-section';
+  div.innerHTML =
+    '<div class="form-group"><label>Section title</label><input type="text" class="sop-e-title" maxlength="100" placeholder="e.g. Radio Communications"></div>' +
+    '<div class="form-group"><label>Body</label><textarea class="sop-e-body" rows="6" placeholder="Procedure text… line breaks are kept."></textarea></div>' +
+    '<button class="btn btn-danger btn-xs" onclick="this.parentElement.remove()">Remove section</button>';
+  div.querySelector('.sop-e-title').value = title || '';
+  div.querySelector('.sop-e-body').value = body || '';
+  wrap.appendChild(div);
+}
+function addEditSection() { appendEditSection('', ''); }
+
+function cancelEdit() {
+  document.getElementById('sop-edit').style.display = 'none';
+  document.getElementById('sop-view').style.display = 'block';
+  document.getElementById('sop-edit-btn').style.display = 'inline-flex';
+}
+
+async function saveSop() {
+  const sections = [...document.querySelectorAll('.sop-edit-section')].map(function(div) {
+    return {
+      title: div.querySelector('.sop-e-title').value.trim(),
+      body:  div.querySelector('.sop-e-body').value.trim(),
+    };
+  }).filter(function(s){ return s.title || s.body; });
+  try {
+    await db.collection('settings').doc('sop').set({
+      sections: sections,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '',
+    });
+    try {
+      await db.collection('auditLog').add({
+        eventType: 'sop_updated',
+        actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
+        details: { notes: 'SOPs updated — ' + sections.length + ' section(s)' },
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch(e) {}
+    toast('SOPs published!');
+    await loadSop();
+    cancelEdit();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+</script>
+</body>
+</html>
