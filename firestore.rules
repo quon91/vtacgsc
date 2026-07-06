@@ -196,6 +196,24 @@ service cloud.firestore {
       allow write: if isCommandStaff() || hasPerm('edit_sop');
     }
 
+    // ── MISSION TASKING CONFIG ───────────────────────────────
+    // Saved default @mentions per target unit (all/7bw/509bw/2bw),
+    // set by commanders on the Mission Tasking page.
+    match /settings/tasking {
+      allow read: if isSignedIn();
+      allow write: if isCommandStaff();
+    }
+
+    // ── FLEET STATUS MESSAGE IDS ─────────────────────────────
+    // Stores the Discord message id of each wing's live fleet
+    // status post, so updates EDIT the existing message instead
+    // of posting a new one. Any active pilot can write it because
+    // logging a flight updates the fleet post.
+    match /settings/fleetStatus {
+      allow read: if isSignedIn();
+      allow write: if isActive();
+    }
+
     // ── WINGS (names, callsign pools, logos) ─────────────────
     match /wings/{wingId} {
       allow read: if isSignedIn();
