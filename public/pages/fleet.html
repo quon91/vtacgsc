@@ -269,12 +269,41 @@ async function logAudit(type, notes) {
   } catch(e) {}
 }
 
-// ── DISCORD FLEET STATUS ─────────────────────────────────────
-// Posts the current wing's full fleet — every aircraft with its
-// location and status — to that wing's fleet webhook channel
-// (fleet_7bw / fleet_509bw / fleet_2bw, set in Master Admin →
-// Discord Webhooks). Fires automatically on any fleet change and
-// manually via the 📡 button. Each wing posts to its OWN channel.
+// ── DISCORD FLEET STATUS — LIVE MESSAGE ──────────────────────
+// Instead of posting a new message on every change, each wing has
+// ONE living fleet-status message in its Discord channel that gets
+// EDITED in place. The message id is stored in settings/fleetStatus;
+// if the Discord message was deleted, the next update recreates it
+// and stores the new id.
+async function upsertFleetMessage(wing, url, payload) {
+  let ids = {};
+  try {
+    const s = await db.collection('settings').doc('fleetStatus').get();
+    ids = s.exists ? (s.data().messages || {}) : {};
+  } catch(e) {}
+  const mid = ids[wing];
+  if (mid) {
+    try {
+      const r = await fetch(url + '/messages/' + mid, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (r.ok) return true;   // edited the existing message ✓
+    } catch(e) {}
+    // fell through: message was deleted or PATCH failed → repost
+  }
+  try {
+    const sep = url.includes('?') ? '&' : '?';
+    const r = await fetch(url + sep + 'wait=true', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (r.ok) {
+      const msg = await r.json().catch(function(){ return null; });
+      if (msg && msg.id) {
+        ids[wing] = msg.id;
+        db.collection('settings').doc('fleetStatus').set({ messages: ids }, { merge: true }).catch(function(){});
+      }
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
 async function postFleetStatus(manual) {
   const ch = whChannels['fleet_' + activeWing];
   const url = ch && ch.url;
@@ -304,13 +333,11 @@ async function postFleetStatus(manual) {
       timestamp: new Date().toISOString(),
     }]
   };
-  try {
-    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    if (manual) {
-      if (resp.ok || resp.status === 204) toast('Fleet status posted to Discord ✓');
-      else toast('Discord returned ' + resp.status, 'error');
-    }
-  } catch(e) { if (manual) toast('Discord post failed: ' + e.message, 'error'); }
+  const ok = await upsertFleetMessage(activeWing, url, payload);
+  if (manual) {
+    if (ok) toast('Discord fleet status updated ✓');
+    else toast('Discord update failed — check the webhook URL', 'error');
+  }
 }
 </script>
 </body>
