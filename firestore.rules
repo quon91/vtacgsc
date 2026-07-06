@@ -170,9 +170,16 @@ service cloud.firestore {
     }
 
     // ── FLEET (per-wing aircraft registry) ───────────────────
+    // Command staff add/remove aircraft and edit everything.
+    // Regular active pilots may ONLY move a jet — location, status,
+    // and the update stamp — which is how the Flight Planner reserves
+    // an airframe and the Flight Log releases it at the destination.
     match /fleet/{aircraftId} {
       allow read: if isActive();
-      allow write: if isCommandStaff() || hasPerm('manage_fleet');
+      allow create, delete: if isCommandStaff() || hasPerm('manage_fleet');
+      allow update: if isCommandStaff() || hasPerm('manage_fleet')
+        || (isActive() && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['location','status','updatedAt','updatedBy']));
     }
 
     // ── EVENTS ───────────────────────────────────────────────
