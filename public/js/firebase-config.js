@@ -250,6 +250,9 @@ const ALL_PERMISSIONS = [
   { id: 'view_all_flights',  label: 'View all flight logs (not just own)' },
   { id: 'delete_flights',    label: 'Delete any flight log entry' },
   { id: 'manage_training',   label: 'Edit training modules' },
+  { id: 'manage_fleet',      label: 'Manage wing aircraft fleet' },
+  { id: 'manage_events',     label: 'Create / manage events' },
+  { id: 'edit_sop',          label: 'Edit Standard Operating Procedures' },
   { id: 'award_medals',      label: 'Award medals, ribbons & pilot wings' },
 ];
 
