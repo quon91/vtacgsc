@@ -569,8 +569,32 @@ async function submitFlight(){
   }catch(e){toast('Error: '+e.message,'error');}
 }
 
-// Posts a wing's full fleet picture to its Discord fleet channel —
-// shared by both decks (reserve on plan save, release on flight log).
+// Updates a wing's LIVE fleet-status message on Discord — edits the
+// existing message in place (id stored in settings/fleetStatus)
+// instead of posting a new one; recreates it if it was deleted.
+// Shared by both decks (reserve on plan save, release on flight log).
+async function upsertFleetMessage(wing,url,payload){
+  let ids={};
+  try{const s=await db.collection('settings').doc('fleetStatus').get();ids=s.exists?(s.data().messages||{}):{};}catch(e){}
+  const mid=ids[wing];
+  if(mid){
+    try{
+      const r=await fetch(url+'/messages/'+mid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(r.ok)return true;
+    }catch(e){}
+  }
+  try{
+    const sep=url.includes('?')?'&':'?';
+    const r=await fetch(url+sep+'wait=true',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(r.ok){
+      const msg=await r.json().catch(function(){return null;});
+      if(msg&&msg.id){ids[wing]=msg.id;db.collection('settings').doc('fleetStatus').set({messages:ids},{merge:true}).catch(function(){});}
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
 async function postWingFleetStatus(wing){
   try{
     const s=await db.collection('settings').doc('webhooks').get();
@@ -582,7 +606,7 @@ async function postWingFleetStatus(wing){
     const ST={available:'🟢 Available',inflight:'🔵 In Flight',maintenance:'🟠 Maintenance'};
     const fields=list.slice(0,25).map(a=>({name:a.tail+(a.nickname?' — "'+a.nickname+'"':''),value:(ST[a.status]||ST.available)+' · 📍 **'+(a.location||'Unknown')+'**',inline:true}));
     const payload={embeds:[{color:(W[wing]||{}).color||0xc8a951,title:'🛩 '+((W[wing]||{}).name||wing)+' — Fleet Status',description:list.length+' aircraft on strength',fields:fields,footer:{text:'Updated by '+(myPilot?.callsign||myPilot?.displayName||'Pilot')+' · VTAC Global Strike Command'},timestamp:new Date().toISOString()}]};
-    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+    upsertFleetMessage(wing,url,payload);
   }catch(e){}
 }
 
