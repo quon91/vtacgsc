@@ -118,6 +118,18 @@ let fleet = [];        // aircraft for the active wing
 let canEdit = false;
 let whChannels = {};   // Discord webhook config from settings/webhooks
 
+// ── EMBED TEMPLATES (Master Admin → Discord Webhooks → Embed Appearance)
+let _embedTpls = null;
+async function getEmbedTpl(key) {
+  if (_embedTpls === null) {
+    try { const s = await db.collection('settings').doc('embedTemplates').get(); _embedTpls = s.exists ? (s.data().templates || {}) : {}; }
+    catch(e) { _embedTpls = {}; }
+  }
+  return _embedTpls[key] || {};
+}
+function fillTpl(str, vars) { return String(str).replace(/\{(\w+)\}/g, function(m,k){ return (vars[k]!==undefined&&vars[k]!==null)?vars[k]:m; }); }
+function tplColor(hex, fallback) { return (hex && /^#[0-9a-fA-F]{6}$/.test(hex)) ? parseInt(hex.slice(1),16) : fallback; }
+
 function onAuthReady(user, pilot) {
   if (!user) { window.location.replace('/pages/login.html'); return; }
   canEdit = canManageFleet(pilot);
@@ -312,7 +324,14 @@ async function postFleetStatus(manual) {
     return;
   }
   const w = WINGS[activeWing] || {};
-  const colorInt = parseInt((w.color || '#c8a951').replace('#',''), 16);
+  const tpl = await getEmbedTpl('fleet_status');
+  const vars = {
+    wing: w.name || activeWing,
+    count: String(fleet.length),
+    aircraft: (w.aircraft && w.aircraft[0]) || '',
+    base: w.base || '',
+    by: currentPilot?.displayName || currentPilot?.callsign || 'Command',
+  };
   const fields = fleet.slice(0, 25).map(function(a) {
     const st = STATUS[a.status] || STATUS.available;
     return {
@@ -323,13 +342,13 @@ async function postFleetStatus(manual) {
   });
   const payload = {
     embeds: [{
-      color: colorInt,
-      title: '🛩 ' + (w.name || activeWing) + ' — Fleet Status',
+      color: tplColor(tpl.color, parseInt((w.color || '#c8a951').replace('#',''), 16)),
+      title: fillTpl(tpl.title || '🛩 {wing} — Fleet Status', vars),
       description: fleet.length
-        ? fleet.length + ' aircraft on strength · ' + (w.aircraft && w.aircraft[0] ? w.aircraft[0] : '') + ' · ' + (w.base || '')
+        ? fillTpl(tpl.desc || '{count} aircraft on strength', vars) + ' · ' + vars.aircraft + ' · ' + vars.base
         : 'No aircraft currently registered.',
       fields: fields,
-      footer: { text: 'Updated by ' + (currentPilot?.displayName || currentPilot?.callsign || 'Command') + ' · VTAC Global Strike Command' },
+      footer: { text: fillTpl(tpl.footer || 'Updated by {by} · VTAC Global Strike Command', vars) },
       timestamp: new Date().toISOString(),
     }]
   };
