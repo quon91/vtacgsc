@@ -117,6 +117,18 @@ const EV_WINGS = {
 
 let isStaff = false, events = [], whChannels = {};
 
+// ── EMBED TEMPLATES (Master Admin → Discord Webhooks → Embed Appearance)
+let _embedTpls = null;
+async function getEmbedTpl(key) {
+  if (_embedTpls === null) {
+    try { const s = await db.collection('settings').doc('embedTemplates').get(); _embedTpls = s.exists ? (s.data().templates || {}) : {}; }
+    catch(e) { _embedTpls = {}; }
+  }
+  return _embedTpls[key] || {};
+}
+function fillTpl(str, vars) { return String(str).replace(/\{(\w+)\}/g, function(m,k){ return (vars[k]!==undefined&&vars[k]!==null)?vars[k]:m; }); }
+function tplColor(hex, fallback) { return (hex && /^#[0-9a-fA-F]{6}$/.test(hex)) ? parseInt(hex.slice(1),16) : fallback; }
+
 function onAuthReady(user, pilot) {
   if (!user) { window.location.replace('/pages/login.html'); return; }
   isStaff = canManageEvents(pilot);
@@ -230,13 +242,16 @@ async function announceEvent(title, when, wing, desc) {
   if (!ch || !ch.url) { toast('Event saved, but no Events webhook is set — add one in Master Admin → Discord Webhooks', 'warn'); return; }
   const w = EV_WINGS[wing] || EV_WINGS.all;
   const mention = document.getElementById('ev-mention').value.trim();
+  const tpl = await getEmbedTpl('event');
+  const whenStr = when.toLocaleString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const vars = { title: title, when: whenStr, unit: w.label, by: currentPilot?.displayName || currentPilot?.callsign || 'Command' };
   const payload = {
     content: mention || undefined,
     embeds: [{
-      color: parseInt(w.color.replace('#',''), 16),
-      title: '📅 ' + title,
-      description: (desc ? desc + '\n\n' : '') + '🕐 **' + when.toLocaleString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}) + '**\n🎯 ' + w.label,
-      footer: { text: 'Scheduled by ' + (currentPilot?.displayName || currentPilot?.callsign || 'Command') + ' · VTAC GSC Events' },
+      color: tplColor(tpl.color, parseInt(w.color.replace('#',''), 16)),
+      title: fillTpl(tpl.title || '📅 {title}', vars),
+      description: (desc ? desc + '\n\n' : '') + '🕐 **' + whenStr + '**\n🎯 ' + w.label,
+      footer: { text: fillTpl(tpl.footer || 'Scheduled by {by} · VTAC GSC Events', vars) },
       timestamp: new Date().toISOString(),
     }]
   };
