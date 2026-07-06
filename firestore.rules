@@ -161,6 +161,34 @@ service cloud.firestore {
       allow write: if isMasterAdmin() || isInstructor() || hasPerm('manage_training');
     }
 
+    // ── COMMAND STAFF (Wing Cmdrs, Sq Cmdrs, Master Admin) ───
+    // Used for fleet, events, and SOP editing. The GSC Commander
+    // (a custom role) qualifies through the permission checkboxes.
+    function isCommandStaff() {
+      return isMasterAdmin()
+        || (isActive() && (hasRole('wing_commander') || hasRole('sq_commander')));
+    }
+
+    // ── FLEET (per-wing aircraft registry) ───────────────────
+    match /fleet/{aircraftId} {
+      allow read: if isActive();
+      allow write: if isCommandStaff() || hasPerm('manage_fleet');
+    }
+
+    // ── EVENTS ───────────────────────────────────────────────
+    match /events/{eventId} {
+      allow read: if isActive();
+      allow write: if isCommandStaff() || hasPerm('manage_events');
+    }
+
+    // ── STANDARD OPERATING PROCEDURES ────────────────────────
+    // More specific than settings/{settingId}: command staff can
+    // edit the SOP doc even though general settings stay master-only.
+    match /settings/sop {
+      allow read: if isSignedIn();
+      allow write: if isCommandStaff() || hasPerm('edit_sop');
+    }
+
     // ── WINGS (names, callsign pools, logos) ─────────────────
     match /wings/{wingId} {
       allow read: if isSignedIn();
