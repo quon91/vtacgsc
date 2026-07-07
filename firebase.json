@@ -1,31 +1,27 @@
 {
   "hosting": {
     "public": "public",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [
-      { "source": "/admin", "destination": "/pages/master-admin.html" }
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
     ],
     "headers": [
       {
-        "source": "**/*.@(html)",
+        "source": "**/*.@(js|css|html)",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          { "key": "Cache-Control", "value": "no-cache" }
         ]
       },
       {
-        "source": "**",
+        "source": "**/*.@(jpg|jpeg|png|gif|webp|svg|ico|woff|woff2)",
         "headers": [
-          { "key": "X-Content-Type-Options", "value": "nosniff" },
-          { "key": "X-Frame-Options", "value": "DENY" },
-          { "key": "X-XSS-Protection", "value": "1; mode=block" }
+          { "key": "Cache-Control", "value": "public, max-age=604800" }
         ]
       }
     ]
   },
   "firestore": {
     "rules": "firestore.rules"
-  },
-  "storage": {
-    "rules": "storage.rules"
   }
 }
