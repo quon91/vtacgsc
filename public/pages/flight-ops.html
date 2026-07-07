@@ -153,7 +153,7 @@ select.search-input{min-width:140px;flex:0}
 
         <!-- RANDOM SORTIE TAB -->
         <div id="tab-random" class="tab-panel2">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Generates a sortie using <strong>real-world filed IFR routes</strong> between your airports (from flightplandatabase.com). Leave arrival blank and the generator picks a random USAF field for you — then rolls a mission type and step time to match.</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Generates a sortie routed over <strong>real-world navaids</strong> — VORs, VORTACs, and TACANs along the actual great-circle corridor between your airports (navdata from OurAirports / FAA, airport positions from AviationWeather.gov). Leave arrival blank for a random USAF field, or set <strong>arrival = departure</strong> for an out-and-back: the generator rolls a heading, picks a real turn-point navaid 150–400 NM out, and routes you home.</div>
           <div class="form-row">
             <div class="form-group">
               <label>Departure (ICAO)</label>
@@ -163,7 +163,7 @@ select.search-input{min-width:140px;flex:0}
             <div class="form-group">
               <label>Arrival (ICAO)</label>
               <input type="text" id="rs-arr" placeholder="blank = surprise me" maxlength="6" style="text-transform:uppercase;font-family:var(--mono)">
-              <div class="form-hint">Blank = random USAF / military field</div>
+              <div class="form-hint">Blank = random USAF field · same as departure = out-and-back</div>
             </div>
           </div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -816,13 +816,14 @@ function loadSquadronRoute(wing, idx) {
 const ACFT_SPEEDS = { 'B-1B Lancer': 650, 'B-2 Spirit': 480, 'B-52H Stratofortress': 400 };
 
 // ── 🎲 RANDOM SORTIE GENERATOR ────────────────────────────────
-// Pulls REAL filed IFR routes between the chosen airports from
-// flightplandatabase.com (public API, fetched through the same
-// allorigins proxy the SimBrief integration uses). Picks one of
-// the filed routes at random, garnishes it with a mission type,
-// altitude, and step time, and loads it straight into the planner.
-// If nobody has ever filed that city pair, falls back to a direct
-// routing so the button always produces a flyable sortie.
+// Routes are built from REAL navdata, no third-party route sites:
+//  · Airport positions — AviationWeather.gov data API
+//  · Navaids (VOR / VORTAC / VOR-DME / TACAN) — OurAirports open
+//    dataset (same FAA-derived source family as NASR)
+// The generator plots the great-circle between the airports and
+// strings together actual navaids along the corridor — classic
+// VOR-to-VOR IRL routing. Same dep/arr = out-and-back: a random
+// heading, a real turn-point navaid 150–400 NM out, and home.
 const SORTIE_FIELDS = [
   'KTIK','KEND','KSPS','KLTS','KHMN','KDMA','KEDW','KLSV','KTCM','KWRI',
   'KDOV','KCHS','KSSC','KFFO','KRND','KCOS','KRCA','KBLV','KRIV','KMUO',
@@ -837,6 +838,109 @@ function randomZulu() {
   return String(h).padStart(2,'0') + '00Z';
 }
 
+// ── geo math (nautical miles) ──
+const EARTH_NM = 3440.065;
+function toRad(d){ return d * Math.PI / 180; }
+function toDeg(r){ return r * 180 / Math.PI; }
+function havNM(a, b) {
+  const dLat = toRad(b.lat - a.lat), dLon = toRad(b.lon - a.lon);
+  const s = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon/2)**2;
+  return 2 * EARTH_NM * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+// point at fraction f along the great circle A→B
+function gcInterp(a, b, f) {
+  const φ1=toRad(a.lat), λ1=toRad(a.lon), φ2=toRad(b.lat), λ2=toRad(b.lon);
+  const δ = havNM(a, b) / EARTH_NM;
+  if (δ < 1e-9) return { lat: a.lat, lon: a.lon };
+  const A = Math.sin((1-f)*δ)/Math.sin(δ), B = Math.sin(f*δ)/Math.sin(δ);
+  const x = A*Math.cos(φ1)*Math.cos(λ1) + B*Math.cos(φ2)*Math.cos(λ2);
+  const y = A*Math.cos(φ1)*Math.sin(λ1) + B*Math.cos(φ2)*Math.sin(λ2);
+  const z = A*Math.sin(φ1) + B*Math.sin(φ2);
+  return { lat: toDeg(Math.atan2(z, Math.sqrt(x*x+y*y))), lon: toDeg(Math.atan2(y, x)) };
+}
+// destination point given start, bearing (deg), distance (nm)
+function gcDest(a, brgDeg, nm) {
+  const δ = nm / EARTH_NM, θ = toRad(brgDeg), φ1 = toRad(a.lat), λ1 = toRad(a.lon);
+  const φ2 = Math.asin(Math.sin(φ1)*Math.cos(δ) + Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+  const λ2 = λ1 + Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1), Math.cos(δ) - Math.sin(φ1)*Math.sin(φ2));
+  return { lat: toDeg(φ2), lon: ((toDeg(λ2) + 540) % 360) - 180 };
+}
+
+// ── real navaid database (loaded once, cached for the session) ──
+let _navaids = null;
+function csvSplit(line) {
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { q = !q; }
+    else if (c === ',' && !q) { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+async function loadNavaids(statusEl) {
+  if (_navaids) return _navaids;
+  if (statusEl) statusEl.innerHTML = '<span class="loading-spin"></span>Loading real-world navaid database (one time)…';
+  const resp = await fetch('https://davidmegginson.github.io/ourairports-data/navaids.csv');
+  const text = await resp.text();
+  const lines = text.split('\n');
+  const GOOD = { 'VOR':1, 'VORTAC':1, 'VOR-DME':1, 'TACAN':1 };
+  const out = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i]) continue;
+    const c = csvSplit(lines[i]);
+    // columns: 0 id, 2 ident, 3 name, 4 type, 6 lat, 7 lon, 9 iso_country
+    if (!GOOD[c[4]]) continue;
+    if (c[9] !== 'US') continue;
+    const lat = parseFloat(c[6]), lon = parseFloat(c[7]);
+    const ident = (c[2] || '').trim().toUpperCase();
+    if (!ident || isNaN(lat) || isNaN(lon)) continue;
+    out.push({ id: ident, lat: lat, lon: lon });
+  }
+  _navaids = out;
+  return out;
+}
+function nearestNavaid(p, usedSet, maxNM) {
+  let best = null, bestD = maxNM || 80;
+  for (let i = 0; i < _navaids.length; i++) {
+    const n = _navaids[i];
+    if (usedSet[n.id]) continue;
+    // cheap prefilter before haversine
+    if (Math.abs(n.lat - p.lat) > 2.2 || Math.abs(n.lon - p.lon) > 2.8) continue;
+    const d = havNM(p, n);
+    if (d < bestD) { bestD = d; best = n; }
+  }
+  return best;
+}
+// chain of real navaids along the corridor A→B
+function buildNavChain(A, B, usedSet) {
+  const dist = havNM(A, B);
+  const legs = Math.max(1, Math.round(dist / (95 + Math.random() * 55)));
+  const chain = [];
+  for (let i = 1; i < legs; i++) {
+    const p = gcInterp(A, B, i / legs);
+    const v = nearestNavaid(p, usedSet, 80);
+    if (v) { usedSet[v.id] = true; chain.push(v); }
+  }
+  return chain;
+}
+
+// airport coordinates from AviationWeather.gov (proxy fallback)
+async function getAirportCoords(icao) {
+  const url = 'https://aviationweather.gov/api/data/airport?ids=' + icao + '&format=json';
+  try {
+    const r = await fetch(url);
+    if (r.ok) { const j = await r.json(); const a = Array.isArray(j) ? j[0] : j; if (a && a.lat != null) return { lat: parseFloat(a.lat), lon: parseFloat(a.lon) }; }
+  } catch(e) {}
+  try {
+    const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url));
+    const w = await r.json(); const j = JSON.parse(w.contents);
+    const a = Array.isArray(j) ? j[0] : j; if (a && a.lat != null) return { lat: parseFloat(a.lat), lon: parseFloat(a.lon) };
+  } catch(e) {}
+  return null;
+}
+
 async function generateSortie() {
   const status = document.getElementById('rs-status');
   const resBox = document.getElementById('rs-result');
@@ -849,65 +953,76 @@ async function generateSortie() {
     const pool = SORTIE_FIELDS.filter(function(f){ return f !== dep; });
     arr = pool[Math.floor(Math.random() * pool.length)];
   }
-  if (arr === dep) { toast('Departure and arrival are the same — roll again', 'error'); return; }
+  const outAndBack = (arr === dep);
 
-  status.innerHTML = '<span class="loading-spin"></span>Searching real-world filed routes ' + dep + ' → ' + arr + '…';
-
-  let routeWaypoints = [], routeAlt = 0, routeDist = 0, source = 'direct';
   try {
-    // 1) Find real filed plans for this city pair
-    const searchUrl = 'https://api.flightplandatabase.com/search/plans?fromICAO=' + dep + '&toICAO=' + arr + '&limit=20';
-    const sResp = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(searchUrl));
-    const sWrap = await sResp.json();
-    const plans = JSON.parse(sWrap.contents);
-    const usable = Array.isArray(plans) ? plans.filter(function(p){ return p && p.id && (p.waypoints || 0) <= 60; }) : [];
-    if (usable.length) {
-      // 2) Pick one at random and pull its full route
-      const pick = usable[Math.floor(Math.random() * usable.length)];
-      const pResp = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://api.flightplandatabase.com/plan/' + pick.id));
-      const pWrap = await pResp.json();
-      const plan = JSON.parse(pWrap.contents);
-      const nodes = plan && plan.route && Array.isArray(plan.route.nodes) ? plan.route.nodes : [];
-      routeWaypoints = nodes
-        .filter(function(n, i){ return n && n.ident && !(i === 0 || i === nodes.length - 1); })
-        .map(function(n){ return String(n.ident).toUpperCase(); });
-      routeAlt  = plan.maxAltitude || pick.maxAltitude || 0;
-      routeDist = Math.round(plan.distance || pick.distance || 0);
-      source = 'real filed route (flightplandatabase.com)';
+    await loadNavaids(status);
+    status.innerHTML = '<span class="loading-spin"></span>Locating ' + dep + (outAndBack ? '' : ' and ' + arr) + '…';
+    const [A, B] = await Promise.all([getAirportCoords(dep), outAndBack ? getAirportCoords(dep) : getAirportCoords(arr)]);
+    if (!A) { status.textContent = ''; toast('Could not find airport ' + dep + ' — check the ICAO', 'error'); return; }
+    if (!B) { status.textContent = ''; toast('Could not find airport ' + arr + ' — check the ICAO', 'error'); return; }
+
+    status.innerHTML = '<span class="loading-spin"></span>Routing over real navaids…';
+    const used = {};
+    let chain = [], routeDist = 0, profile = '';
+
+    if (outAndBack) {
+      // Out-and-back: random heading, real turn-point navaid 150–400 NM out
+      const brg = Math.random() * 360;
+      const range = 150 + Math.random() * 250;
+      const T = gcDest(A, brg, range);
+      const turn = nearestNavaid(T, used, 120) || nearestNavaid(gcInterp(A, T, 0.7), used, 120);
+      const turnPt = turn ? { lat: turn.lat, lon: turn.lon } : T;
+      if (turn) used[turn.id] = true;
+      const outLeg = buildNavChain(A, turnPt, used);
+      const backLeg = buildNavChain(turnPt, A, used);
+      chain = outLeg.concat(turn ? [turn] : [], backLeg);
+      profile = 'out-and-back · hdg ' + String(Math.round(brg)).padStart(3,'0') + '° · turn ' + (turn ? turn.id : 'point') + ' at ~' + Math.round(havNM(A, turnPt)) + ' NM';
+    } else {
+      chain = buildNavChain(A, B, used);
+      profile = 'point-to-point';
     }
-  } catch(e) { /* fall through to direct */ }
 
-  // Garnish the sortie
-  const acft  = document.getElementById('fp-aircraft').value;
-  const mtype = SORTIE_TYPES[Math.floor(Math.random() * SORTIE_TYPES.length)];
-  const step  = randomZulu();
-  if (!routeAlt) routeAlt = ({'B-1B Lancer':[31000,33000,35000,37000],'B-2 Spirit':[36000,38000,40000],'B-52H Stratofortress':[31000,33000,35000]}[acft] || [35000])[Math.floor(Math.random()*3)];
+    // total distance along the actual path
+    const path = [A].concat(chain.map(function(n){ return { lat: n.lat, lon: n.lon }; }), [B]);
+    for (let i = 1; i < path.length; i++) routeDist += havNM(path[i-1], path[i]);
+    routeDist = Math.round(routeDist);
 
-  // Load into the planner
-  sbData = null;
-  document.getElementById('fp-dep').value = dep;
-  document.getElementById('fp-arr').value = arr;
-  document.getElementById('fp-altitude').value = routeAlt;
-  document.getElementById('fp-deptime').value = step;
-  document.getElementById('fp-notes').value = '🎲 Random sortie · ' + mtype + ' · step ' + step + (source !== 'direct' ? ' · routing: real-world filed plan' : ' · routing: direct (no filed routes found for this pair)');
-  waypoints = routeWaypoints;
-  renderWaypoints();
-  updateRoute();
-  renderTailOptions();
-  if (routeDist) {
+    // Garnish
+    const acft  = document.getElementById('fp-aircraft').value;
+    const mtype = outAndBack
+      ? ['Local Area Orientation','Low-Level / Terrain','Air Refueling','Training Sortie','Navigation Proficiency'][Math.floor(Math.random()*5)]
+      : SORTIE_TYPES[Math.floor(Math.random() * SORTIE_TYPES.length)];
+    const step  = randomZulu();
+    const routeAlt = ({'B-1B Lancer':[31000,33000,35000,37000],'B-2 Spirit':[36000,38000,40000],'B-52H Stratofortress':[31000,33000,35000]}[acft] || [35000])[Math.floor(Math.random()*3)];
+
+    // Load into the planner
+    sbData = null;
+    document.getElementById('fp-dep').value = dep;
+    document.getElementById('fp-arr').value = arr;
+    document.getElementById('fp-altitude').value = routeAlt;
+    document.getElementById('fp-deptime').value = step;
+    document.getElementById('fp-notes').value = '🎲 Random sortie · ' + mtype + ' · step ' + step + ' · ' + profile + ' · routed over real-world navaids';
+    waypoints = chain.map(function(n){ return n.id; });
+    renderWaypoints();
+    updateRoute();
+    renderTailOptions();
     document.getElementById('sum-distance').textContent = routeDist + ' NM';
     const speed = ACFT_SPEEDS[acft] || 450;
     const hrs = routeDist / speed;
     document.getElementById('sum-time').textContent = Math.floor(hrs) + 'h ' + Math.round((hrs - Math.floor(hrs)) * 60) + 'm';
-  }
 
-  // Show the result card
-  status.textContent = '';
-  document.getElementById('rs-title').textContent = '🎲 ' + mtype + ' — ' + dep + ' → ' + arr;
-  document.getElementById('rs-meta').textContent = acft + ' · FL' + Math.round(routeAlt/100) + ' · step ' + step + (routeDist ? ' · ' + routeDist + ' NM' : '') + ' · ' + source;
-  document.getElementById('rs-route').textContent = [dep].concat(routeWaypoints, [arr]).join(' ');
-  resBox.style.display = 'block';
-  toast(routeWaypoints.length ? 'Sortie generated from a real filed route ✓' : 'Sortie generated (direct routing — no filed routes for this pair)');
+    // Result card
+    status.textContent = '';
+    document.getElementById('rs-title').textContent = '🎲 ' + mtype + ' — ' + dep + ' → ' + arr;
+    document.getElementById('rs-meta').textContent = acft + ' · FL' + Math.round(routeAlt/100) + ' · step ' + step + ' · ' + routeDist + ' NM · ' + profile + ' · navdata: OurAirports/FAA + AviationWeather.gov';
+    document.getElementById('rs-route').textContent = [dep].concat(waypoints, [arr]).join(' ');
+    resBox.style.display = 'block';
+    toast(chain.length ? 'Sortie generated over ' + chain.length + ' real navaids ✓' : 'Sortie generated (direct — no navaids on that short leg)');
+  } catch(e) {
+    status.textContent = '';
+    toast('Generator error: ' + e.message, 'error');
+  }
 }
 
 // ── PLANNER SUB-TABS ──────────────────────────────────────────
