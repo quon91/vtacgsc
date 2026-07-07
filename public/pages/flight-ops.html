@@ -145,15 +145,15 @@ select.search-input{min-width:140px;flex:0}
       <div class="fp-card">
         <div class="tab-row">
           <button class="tab-btn2 active" data-tab="squad" onclick="switchTab('squad',this)">🦅 Squadron Routes</button>
-          <button class="tab-btn2" data-tab="random" onclick="switchTab('random',this)">🎲 Random Sortie</button>
+          <button class="tab-btn2" data-tab="random" onclick="switchTab('random',this)">🎲 Sortie Generator</button>
           <button class="tab-btn2" data-tab="custom" onclick="switchTab('custom',this)">✏️ Custom Route</button>
           <button class="tab-btn2" data-tab="simbrief" onclick="switchTab('simbrief',this)">🛰 SimBrief OFP</button>
           <button class="tab-btn2" data-tab="community" onclick="switchTab('community',this)">🌐 Community Routes</button>
         </div>
 
-        <!-- RANDOM SORTIE TAB -->
+        <!-- SORTIE GENERATOR TAB -->
         <div id="tab-random" class="tab-panel2">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Generates a sortie routed over <strong>real-world navaids</strong> — VORs, VORTACs, and TACANs along the actual great-circle corridor between your airports (navdata from OurAirports / FAA, airport positions from AviationWeather.gov). Leave arrival blank for a random USAF field, or set <strong>arrival = departure</strong> for an out-and-back: the generator rolls a heading, picks a real turn-point navaid 150–400 NM out, and routes you home.</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Generates a sortie routed over <strong>real-world navaids</strong> — VORs, VORTACs, and TACANs along the actual great-circle corridor between your airports (navdata from OurAirports / FAA, airport positions from AviationWeather.gov — <strong>any ICAO worldwide</strong> that reports weather, including overseas bases like OTBH). Leave arrival blank for a random USAF field, or set <strong>arrival = departure</strong> for an out-and-back: the generator rolls a heading, picks a real turn-point navaid 150–400 NM out, and routes you home.</div>
           <div class="form-row">
             <div class="form-group">
               <label>Departure (ICAO)</label>
@@ -828,12 +828,30 @@ const ACFT_SPEEDS = { 'B-1B Lancer': 650, 'B-2 Spirit': 480, 'B-52H Stratofortre
 // strings together actual navaids along the corridor — classic
 // VOR-to-VOR IRL routing. Same dep/arr = out-and-back: a random
 // heading, a real turn-point navaid 150–400 NM out, and home.
+// Built-in coordinates for the destination pool + GSC bases —
+// random-destination sorties need ZERO airport lookups (instant).
 const SORTIE_FIELDS = [
   'KTIK','KEND','KSPS','KLTS','KHMN','KDMA','KEDW','KLSV','KTCM','KWRI',
   'KDOV','KCHS','KSSC','KFFO','KRND','KCOS','KRCA','KBLV','KRIV','KMUO',
   'KHIF','KGFK','KMIB','KOFF','KBIX','KVAD','KLFI','KSUU','KGUS','KVPS',
   'KDYS','KBAD','KSZL','KTUS','KABQ','KOKC','KICT','KSTL','KMEM','KNFW',
 ];
+const BUILTIN_AIRPORTS = {
+  KTIK:{lat:35.41,lon:-97.39}, KEND:{lat:36.34,lon:-97.92}, KSPS:{lat:33.99,lon:-98.49},
+  KLTS:{lat:34.67,lon:-99.27}, KHMN:{lat:32.85,lon:-106.11}, KDMA:{lat:32.17,lon:-110.88},
+  KEDW:{lat:34.91,lon:-117.88}, KLSV:{lat:36.24,lon:-115.03}, KTCM:{lat:47.14,lon:-122.48},
+  KWRI:{lat:40.02,lon:-74.59}, KDOV:{lat:39.13,lon:-75.47}, KCHS:{lat:32.90,lon:-80.04},
+  KSSC:{lat:33.97,lon:-80.47}, KFFO:{lat:39.83,lon:-84.05}, KRND:{lat:29.53,lon:-98.28},
+  KCOS:{lat:38.81,lon:-104.70}, KRCA:{lat:44.14,lon:-103.10}, KBLV:{lat:38.55,lon:-89.85},
+  KRIV:{lat:33.88,lon:-117.26}, KMUO:{lat:43.04,lon:-115.87}, KHIF:{lat:41.12,lon:-111.97},
+  KGFK:{lat:47.95,lon:-97.18}, KMIB:{lat:48.42,lon:-101.36}, KOFF:{lat:41.12,lon:-95.91},
+  KBIX:{lat:30.41,lon:-88.92}, KVAD:{lat:30.97,lon:-83.19}, KLFI:{lat:37.08,lon:-76.36},
+  KSUU:{lat:38.26,lon:-121.93}, KGUS:{lat:40.65,lon:-86.15}, KVPS:{lat:30.48,lon:-86.53},
+  KDYS:{lat:32.42,lon:-99.85}, KBAD:{lat:32.50,lon:-93.66}, KSZL:{lat:38.73,lon:-93.55},
+  KTUS:{lat:32.12,lon:-110.94}, KABQ:{lat:35.04,lon:-106.61}, KOKC:{lat:35.39,lon:-97.60},
+  KICT:{lat:37.65,lon:-97.43}, KSTL:{lat:38.75,lon:-90.37}, KMEM:{lat:35.04,lon:-89.98},
+  KNFW:{lat:32.77,lon:-97.44},
+};
 const SORTIE_TYPES = ['Cross Country','Training Sortie','Low-Level / Terrain','Strike Mission','Air Refueling','Navigation Proficiency','Instrument Check'];
 const WING_BASE = { '7bw':'KDYS', '509bw':'KSZL', '2bw':'KBAD' };
 
@@ -885,6 +903,12 @@ function csvSplit(line) {
 }
 async function loadNavaids(statusEl) {
   if (_navaids) return _navaids;
+  // sessionStorage cache — the 1MB CSV downloads once, then every
+  // later page load parses instantly from the cached compact list.
+  try {
+    const cached = sessionStorage.getItem('vtac_navaids_v1');
+    if (cached) { _navaids = JSON.parse(cached); return _navaids; }
+  } catch(e) {}
   if (statusEl) statusEl.innerHTML = '<span class="loading-spin"></span>Loading real-world navaid database (one time)…';
   const resp = await fetch('https://davidmegginson.github.io/ourairports-data/navaids.csv');
   const text = await resp.text();
@@ -894,15 +918,17 @@ async function loadNavaids(statusEl) {
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i]) continue;
     const c = csvSplit(lines[i]);
-    // columns: 0 id, 2 ident, 3 name, 4 type, 6 lat, 7 lon, 9 iso_country
+    // columns: 0 id, 2 ident, 3 name, 4 type, 6 lat, 7 lon
+    // Worldwide — overseas sorties (OTBH, ETAR, RJTY…) route over
+    // real navaids in-theater too.
     if (!GOOD[c[4]]) continue;
-    if (c[9] !== 'US') continue;
     const lat = parseFloat(c[6]), lon = parseFloat(c[7]);
     const ident = (c[2] || '').trim().toUpperCase();
     if (!ident || isNaN(lat) || isNaN(lon)) continue;
-    out.push({ id: ident, lat: lat, lon: lon });
+    out.push({ id: ident, lat: Math.round(lat*1000)/1000, lon: Math.round(lon*1000)/1000 });
   }
   _navaids = out;
+  try { sessionStorage.setItem('vtac_navaids_v1', JSON.stringify(out)); } catch(e) {}
   return out;
 }
 function nearestNavaid(p, usedSet, maxNM) {
@@ -930,19 +956,55 @@ function buildNavChain(A, B, usedSet) {
   return chain;
 }
 
-// airport coordinates from AviationWeather.gov (proxy fallback)
+// Airport coordinates — instant for the built-in pool, cached after
+// first lookup, and resolved worldwide via THREE AviationWeather.gov
+// endpoints in order (airport → station info → METAR). Overseas
+// military fields like OTBH often miss the airport endpoint but
+// always report METARs, so the chain catches them.
+const _airportCache = {};
 async function getAirportCoords(icao) {
-  const url = 'https://aviationweather.gov/api/data/airport?ids=' + icao + '&format=json';
+  if (BUILTIN_AIRPORTS[icao]) return BUILTIN_AIRPORTS[icao];
+  if (_airportCache[icao]) return _airportCache[icao];
+  try {
+    const cached = sessionStorage.getItem('vtac_apt_' + icao);
+    if (cached) { _airportCache[icao] = JSON.parse(cached); return _airportCache[icao]; }
+  } catch(e) {}
+  const endpoints = [
+    'https://aviationweather.gov/api/data/airport?ids=' + icao + '&format=json',
+    'https://aviationweather.gov/api/data/stationinfo?ids=' + icao + '&format=json',
+    'https://aviationweather.gov/api/data/metar?ids=' + icao + '&format=json',
+  ];
+  for (let i = 0; i < endpoints.length; i++) {
+    const got = await tryAirportEndpoint(endpoints[i]);
+    if (got) {
+      _airportCache[icao] = got;
+      try { sessionStorage.setItem('vtac_apt_' + icao, JSON.stringify(got)); } catch(e) {}
+      return got;
+    }
+  }
+  return null;
+}
+async function tryAirportEndpoint(url) {
+  // direct first, proxy fallback
   try {
     const r = await fetch(url);
-    if (r.ok) { const j = await r.json(); const a = Array.isArray(j) ? j[0] : j; if (a && a.lat != null) return { lat: parseFloat(a.lat), lon: parseFloat(a.lon) }; }
+    if (r.ok) { const c = extractCoords(await r.json()); if (c) return c; }
   } catch(e) {}
   try {
     const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url));
-    const w = await r.json(); const j = JSON.parse(w.contents);
-    const a = Array.isArray(j) ? j[0] : j; if (a && a.lat != null) return { lat: parseFloat(a.lat), lon: parseFloat(a.lon) };
+    const w = await r.json();
+    const c = extractCoords(JSON.parse(w.contents));
+    if (c) return c;
   } catch(e) {}
   return null;
+}
+function extractCoords(j) {
+  const a = Array.isArray(j) ? j[0] : j;
+  if (!a) return null;
+  const lat = a.lat != null ? parseFloat(a.lat) : (a.latitude != null ? parseFloat(a.latitude) : NaN);
+  const lon = a.lon != null ? parseFloat(a.lon) : (a.longitude != null ? parseFloat(a.longitude) : NaN);
+  if (isNaN(lat) || isNaN(lon)) return null;
+  return { lat: lat, lon: lon };
 }
 
 async function generateSortie() {
@@ -962,9 +1024,10 @@ async function generateSortie() {
   try {
     await loadNavaids(status);
     status.innerHTML = '<span class="loading-spin"></span>Locating ' + dep + (outAndBack ? '' : ' and ' + arr) + '…';
-    const [A, B] = await Promise.all([getAirportCoords(dep), outAndBack ? getAirportCoords(dep) : getAirportCoords(arr)]);
-    if (!A) { status.textContent = ''; toast('Could not find airport ' + dep + ' — check the ICAO', 'error'); return; }
-    if (!B) { status.textContent = ''; toast('Could not find airport ' + arr + ' — check the ICAO', 'error'); return; }
+    const A = await getAirportCoords(dep);
+    const B = outAndBack ? A : await getAirportCoords(arr);
+    if (!A) { status.textContent = ''; toast('Could not locate ' + dep + ' — tried 3 data sources; double-check the ICAO', 'error'); return; }
+    if (!B) { status.textContent = ''; toast('Could not locate ' + arr + ' — tried 3 data sources; double-check the ICAO', 'error'); return; }
 
     status.innerHTML = '<span class="loading-spin"></span>Routing over real navaids…';
     const used = {};
