@@ -197,11 +197,20 @@ service cloud.firestore {
     }
 
     // ── MISSION TASKING CONFIG ───────────────────────────────
-    // Saved default @mentions per target unit (all/7bw/509bw/2bw),
-    // set by commanders on the Mission Tasking page.
+    // Saved default @mentions per target unit and the mission ID
+    // counter, written by commanders on the Mission Tasking page.
     match /settings/tasking {
       allow read: if isSignedIn();
-      allow write: if isCommandStaff();
+      allow write: if isCommandStaff() || hasPerm('manage_events');
+    }
+
+    // ── MISSIONS (tasking order history) ─────────────────────
+    // Every tasking order sent is archived here — mission ID,
+    // assignee, aircraft, route, priority. Read by all members,
+    // written by command staff (GSC Commander via manage_events).
+    match /missions/{missionId} {
+      allow read: if isActive();
+      allow write: if isCommandStaff() || hasPerm('manage_events');
     }
 
     // ── FLEET STATUS MESSAGE IDS ─────────────────────────────
@@ -212,6 +221,23 @@ service cloud.firestore {
     match /settings/fleetStatus {
       allow read: if isSignedIn();
       allow write: if isActive();
+    }
+
+    // ── WING ROSTER MESSAGE IDS ──────────────────────────────
+    // Same living-message pattern for each wing's Discord roster.
+    match /settings/rosterStatus {
+      allow read: if isSignedIn();
+      allow write: if isActive();
+    }
+
+    // ── TRAINING RECORDS (certifications) ────────────────────
+    // Completion records / certs awarded to pilots. Written by
+    // command staff or anyone holding the training permission;
+    // every member can read them (they show on profiles).
+    match /trainingRecords/{recordId} {
+      allow read: if isActive();
+      allow create, update: if isCommandStaff() || hasPerm('manage_training');
+      allow delete: if isMasterAdmin() || isCommandStaff();
     }
 
     // ── WINGS (names, callsign pools, logos) ─────────────────
