@@ -19,6 +19,21 @@
 .module-desc{font-size:12px;color:var(--text2);margin-top:3px}
 .module-meta{font-size:10px;color:var(--text3);margin-top:5px;font-family:var(--mono)}
 .mgr-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--green2);border:1px solid rgba(61,186,110,.4);background:rgba(61,186,110,.08);border-radius:14px;padding:4px 12px;margin-top:10px}
+/* ── RICH TEXT EDITOR (built-in training pages) ── */
+.rt-toolbar{display:flex;gap:4px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--border2);border-radius:10px 10px 0 0;padding:8px 10px;border-bottom:none}
+.rt-btn{min-width:30px;height:28px;padding:0 8px;border-radius:6px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:12px;cursor:pointer;font-family:var(--sans)}
+.rt-btn:hover{border-color:var(--gold);color:var(--gold)}
+.rt-sep{width:1px;height:20px;background:var(--border2);margin:0 4px;display:inline-block}
+.rt-select{height:28px;padding:0 6px;border-radius:6px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:11px;font-family:var(--sans);cursor:pointer}
+.rt-color{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;display:inline-block;vertical-align:middle}
+.rt-color:hover{border-color:#fff}
+.tm-editor{min-height:180px;background:#0a0c14;border:1px solid var(--border2);border-radius:0 0 10px 10px;padding:14px 16px;font-size:13.5px;color:var(--text);line-height:1.8;outline:none}
+.tm-editor:focus{border-color:var(--gold)}
+.tm-editor h1{font-size:20px;margin:14px 0 8px}
+.tm-editor h2{font-size:17px;margin:12px 0 6px;color:var(--gold)}
+.tm-editor h3{font-size:15px;margin:10px 0 5px}
+.tm-editor ul,.tm-editor ol{padding-left:22px;margin:8px 0}
+.tm-editor p{margin:0 0 8px}
 </style>
 </head>
 <body>
@@ -40,9 +55,9 @@
 
 <div class="container page-body">
 
-  <!-- ADD MODULE — visible to training staff only -->
+  <!-- ADD / EDIT MODULE — visible to training staff only -->
   <div class="card" id="add-card" style="display:none;margin-bottom:24px">
-    <div class="card-header"><div class="card-icon">➕</div><div class="card-title">Add training module</div></div>
+    <div class="card-header"><div class="card-icon">➕</div><div class="card-title" id="form-title">Add training module</div></div>
     <div class="card-body">
       <div class="form-row">
         <div class="form-group">
@@ -60,15 +75,84 @@
         </div>
       </div>
       <div class="form-group">
+        <label>Module type</label>
+        <select id="tm-type" onchange="tmTypeChanged()">
+          <option value="page">📄 Built-in page — write the content here, a page is auto-created</option>
+          <option value="link">🔗 Link — points at an existing page or external site</option>
+        </select>
+      </div>
+      <div class="form-group" id="tm-url-wrap" style="display:none">
         <label>Link (training page on this site, Google Doc, YouTube, etc.)</label>
         <input type="url" id="tm-url" placeholder="/pages/training/b1b-ils.html or https://...">
         <div class="form-hint">Site pages start with /pages/training/… — external links need the full https:// address.</div>
+      </div>
+      <div class="form-group" id="tm-content-wrap">
+        <label>Import an existing guide <span style="color:var(--text3)">(optional — converts a static page into this editable module)</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <input type="text" id="tm-import-path" list="known-pages" placeholder="/pages/training/b1b-ils.html" style="flex:1;min-width:220px;font-family:var(--mono)">
+          <datalist id="known-pages">
+            <option value="/pages/training/b1b-ils.html">
+            <option value="/pages/training/b1b-rnav.html">
+            <option value="/pages/training/b1b-vor.html">
+            <option value="/pages/training/b1b-autopilot.html">
+            <option value="/pages/training/b1b-fms.html">
+            <option value="/pages/training/b1b-glossary.html">
+            <option value="/pages/training/b1b-qrc.html">
+            <option value="/pages/training/b1b-syllabus.html">
+            <option value="/pages/training/b2-cockpit.html">
+            <option value="/pages/training/b2-mfd.html">
+            <option value="/pages/training/b2-fms.html">
+            <option value="/pages/training/b2-autopilot.html">
+            <option value="/pages/training/b2-weapons.html">
+            <option value="/pages/training/b2-qrc.html">
+            <option value="/pages/training/b52h-systems.html">
+            <option value="/pages/training/b52h-syllabus.html">
+            <option value="/pages/training/b52h-qrc.html">
+            <option value="/pages/training/instructors-corner.html">
+          </datalist>
+          <button class="btn btn-outline btn-sm" onclick="importPage()">📥 Import page content</button>
+        </div>
+        <label>Page tabs &amp; content</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px" id="tmtab-bar"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <input type="text" id="tmtab-label" placeholder="Tab name" maxlength="40" style="width:200px" oninput="renameActiveTab(this.value)">
+          <button class="btn btn-outline btn-xs" onclick="addTmTab()">+ Add tab</button>
+          <button class="btn btn-danger btn-xs" onclick="deleteActiveTab()">🗑 Delete tab</button>
+        </div>
+        <div class="rt-toolbar" id="tm-toolbar">
+          <button class="rt-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+          <button class="rt-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+          <button class="rt-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+          <span class="rt-sep"></span>
+          <select class="rt-select" id="tm-rt-size" title="Font size">
+            <option value="">Size</option><option value="2">Small</option><option value="3">Normal</option><option value="4">Medium</option><option value="5">Large</option><option value="6">X-Large</option>
+          </select>
+          <select class="rt-select" id="tm-rt-block" title="Style">
+            <option value="">Style</option><option value="p">Paragraph</option><option value="h1">Heading 1</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option>
+          </select>
+          <span class="rt-sep"></span>
+          <button class="rt-btn" data-cmd="insertUnorderedList" title="Bullet list">•≡</button>
+          <button class="rt-btn" data-cmd="insertOrderedList" title="Numbered list">1≡</button>
+          <span class="rt-sep"></span>
+          <span class="rt-color" style="background:#e8eaf2" data-color="#e8eaf2"></span>
+          <span class="rt-color" style="background:#c8a951" data-color="#c8a951"></span>
+          <span class="rt-color" style="background:#4a90d9" data-color="#4a90d9"></span>
+          <span class="rt-color" style="background:#3dba6e" data-color="#3dba6e"></span>
+          <span class="rt-color" style="background:#d04040" data-color="#d04040"></span>
+          <span class="rt-sep"></span>
+          <button class="rt-btn" data-cmd="removeFormat" title="Clear formatting">✕fmt</button>
+        </div>
+        <div class="tm-editor" id="tm-content" contenteditable="true"></div>
+        <div class="form-hint">Guides can have multiple internal tabs — like the ILS Approach Guide. Each tab has its own content. The page is auto-created and appears in the Training Center.</div>
       </div>
       <div class="form-group">
         <label>Short description <span style="color:var(--text3)">(optional)</span></label>
         <input type="text" id="tm-desc" placeholder="What does this module cover?" maxlength="140">
       </div>
-      <button class="btn btn-primary" onclick="addModule()">+ Add module</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="tm-save-btn" onclick="saveModule()">+ Add module</button>
+        <button class="btn btn-outline" id="tm-cancel-btn" style="display:none" onclick="cancelEdit()">Cancel edit</button>
+      </div>
     </div>
   </div>
 
@@ -148,51 +232,295 @@ function renderModules() {
       + '<div class="cb-line"></div>'
       + '</div>'
       + items.map(function(m) {
-        const safeUrl = (m.url || '#');
+        // Built-in modules link to their auto-created page
+        const builtIn = (Array.isArray(m.tabs) && m.tabs.length) || m.contentHtml;
+        const safeUrl = builtIn ? ('/pages/training/view.html?id=' + m.id) : (m.url || '#');
         const external = /^https?:\/\//i.test(safeUrl);
+        const typeTag = builtIn
+          ? '<span style="font-size:9px;font-weight:800;color:var(--gold);border:1px solid rgba(200,169,81,.4);border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:middle">BUILT-IN PAGE</span>'
+          : '';
         return '<div class="module-card" style="border-left:3px solid ' + cat.color + '">'
           + '<div class="module-icon">' + cat.icon + '</div>'
           + '<div class="module-info">'
-          +   '<div class="module-title"><a href="' + safeUrl + '"' + (external ? ' target="_blank" rel="noopener"' : '') + '>' + (m.title || 'Untitled module') + (external ? ' ↗' : '') + '</a></div>'
+          +   '<div class="module-title"><a href="' + safeUrl + '"' + (external ? ' target="_blank" rel="noopener"' : '') + '>' + (m.title || 'Untitled module') + (external ? ' ↗' : '') + '</a>' + typeTag + '</div>'
           +   (m.description ? '<div class="module-desc">' + m.description + '</div>' : '')
-          +   '<div class="module-meta">Added ' + (m.createdBy || '—') + (m.createdAt && m.createdAt.toDate ? ' · ' + m.createdAt.toDate().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'}) : '') + '</div>'
+          +   '<div class="module-meta">Added ' + (m.createdBy || '—') + (m.createdAt && m.createdAt.toDate ? ' · ' + m.createdAt.toDate().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'}) : '') + (m.updatedAt && m.updatedAt.toDate ? ' · edited ' + m.updatedAt.toDate().toLocaleDateString('en-US', {month:'short',day:'numeric'}) : '') + '</div>'
           + '</div>'
-          + (isStaff ? '<button class="btn btn-danger btn-xs" onclick="removeModule(\'' + m.id + '\')">Remove</button>' : '')
+          + (isStaff ? '<div style="display:flex;gap:6px;flex-shrink:0"><button class="btn btn-outline btn-xs" onclick="editModule(\'' + m.id + '\')">✏️ Edit</button><button class="btn btn-danger btn-xs" onclick="removeModule(\'' + m.id + '\')">Remove</button></div>' : '')
           + '</div>';
       }).join('');
   }).join('');
 }
 
-async function addModule() {
+// ── HTML SANITIZER (same contract as the SOP editor) ────────
+const TM_ALLOWED_TAGS = ['B','STRONG','I','EM','U','S','H1','H2','H3','P','BR','HR','UL','OL','LI','DIV','SPAN','FONT','A','BLOCKQUOTE'];
+const TM_ALLOWED_STYLES = ['font-size','color','text-align','font-weight','font-style','text-decoration'];
+function sanitizeTmHtml(html) {
+  const doc = new DOMParser().parseFromString('<div id="tm-root">' + String(html || '') + '</div>', 'text/html');
+  const root = doc.getElementById('tm-root');
+  if (!root) return '';
+  (function walk(node) {
+    Array.prototype.slice.call(node.childNodes).forEach(function(child) {
+      if (child.nodeType === 1) {
+        if (TM_ALLOWED_TAGS.indexOf(child.tagName) === -1) {
+          while (child.firstChild) node.insertBefore(child.firstChild, child);
+          node.removeChild(child);
+          return;
+        }
+        Array.prototype.slice.call(child.attributes).forEach(function(attr) {
+          const n = attr.name.toLowerCase();
+          if (n === 'style') {
+            const keep = [];
+            attr.value.split(';').forEach(function(rule) {
+              const idx = rule.indexOf(':');
+              if (idx < 0) return;
+              const prop = rule.slice(0, idx).trim().toLowerCase();
+              const val  = rule.slice(idx + 1).trim();
+              if (TM_ALLOWED_STYLES.indexOf(prop) !== -1 && val && val.toLowerCase().indexOf('url') === -1 && val.indexOf('(') === -1) keep.push(prop + ':' + val);
+            });
+            if (keep.length) child.setAttribute('style', keep.join(';'));
+            else child.removeAttribute('style');
+          } else if (child.tagName === 'FONT' && (n === 'size' || n === 'color' || n === 'face')) {
+          } else if (child.tagName === 'A' && n === 'href' && /^https?:\/\//i.test(attr.value)) {
+            child.setAttribute('target', '_blank');
+            child.setAttribute('rel', 'noopener');
+          } else if (child.tagName === 'A' && (n === 'target' || n === 'rel')) {
+          } else {
+            child.removeAttribute(attr.name);
+          }
+        });
+        walk(child);
+      } else if (child.nodeType !== 3) {
+        node.removeChild(child);
+      }
+    });
+  })(root);
+  return root.innerHTML;
+}
+
+// ── TOOLBAR ──────────────────────────────────────────────────
+(function initTmToolbar() {
+  const tb = document.getElementById('tm-toolbar');
+  if (!tb) return;
+  try { document.execCommand('styleWithCSS', false, true); } catch(e) {}
+  tb.addEventListener('mousedown', function(e) {
+    if (e.target.closest('.rt-btn') || e.target.closest('.rt-color')) e.preventDefault();
+  });
+  tb.addEventListener('click', function(e) {
+    const btn = e.target.closest('.rt-btn');
+    if (btn && btn.dataset.cmd) { document.execCommand(btn.dataset.cmd, false, null); return; }
+    const sw = e.target.closest('.rt-color');
+    if (sw && sw.dataset.color) { document.execCommand('foreColor', false, sw.dataset.color); return; }
+  });
+  document.getElementById('tm-rt-size').addEventListener('change', function() {
+    if (this.value) document.execCommand('fontSize', false, this.value);
+    this.value = '';
+  });
+  document.getElementById('tm-rt-block').addEventListener('change', function() {
+    if (this.value) document.execCommand('formatBlock', false, '<' + this.value + '>');
+    this.value = '';
+  });
+})();
+resetTmTabs();
+
+function tmTypeChanged() {
+  const isLink = document.getElementById('tm-type').value === 'link';
+  document.getElementById('tm-url-wrap').style.display = isLink ? 'block' : 'none';
+  document.getElementById('tm-content-wrap').style.display = isLink ? 'none' : 'block';
+}
+
+// ── INTERNAL TABS (like the ILS Approach Guide) ──────────────
+// tmTabs holds every tab's label + html; the single contenteditable
+// is bound to the ACTIVE tab and synced on every switch/save.
+let tmTabs = [{ label: 'Guide', html: '' }];
+let tmActiveTab = 0;
+
+function syncActiveTab() {
+  if (tmTabs[tmActiveTab]) tmTabs[tmActiveTab].html = document.getElementById('tm-content').innerHTML;
+}
+function renderTmTabs() {
+  const bar = document.getElementById('tmtab-bar');
+  bar.innerHTML = tmTabs.map(function(t, i) {
+    const active = i === tmActiveTab;
+    return '<button type="button" class="btn btn-xs ' + (active ? 'btn-primary' : 'btn-outline') + '" onclick="switchTmTab(' + i + ')">' + (t.label || 'Tab ' + (i+1)) + '</button>';
+  }).join('');
+  document.getElementById('tmtab-label').value = tmTabs[tmActiveTab] ? (tmTabs[tmActiveTab].label || '') : '';
+  document.getElementById('tm-content').innerHTML = tmTabs[tmActiveTab] ? (tmTabs[tmActiveTab].html || '') : '';
+}
+function switchTmTab(i) {
+  syncActiveTab();
+  tmActiveTab = i;
+  renderTmTabs();
+}
+function addTmTab() {
+  syncActiveTab();
+  tmTabs.push({ label: 'New tab', html: '' });
+  tmActiveTab = tmTabs.length - 1;
+  renderTmTabs();
+  document.getElementById('tmtab-label').focus();
+  document.getElementById('tmtab-label').select();
+}
+function renameActiveTab(v) {
+  if (tmTabs[tmActiveTab]) tmTabs[tmActiveTab].label = v;
+  // live-update just the bar labels without touching the editor
+  const bar = document.getElementById('tmtab-bar');
+  const btns = bar.querySelectorAll('button');
+  if (btns[tmActiveTab]) btns[tmActiveTab].textContent = v || ('Tab ' + (tmActiveTab+1));
+}
+function deleteActiveTab() {
+  if (tmTabs.length <= 1) { toast('A guide needs at least one tab', 'error'); return; }
+  if (!confirm('Delete tab "' + (tmTabs[tmActiveTab].label || '') + '" and its content?')) return;
+  tmTabs.splice(tmActiveTab, 1);
+  tmActiveTab = Math.max(0, tmActiveTab - 1);
+  renderTmTabs();
+}
+function resetTmTabs() {
+  tmTabs = [{ label: 'Guide', html: '' }];
+  tmActiveTab = 0;
+  renderTmTabs();
+}
+
+// ── IMPORT AN EXISTING STATIC GUIDE ──────────────────────────
+// Fetches one of the site's existing training pages (same-origin),
+// strips nav/footer/scripts, and drops the content into the editor —
+// converting a hand-built page into an editable module. If the page
+// uses internal tab panels, each panel becomes its own tab here.
+async function importPage() {
+  const path = document.getElementById('tm-import-path').value.trim();
+  if (!path || !path.startsWith('/')) { toast('Enter a site page path starting with /', 'error'); return; }
+  toast('Importing ' + path + '…');
+  try {
+    const resp = await fetch(path);
+    if (!resp.ok) throw new Error('Page returned ' + resp.status);
+    const doc = new DOMParser().parseFromString(await resp.text(), 'text/html');
+    ['script','style','link','nav','footer','header'].forEach(function(sel) {
+      doc.querySelectorAll(sel).forEach(function(n){ n.remove(); });
+    });
+    // Prefer internal tab panels if the page has them; otherwise
+    // take the main container (or body) as one tab.
+    let importedTabs = [];
+    const panels = doc.querySelectorAll('.tab-panel, .tab-content, [data-tab-panel]');
+    if (panels.length > 1) {
+      const labels = Array.prototype.map.call(doc.querySelectorAll('.tab-btn, [data-tab]'), function(b){ return b.textContent.trim(); });
+      panels.forEach(function(p, i) {
+        const html = sanitizeTmHtml(p.innerHTML);
+        if (p.textContent.trim()) importedTabs.push({ label: labels[i] || ('Section ' + (i+1)), html: html });
+      });
+    }
+    if (!importedTabs.length) {
+      const main = doc.querySelector('main') || doc.querySelector('.container') || doc.body;
+      importedTabs = [{ label: 'Guide', html: sanitizeTmHtml(main ? main.innerHTML : '') }];
+    }
+    tmTabs = importedTabs;
+    tmActiveTab = 0;
+    renderTmTabs();
+    // Autofill title from the page if the form is empty
+    if (!document.getElementById('tm-title').value.trim()) {
+      const h1 = doc.querySelector('h1');
+      const t = (h1 ? h1.textContent : (doc.title || '')).replace(/—.*$/,'').trim();
+      if (t) document.getElementById('tm-title').value = t.slice(0, 80);
+    }
+    toast('Imported ' + tmTabs.length + ' tab(s) — review, edit, then save ✓');
+  } catch(e) { toast('Import failed: ' + e.message, 'error'); }
+}
+
+// ── ADD / EDIT ───────────────────────────────────────────────
+let editingModuleId = null;
+
+function editModule(id) {
+  const m = modules.find(function(x){ return x.id === id; });
+  if (!m) return;
+  editingModuleId = id;
+  document.getElementById('tm-title').value = m.title || '';
+  document.getElementById('tm-category').value = m.category || 'general';
+  document.getElementById('tm-desc').value = m.description || '';
+  document.getElementById('tm-type').value = (m.tabs || m.contentHtml) ? 'page' : 'link';
+  tmTypeChanged();
+  document.getElementById('tm-url').value = m.url || '';
+  if (Array.isArray(m.tabs) && m.tabs.length) {
+    tmTabs = m.tabs.map(function(t){ return { label: t.label || 'Tab', html: sanitizeTmHtml(t.html || '') }; });
+  } else {
+    tmTabs = [{ label: 'Guide', html: sanitizeTmHtml(m.contentHtml || '') }];
+  }
+  tmActiveTab = 0;
+  renderTmTabs();
+  document.getElementById('form-title').textContent = 'Edit training module — ' + (m.title || '');
+  document.getElementById('tm-save-btn').textContent = '💾 Save changes';
+  document.getElementById('tm-cancel-btn').style.display = 'inline-flex';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEdit() {
+  editingModuleId = null;
+  document.getElementById('tm-title').value = '';
+  document.getElementById('tm-url').value = '';
+  document.getElementById('tm-desc').value = '';
+  document.getElementById('tm-import-path').value = '';
+  document.getElementById('tm-type').value = 'page';
+  tmTypeChanged();
+  resetTmTabs();
+  document.getElementById('form-title').textContent = 'Add training module';
+  document.getElementById('tm-save-btn').textContent = '+ Add module';
+  document.getElementById('tm-cancel-btn').style.display = 'none';
+}
+
+async function saveModule() {
   const title = document.getElementById('tm-title').value.trim();
-  const url   = document.getElementById('tm-url').value.trim();
   const desc  = document.getElementById('tm-desc').value.trim();
   const cat   = document.getElementById('tm-category').value;
+  const type  = document.getElementById('tm-type').value;
+  const url   = document.getElementById('tm-url').value.trim();
   if (!title) { toast('Enter a module title', 'error'); return; }
-  if (!url)   { toast('Enter a link for the module', 'error'); return; }
+  if (type === 'link' && !url) { toast('Enter a link for the module', 'error'); return; }
+  let tabs = [];
+  if (type === 'page') {
+    syncActiveTab();
+    tabs = tmTabs.map(function(t) {
+      const div = document.createElement('div');
+      div.innerHTML = t.html || '';
+      return { label: (t.label || 'Tab').slice(0, 40), html: sanitizeTmHtml(t.html || ''), _text: div.textContent.trim() };
+    }).filter(function(t){ return t._text; })
+      .map(function(t){ return { label: t.label, html: t.html }; });
+    if (!tabs.length) { toast('Write content in at least one tab', 'error'); return; }
+  }
+  const data = {
+    title: title,
+    description: desc,
+    category: cat,
+    url: type === 'link' ? url : '',
+    tabs: type === 'page' ? tabs : [],
+    contentHtml: '',   // legacy single-content field superseded by tabs
+  };
   try {
-    await db.collection('training').add({
-      title: title,
-      url: url,
-      description: desc,
-      category: cat,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '',
-      createdByUid: currentUser ? currentUser.uid : null,
-    });
-    // Audit trail
-    try {
-      await db.collection('auditLog').add({
-        eventType: 'training_added',
-        actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
-        details: { notes: 'Training module added: ' + title },
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-      });
-    } catch(e) {}
-    document.getElementById('tm-title').value = '';
-    document.getElementById('tm-url').value = '';
-    document.getElementById('tm-desc').value = '';
-    toast('Training module added!');
+    if (editingModuleId) {
+      data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+      data.updatedBy = currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '';
+      await db.collection('training').doc(editingModuleId).update(data);
+      try {
+        await db.collection('auditLog').add({
+          eventType: 'training_updated',
+          actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
+          details: { notes: 'Training module edited: ' + title },
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch(e) {}
+      toast('Module updated ✓');
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      data.createdBy = currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '';
+      data.createdByUid = currentUser ? currentUser.uid : null;
+      await db.collection('training').add(data);
+      try {
+        await db.collection('auditLog').add({
+          eventType: 'training_added',
+          actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
+          details: { notes: 'Training module added: ' + title + (tabs.length ? ' (built-in page, ' + tabs.length + ' tabs)' : '') },
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch(e) {}
+      toast(type === 'page' ? 'Module added — page auto-created ✓' : 'Training module added!');
+    }
+    cancelEdit();
     loadModules();
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
