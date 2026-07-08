@@ -413,6 +413,19 @@ auth.onAuthStateChanged(async (user) => {
       if (doc.exists) {
         realPilot    = { uid: user.uid, ...doc.data() };
         currentPilot = realPilot;
+      } else {
+        // Signed in but NO pilot record — their application was denied
+        // (deny deletes the record) or a signup never finished. Route
+        // them to the register page, which detects the signed-in user
+        // and runs in re-apply mode (no new account needed, same email).
+        realPilot    = null;
+        currentPilot = null;
+        if (!isPendingPage()) {
+          window.location.href = '/pages/register.html?reapply=1';
+          return;
+        }
+      }
+      if (realPilot) {
 
         // Status redirects always use the REAL pilot, never the simulation
         if (realPilot.status === 'pending' && !isPendingPage()) {
