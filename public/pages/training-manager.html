@@ -321,7 +321,6 @@ function sanitizeTmHtml(html) {
     this.value = '';
   });
 })();
-resetTmTabs();
 
 function tmTypeChanged() {
   const isLink = document.getElementById('tm-type').value === 'link';
@@ -542,6 +541,11 @@ async function removeModule(id) {
     loadModules();
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
+
+// Initialize the tab editor UI once everything above exists —
+// this MUST run after the tmTabs declaration (calling it earlier
+// was a temporal-dead-zone crash that killed every button).
+resetTmTabs();
 </script>
 </body>
 </html>
