@@ -687,12 +687,17 @@ function renderDashPending() {
 }
 
 async function loadApplications() {
-  const snap = await db.collection('pilots').where('status','==','pending').orderBy('appliedAt','desc').get();
+  // NOTE: no orderBy here on purpose — Firestore's orderBy('appliedAt')
+  // silently EXCLUDES any pilot doc that lacks the appliedAt field
+  // (older registrations), which made pending applications invisible
+  // while the sidebar badge still counted them. Sort client-side.
+  const snap = await db.collection('pilots').where('status','==','pending').get();
+  const apps = snap.docs.map(d => ({uid:d.id,...d.data()}))
+    .sort((a,b) => (b.appliedAt?.toMillis?.()||0) - (a.appliedAt?.toMillis?.()||0));
   const list = document.getElementById('applications-list');
-  if (snap.empty) { list.innerHTML='<div class="empty-state"><div class="icon">✅</div><p>No pending applications</p></div>'; return; }
+  if (!apps.length) { list.innerHTML='<div class="empty-state"><div class="icon">✅</div><p>No pending applications</p></div>'; return; }
   list.innerHTML = '';
-  snap.forEach(d => {
-    const p = {uid:d.id,...d.data()};
+  apps.forEach(p => {
     list.innerHTML += `
       <div class="pending-card">
         <div class="pc-header">
@@ -769,11 +774,21 @@ async function confirmApprove() {
 async function confirmDeny() {
   if (!editingPilotUid) return;
   const reason = document.getElementById('deny-reason').value.trim();
+  const p = allPilots.find(x=>x.uid===editingPilotUid) || {};
   try {
-    await db.collection('pilots').doc(editingPilotUid).update({
-      status: 'denied', deniedAt: firebase.firestore.FieldValue.serverTimestamp(), denyReason: reason
-    });
-    toast('Application denied.','warn');
+    // Deny = DELETE the pilot record. No ghost entries anywhere, the
+    // callsign is freed, and if the person signs in again they're
+    // routed into a clean re-application (their login still works).
+    await db.collection('pilots').doc(editingPilotUid).delete();
+    try {
+      await db.collection('auditLog').add({
+        eventType: 'application_denied',
+        actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
+        details: { notes: 'Application denied & record deleted: ' + (p.displayName || p.callsign || editingPilotUid) + (p.email ? ' (' + p.email + ')' : '') + (reason ? ' — reason: ' + reason : '') },
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch(e) {}
+    toast('Application denied — record deleted. They can re-apply if they sign in again.','warn');
     closeModal('deny-modal');
     loadAll();
   } catch(e) { toast('Error: '+e.message,'error'); }
@@ -782,7 +797,7 @@ async function confirmDeny() {
 async function loadAllPilots() {
   const snap = await db.collection('pilots').orderBy('displayName').get();
   allPilots = snap.docs.map(d=>({uid:d.id,...d.data()}));
-  renderPilots(allPilots);
+  filterPilots();
 }
 function renderPilots(pilots) {
   const list = document.getElementById('pilots-list');
@@ -808,7 +823,10 @@ function filterPilots() {
   renderPilots(allPilots.filter(p =>
     (!q    || (p.displayName||p.callsign||'').toLowerCase().includes(q) || (p.email||'').toLowerCase().includes(q)) &&
     (!wing || p.wing===wing) &&
-    (!stat || p.status===stat)
+    // "All Statuses" deliberately EXCLUDES denied applicants — they
+    // were rejected, not enrolled. Pick "Denied" in the filter to
+    // review them (or re-approve via Edit).
+    (stat ? p.status===stat : p.status!=='denied')
   ));
 }
 
