@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Training — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.tv-hero{padding:44px 24px 30px;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.tv-cat{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:4px 12px;border-radius:14px;margin-bottom:12px}
+.tv-body{font-size:14px;color:var(--text2);line-height:1.85;max-width:860px}
+.tv-body h1{font-size:24px;color:var(--text);margin:22px 0 10px}
+.tv-body h2{font-size:19px;color:var(--gold);margin:20px 0 8px}
+.tv-body h3{font-size:16px;color:var(--text);margin:16px 0 6px}
+.tv-body ul,.tv-body ol{padding-left:24px;margin:10px 0}
+.tv-body li{margin-bottom:5px}
+.tv-body p{margin:0 0 10px}
+.tv-body a{color:var(--gold)}
+.tv-body hr{border:none;border-top:1px solid var(--border);margin:20px 0}
+.tv-body blockquote{border-left:3px solid var(--gold);padding:8px 14px;background:var(--card);border-radius:0 8px 8px 0;margin:12px 0}
+.tv-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px;overflow-x:auto}
+.tv-tab{padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--text3);font-family:var(--sans);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .12s}
+.tv-tab:hover{color:var(--text)}
+.tv-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html"><div class="nav-emblem">GSC</div><div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div></a>
+    <div class="nav-links" id="nav-links"></div>
+    <div class="nav-right" id="nav-right-area"></div>
+    <button class="nav-mobile-btn" onclick="document.getElementById('nav-links').classList.toggle('open')">☰</button>
+  </div>
+</nav>
+
+<div class="tv-hero">
+  <div class="container" style="max-width:920px">
+    <span class="tv-cat" id="tv-cat" style="display:none"></span>
+    <h1 style="font-size:clamp(26px,5vw,38px);font-weight:900;color:var(--text)" id="tv-title">Loading…</h1>
+    <p style="font-size:13px;color:var(--text3);margin-top:6px" id="tv-meta"></p>
+  </div>
+</div>
+
+<div class="container page-body" style="max-width:920px">
+  <div class="tv-tabs" id="tv-tabs" style="display:none"></div>
+  <div class="tv-body" id="tv-content"><div class="empty-state"><p>Loading training module…</p></div></div>
+  <div style="margin-top:34px">
+    <a href="/pages/training/index.html" class="btn btn-outline btn-sm">← Back to Training Center</a>
+  </div>
+</div>
+
+<footer class="site-footer"><p>Virtual Global Strike Command · vtacgsc.com</p></footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+const TV_CATS = {
+  general: { label: 'General / All Aircraft', color: '#c8a951' },
+  '7bw':   { label: 'B-1B Lancer — 7th BW',  color: '#c8a951' },
+  '509bw': { label: 'B-2 Spirit — 509th BW', color: '#4a90d9' },
+  '2bw':   { label: 'B-52H — 2nd BW',        color: '#3dba6e' },
+};
+
+// Same sanitizer contract as the SOP page: formatting only, safe
+// styles, https links — nothing script-like survives.
+const TV_ALLOWED_TAGS = ['B','STRONG','I','EM','U','S','H1','H2','H3','P','BR','HR','UL','OL','LI','DIV','SPAN','FONT','A','BLOCKQUOTE'];
+const TV_ALLOWED_STYLES = ['font-size','color','text-align','font-weight','font-style','text-decoration'];
+function sanitizeTrainingHtml(html) {
+  const doc = new DOMParser().parseFromString('<div id="tv-root">' + String(html || '') + '</div>', 'text/html');
+  const root = doc.getElementById('tv-root');
+  if (!root) return '';
+  (function walk(node) {
+    Array.prototype.slice.call(node.childNodes).forEach(function(child) {
+      if (child.nodeType === 1) {
+        if (TV_ALLOWED_TAGS.indexOf(child.tagName) === -1) {
+          while (child.firstChild) node.insertBefore(child.firstChild, child);
+          node.removeChild(child);
+          return;
+        }
+        Array.prototype.slice.call(child.attributes).forEach(function(attr) {
+          const n = attr.name.toLowerCase();
+          if (n === 'style') {
+            const keep = [];
+            attr.value.split(';').forEach(function(rule) {
+              const idx = rule.indexOf(':');
+              if (idx < 0) return;
+              const prop = rule.slice(0, idx).trim().toLowerCase();
+              const val  = rule.slice(idx + 1).trim();
+              if (TV_ALLOWED_STYLES.indexOf(prop) !== -1 && val && val.toLowerCase().indexOf('url') === -1 && val.indexOf('(') === -1) keep.push(prop + ':' + val);
+            });
+            if (keep.length) child.setAttribute('style', keep.join(';'));
+            else child.removeAttribute('style');
+          } else if (child.tagName === 'FONT' && (n === 'size' || n === 'color' || n === 'face')) {
+          } else if (child.tagName === 'A' && n === 'href' && /^https?:\/\//i.test(attr.value)) {
+            child.setAttribute('target', '_blank');
+            child.setAttribute('rel', 'noopener');
+          } else if (child.tagName === 'A' && (n === 'target' || n === 'rel')) {
+          } else {
+            child.removeAttribute(attr.name);
+          }
+        });
+        walk(child);
+      } else if (child.nodeType !== 3) {
+        node.removeChild(child);
+      }
+    });
+  })(root);
+  return root.innerHTML;
+}
+
+function onAuthReady(user, pilot) {
+  if (!user) { window.location.replace('/pages/login.html'); return; }
+  loadModule();
+}
+
+async function loadModule() {
+  const id = new URLSearchParams(window.location.search).get('id');
+  const contentEl = document.getElementById('tv-content');
+  if (!id) { contentEl.innerHTML = '<div class="empty-state"><div class="icon">🎓</div><p>No training module specified.</p></div>'; document.getElementById('tv-title').textContent = 'Training'; return; }
+  try {
+    const doc = await db.collection('training').doc(id).get();
+    if (!doc.exists) { contentEl.innerHTML = '<div class="empty-state"><div class="icon">🎓</div><p>This training module no longer exists.</p></div>'; document.getElementById('tv-title').textContent = 'Not found'; return; }
+    const m = doc.data();
+    const cat = TV_CATS[m.category || 'general'] || TV_CATS.general;
+    document.title = (m.title || 'Training') + ' — VTAC GSC';
+    document.getElementById('tv-title').textContent = m.title || 'Training module';
+    const catEl = document.getElementById('tv-cat');
+    catEl.textContent = cat.label;
+    catEl.style.display = 'inline-block';
+    catEl.style.background = cat.color + '22';
+    catEl.style.color = cat.color;
+    catEl.style.border = '1px solid ' + cat.color + '55';
+    document.getElementById('tv-meta').textContent = (m.description ? m.description + ' · ' : '') + 'By ' + (m.createdBy || 'vGSC Training') + (m.updatedAt && m.updatedAt.toDate ? ' · Updated ' + m.updatedAt.toDate().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : '');
+    if (Array.isArray(m.tabs) && m.tabs.length) {
+      // Tabbed guide — sanitize every panel once, then switch locally
+      const panels = m.tabs.map(function(t){ return { label: t.label || 'Tab', html: sanitizeTrainingHtml(t.html || '') }; });
+      const tabsEl = document.getElementById('tv-tabs');
+      if (panels.length > 1) {
+        tabsEl.style.display = 'flex';
+        tabsEl.innerHTML = panels.map(function(t, i) {
+          return '<button class="tv-tab' + (i === 0 ? ' active' : '') + '" data-i="' + i + '">' + t.label.replace(/</g,'&lt;') + '</button>';
+        }).join('');
+        tabsEl.addEventListener('click', function(e) {
+          const btn = e.target.closest('.tv-tab');
+          if (!btn) return;
+          tabsEl.querySelectorAll('.tv-tab').forEach(function(b){ b.classList.remove('active'); });
+          btn.classList.add('active');
+          contentEl.innerHTML = panels[parseInt(btn.dataset.i)].html;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+      contentEl.innerHTML = panels[0].html;
+    } else if (m.contentHtml) {
+      contentEl.innerHTML = sanitizeTrainingHtml(m.contentHtml);
+    } else if (m.url) {
+      // Link-type module opened here by mistake — pass through
+      window.location.replace(m.url);
+    } else {
+      contentEl.innerHTML = '<div class="empty-state"><p>This module has no content yet.</p></div>';
+    }
+  } catch(e) {
+    contentEl.innerHTML = '<div class="alert alert-error">Error loading module: ' + e.message + '</div>';
+  }
+}
+</script>
+</body>
+</html>
