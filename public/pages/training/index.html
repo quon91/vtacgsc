@@ -266,7 +266,9 @@ async function loadDynamicModules() {
     const grid = document.getElementById(cat.grid);
     if (!grid) return;
     if ((m.category || 'general') === 'general') hasGeneral = true;
-    const url = m.url || '#';
+    // Built-in modules (written in the Training Manager's editor)
+    // link to their auto-created page; link modules go to their URL.
+    const url = ((Array.isArray(m.tabs) && m.tabs.length) || m.contentHtml) ? ('/pages/training/view.html?id=' + m.id) : (m.url || '#');
     const external = /^https?:\/\//i.test(url);
     const card = document.createElement('a');
     card.className = 'tc-module-card';
