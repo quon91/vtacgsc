@@ -49,11 +49,16 @@
             <input type="text" id="lastName" placeholder="Smith" required>
           </div>
         </div>
+        <div class="alert alert-info" id="reapply-banner" style="display:none;margin-bottom:16px;font-size:13px">
+          ♻️ You're signed in as <strong id="reapply-email"></strong> and have no active application on file.
+          Fill out the form below to submit a <strong>new application</strong> — no new account or password needed.
+        </div>
         <div class="form-group">
           <label>Callsign / Pilot name</label>
           <input type="text" id="callsign" placeholder="e.g. Viper, Ghost, Reaper" required maxlength="20">
           <div class="form-hint">This is your in-game identity. Choose carefully — it represents you in the squadron. If your callsign is already taken, command staff will contact you during review.</div>
         </div>
+        <div id="account-fields">
         <div class="form-group">
           <label>Email address</label>
           <input type="email" id="email" placeholder="pilot@example.com" required autocomplete="email">
@@ -67,6 +72,7 @@
             <label>Confirm password</label>
             <input type="password" id="confirm-password" placeholder="Repeat password" required>
           </div>
+        </div>
         </div>
         <div class="form-group">
           <label>Preferred wing</label>
@@ -129,8 +135,26 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
 <script>
+let reapplyUser = null;
+
 function onAuthReady(user, pilot) {
-  if (user && pilot?.status === 'active') window.location.href = '/pages/dashboard.html';
+  if (user && pilot?.status === 'active') { window.location.href = '/pages/dashboard.html'; return; }
+  if (user && !pilot) {
+    // RE-APPLY MODE: signed in but no pilot record (a denied
+    // application deletes the record). Their login still works —
+    // hide the account fields and submit a fresh application
+    // under the same uid/email.
+    reapplyUser = user;
+    document.getElementById('account-fields').style.display = 'none';
+    ['email','password','confirm-password'].forEach(function(id) {
+      const el = document.getElementById(id);
+      if (el) el.required = false;
+    });
+    document.getElementById('reapply-email').textContent = user.email || '';
+    document.getElementById('reapply-banner').style.display = 'block';
+    const btn = document.getElementById('reg-btn');
+    if (btn) btn.textContent = 'Submit New Application';
+  }
 }
 
 async function handleRegister(e) {
@@ -138,11 +162,13 @@ async function handleRegister(e) {
   const errEl = document.getElementById('reg-error');
   errEl.style.display = 'none';
 
-  const pass    = document.getElementById('password').value;
-  const confirm = document.getElementById('confirm-password').value;
-  if (pass !== confirm) {
-    errEl.textContent = 'Passwords do not match.';
-    errEl.style.display = 'block'; return;
+  if (!reapplyUser) {
+    const pass    = document.getElementById('password').value;
+    const confirm = document.getElementById('confirm-password').value;
+    if (pass !== confirm) {
+      errEl.textContent = 'Passwords do not match.';
+      errEl.style.display = 'block'; return;
+    }
   }
 
   const callsign = document.getElementById('callsign').value.trim();
@@ -159,12 +185,19 @@ async function handleRegister(e) {
   btn.textContent = 'Submitting…'; btn.disabled = true;
 
   try {
-    const email = document.getElementById('email').value.trim();
-    const cred  = await auth.createUserWithEmailAndPassword(email, pass);
+    let uid, email;
+    if (reapplyUser) {
+      uid = reapplyUser.uid;
+      email = reapplyUser.email || '';
+    } else {
+      email = document.getElementById('email').value.trim();
+      const cred = await auth.createUserWithEmailAndPassword(email, document.getElementById('password').value);
+      uid = cred.user.uid;
+    }
 
     // Create pilot document — status: pending until approved by master admin
-    await db.collection('pilots').doc(cred.user.uid).set({
-      uid:           cred.user.uid,
+    await db.collection('pilots').doc(uid).set({
+      uid:           uid,
       email:         email,
       firstName:     document.getElementById('firstName').value.trim(),
       lastName:      document.getElementById('lastName').value.trim(),
@@ -192,7 +225,7 @@ async function handleRegister(e) {
     await db.collection('notifications').add({
       type:      'new_application',
       message:   `New pilot application from ${callsign}`,
-      pilotUid:  cred.user.uid,
+      pilotUid:  uid,
       callsign:  callsign,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       read:      false,
