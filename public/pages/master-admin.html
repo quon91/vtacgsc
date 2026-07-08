@@ -159,6 +159,7 @@
           <option value="suspended">Suspended</option>
         </select>
       </div>
+      <div style="margin-bottom:12px"><button class="btn btn-outline btn-sm" onclick="postAllWingRosters(true)">📡 Update Discord wing rosters</button></div>
       <div id="pilots-list"><div class="empty-state"><div class="icon">👨‍✈️</div><p>Loading pilots...</p></div></div>
     </div>
 
@@ -190,8 +191,19 @@
 
     <div id="sec-training" class="sec">
       <div class="sec-title">Training Records</div>
-      <div class="sec-sub">View training progress and certifications for all pilots.</div>
-      <div id="training-list"><div class="empty-state"><div class="icon">🎓</div><p>No training records yet</p></div></div>
+      <div class="sec-sub">Certifications and course completions for every pilot — pulled from every place certs have been stored. Award new ones here; they appear on the pilot's profile.</div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-icon">🎓</div><div class="card-title">Award a certification</div></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group"><label>Pilot</label><select id="tr-pilot"></select></div>
+            <div class="form-group"><label>Certification / course</label><input type="text" id="tr-name" placeholder="e.g. B-1B MQC Complete — Qualified" maxlength="80"></div>
+          </div>
+          <div class="form-group"><label>Notes <span style="color:var(--text3)">(optional — IP, grade, remarks)</span></label><input type="text" id="tr-notes" maxlength="140" placeholder="e.g. Q1 · IP: Quon"></div>
+          <button class="btn btn-primary btn-sm" onclick="addTrainingRecord()">🎓 Award certification</button>
+        </div>
+      </div>
+      <div id="training-list"><div class="empty-state"><div class="icon">🎓</div><p>Loading training records…</p></div></div>
     </div>
 
     <div id="sec-medals" class="sec">
@@ -637,6 +649,7 @@ function showSec(id) {
   if (event && event.currentTarget) event.currentTarget.classList.add('active');
   if (id==='applications') loadApplications();
   if (id==='pilots')       loadAllPilots();
+  if (id==='training')     loadTrainingRecords();
   if (id==='rosters')      loadRosters('7bw');
   if (id==='flights')      loadAllFlights();
   if (id==='slideshow')    loadSlideshow();
@@ -768,6 +781,7 @@ async function confirmApprove() {
     toast('Pilot approved and activated!');
     closeModal('approve-modal');
     loadAll();
+    postAllWingRosters(false);   // keep Discord wing rosters live
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
@@ -791,6 +805,7 @@ async function confirmDeny() {
     toast('Application denied — record deleted. They can re-apply if they sign in again.','warn');
     closeModal('deny-modal');
     loadAll();
+    postAllWingRosters(false);   // keep Discord wing rosters live
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
@@ -828,6 +843,191 @@ function filterPilots() {
     // review them (or re-approve via Edit).
     (stat ? p.status===stat : p.status!=='denied')
   ));
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TRAINING RECORDS — reads certs from EVERY place they may live:
+//  the trainingRecords collection (new), legacy completion docs in
+//  the training collection (pilotUid + passed), and cert arrays on
+//  pilot documents. Grouped by pilot.
+// ══════════════════════════════════════════════════════════════
+async function loadTrainingRecords() {
+  const el = document.getElementById('training-list');
+  el.innerHTML = '<div class="empty-state"><p>Loading training records…</p></div>';
+  if (!allPilots.length) { try { await loadAllPilots(); } catch(e) {} }
+  // Pilot picker for awarding
+  document.getElementById('tr-pilot').innerHTML = allPilots
+    .filter(p => p.status === 'active')
+    .sort((a,b)=>(a.displayName||a.callsign||'').localeCompare(b.displayName||b.callsign||''))
+    .map(p => `<option value="${p.uid}">${p.displayName||p.callsign||p.uid}</option>`).join('');
+  let recs = [];
+  try {
+    const s = await db.collection('trainingRecords').get();
+    recs = s.docs.map(d => ({id: d.id, src: 'rec', ...d.data()}));
+  } catch(e) {}
+  // Legacy: completion docs that live in the training collection
+  try {
+    const s = await db.collection('training').get();
+    s.docs.forEach(d => {
+      const t = d.data();
+      if (t.pilotUid && (t.passed === true || t.completedAt)) {
+        recs.push({id: d.id, src: 'legacy', pilotUid: t.pilotUid, name: t.eventName || t.title || 'Training event', completedAt: t.completedAt || t.createdAt, notes: t.notes || '', pilotCallsign: t.pilotCallsign || t.callsign || ''});
+      }
+    });
+  } catch(e) {}
+  // Certs stored directly on pilot documents
+  allPilots.forEach(p => {
+    (p.certifications || p.certs || []).forEach((c, i) => {
+      recs.push({id: p.uid + '_pc' + i, src: 'pilot', pilotUid: p.uid, name: (c && c.name) || String(c), completedAt: c && (c.awardedAt || c.completedAt) || null, notes: (c && c.notes) || ''});
+    });
+  });
+  if (!recs.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🎓</div><p>No training records found anywhere — award the first one above.</p></div>';
+    return;
+  }
+  const byPilot = {};
+  recs.forEach(r => { (byPilot[r.pilotUid] = byPilot[r.pilotUid] || []).push(r); });
+  el.innerHTML = Object.entries(byPilot).map(([uid, list]) => {
+    const p = allPilots.find(x => x.uid === uid);
+    const nm = p ? (p.displayName || p.callsign) : (list[0].pilotCallsign || 'Unknown pilot');
+    const wing = p && p.wing ? ` · <span style="color:var(--text3)">${getWingAbbrMA(p.wing)}</span>` : '';
+    return `<div class="card" style="margin-bottom:12px"><div class="card-body">
+      <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:8px">${nm}${wing} <span style="font-size:11px;color:var(--text3);font-weight:400">· ${list.length} record${list.length>1?'s':''}</span></div>
+      ${list.map(r => `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--border)">
+        <span style="font-size:15px">✅</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${r.name || 'Certification'}</div>
+          <div style="font-size:11px;color:var(--text3)">${r.completedAt && r.completedAt.toDate ? r.completedAt.toDate().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : ''}${r.awardedBy ? ' · by ' + r.awardedBy : ''}${r.notes ? ' · ' + r.notes : ''}</div>
+        </div>
+        ${r.src === 'rec' ? `<button class="btn btn-danger btn-xs" onclick="deleteTrainingRecord('${r.id}')">Remove</button>` : ''}
+      </div>`).join('')}
+    </div></div>`;
+  }).join('');
+}
+function getWingAbbrMA(w){ return {'7bw':'7th BW','509bw':'509th BW','2bw':'2nd BW'}[w] || w || ''; }
+
+async function addTrainingRecord() {
+  const uid  = document.getElementById('tr-pilot').value;
+  const name = document.getElementById('tr-name').value.trim();
+  const notes = document.getElementById('tr-notes').value.trim();
+  if (!uid)  { toast('Pick a pilot', 'error'); return; }
+  if (!name) { toast('Enter the certification name', 'error'); return; }
+  const p = allPilots.find(x => x.uid === uid);
+  try {
+    await db.collection('trainingRecords').add({
+      pilotUid: uid,
+      pilotCallsign: p ? (p.displayName || p.callsign || '') : '',
+      name: name,
+      notes: notes,
+      passed: true,
+      completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      awardedBy: currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '',
+    });
+    try {
+      await db.collection('auditLog').add({
+        eventType: 'training_cert_awarded',
+        actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
+        details: { notes: 'Cert awarded to ' + (p ? (p.displayName || p.callsign) : uid) + ': ' + name },
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch(e) {}
+    document.getElementById('tr-name').value = '';
+    document.getElementById('tr-notes').value = '';
+    toast('Certification awarded ✓');
+    loadTrainingRecords();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function deleteTrainingRecord(id) {
+  if (!confirm('Remove this training record?')) return;
+  try {
+    await db.collection('trainingRecords').doc(id).delete();
+    toast('Record removed');
+    loadTrainingRecords();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DISCORD WING ROSTERS — one LIVING message per wing that gets
+//  edited in place whenever the roster changes (approve, edit,
+//  deny). Same PATCH pattern as the fleet status messages;
+//  message ids live in settings/rosterStatus.
+// ══════════════════════════════════════════════════════════════
+async function upsertRosterMessage(wing, url, payload) {
+  let ids = {};
+  try {
+    const s = await db.collection('settings').doc('rosterStatus').get();
+    ids = s.exists ? (s.data().messages || {}) : {};
+  } catch(e) {}
+  const mid = ids[wing];
+  if (mid) {
+    try {
+      const r = await fetch(url + '/messages/' + mid, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (r.ok) return true;
+    } catch(e) {}
+  }
+  try {
+    const sep = url.includes('?') ? '&' : '?';
+    const r = await fetch(url + sep + 'wait=true', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (r.ok) {
+      const msg = await r.json().catch(function(){ return null; });
+      if (msg && msg.id) {
+        ids[wing] = msg.id;
+        db.collection('settings').doc('rosterStatus').set({ messages: ids }, { merge: true }).catch(function(){});
+      }
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+async function postWingRoster(wing, whChannels) {
+  const ch = whChannels['roster_' + wing];
+  if (!ch || !ch.url) return false;
+  const W = {'7bw':{name:'7th Bomb Wing',color:0xc8a951},'509bw':{name:'509th Bomb Wing',color:0x4a90d9},'2bw':{name:'2nd Bomb Wing',color:0x3dba6e}};
+  const list = allPilots.filter(p => p.status === 'active' && p.wing === wing);
+  // Group by squadron; command staff without a squadron listed first
+  const bySq = {};
+  list.forEach(p => { (bySq[p.squadron || '_cmd'] = bySq[p.squadron || '_cmd'] || []).push(p); });
+  const lines = [];
+  Object.keys(bySq).sort(function(a,b){ return a === '_cmd' ? -1 : b === '_cmd' ? 1 : a.localeCompare(b); }).forEach(function(sq) {
+    const sqName = sq === '_cmd' ? '⭐ Wing Staff' : (typeof getSqName === 'function' ? getSqName(wing, sq) : sq);
+    lines.push('**' + sqName + '**');
+    bySq[sq].sort(function(a,b){ return (a.displayName||a.callsign||'').localeCompare(b.displayName||b.callsign||''); }).forEach(function(p) {
+      const rank = typeof getRankName === 'function' ? getRankName(p.rank || 'rec') : (p.rank || '');
+      lines.push('• ' + rank + ' **' + (p.displayName || p.callsign || 'Pilot') + '**');
+    });
+    lines.push('');
+  });
+  let desc = lines.join('\n').trim() || '_No active pilots assigned yet._';
+  if (desc.length > 3900) desc = desc.slice(0, 3900) + '\n…';
+  const payload = { embeds: [{
+    color: (W[wing]||{}).color || 0xc8a951,
+    title: '👥 ' + ((W[wing]||{}).name || wing) + ' — Roster',
+    description: desc,
+    footer: { text: list.length + ' active pilot' + (list.length===1?'':'s') + ' · VTAC Global Strike Command' },
+    timestamp: new Date().toISOString(),
+  }]};
+  return upsertRosterMessage(wing, ch.url, payload);
+}
+
+// Fires after every roster mutation (approve / edit / deny) and via
+// the manual 📡 button. Silently skips wings without a webhook.
+async function postAllWingRosters(manual) {
+  try {
+    if (!allPilots.length) { try { await loadAllPilots(); } catch(e) {} }
+    const s = await db.collection('settings').doc('webhooks').get();
+    const whChannels = s.exists ? (s.data().channels || {}) : {};
+    let n = 0;
+    const wings = ['7bw','509bw','2bw'];
+    for (let i = 0; i < wings.length; i++) {
+      if (await postWingRoster(wings[i], whChannels)) n++;
+    }
+    if (manual) {
+      if (n) toast('Updated ' + n + ' wing roster message' + (n>1?'s':'') + ' on Discord ✓');
+      else toast('No roster webhooks set — add them in Discord Webhooks → Wing Rosters', 'warn');
+    }
+  } catch(e) { if (manual) toast('Roster post failed: ' + e.message, 'error'); }
 }
 
 function openRankModal(uid) {
@@ -879,6 +1079,7 @@ async function saveRankChange() {
     toast('Pilot updated!');
     closeModal('rank-modal');
     loadAllPilots();
+    postAllWingRosters(false);   // keep Discord wing rosters live
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
@@ -1739,6 +1940,9 @@ const WH_CHANNELS = {
   tasking_7bw:    { label:'Tasking — 7th BW',            group:'Tasking',      events:'tasking orders for the 7th Bomb Wing' },
   tasking_509bw:  { label:'Tasking — 509th BW',          group:'Tasking',      events:'tasking orders for the 509th Bomb Wing' },
   tasking_2bw:    { label:'Tasking — 2nd BW',            group:'Tasking',      events:'tasking orders for the 2nd Bomb Wing' },
+  roster_7bw:     { label:'Roster — 7th BW',             group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny' },
+  roster_509bw:   { label:'Roster — 509th BW',           group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny' },
+  roster_2bw:     { label:'Roster — 2nd BW',             group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny' },
   admin_pilots:   { label:'Admin — Pilot Actions',       group:'Admin',        events:'approved, denied, rank/role changes' },
   admin_training: { label:'Admin — Training & Certs',    group:'Admin',        events:'cert_awarded, cert_revoked' },
   admin_site:     { label:'Admin — Site Changes',        group:'Admin',        events:'news, roles, wings, webhooks' },
