@@ -648,21 +648,27 @@ async function savePrivacy() {
 
 // ── CERTS ────────────────────────────────────────────────────
 async function loadCerts() {
+  const el = document.getElementById('certs-list');
+  let recs = [];
+  // New home: the trainingRecords collection
   try {
-    const snap = await db.collection('training')
-      .where('pilotUid','==',currentUser.uid)
-      .where('passed','==',true).get();
-    const el = document.getElementById('certs-list');
-    if (snap.empty) return;
-    el.innerHTML = snap.docs.map(d => {
-      const t = d.data();
-      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border)">
-        <span style="font-size:18px">✅</span>
-        <div><div style="font-size:13px;font-weight:600;color:var(--text)">${t.eventName||'Training event'}</div>
-        <div style="font-size:11px;color:var(--text3)">${formatDate(t.completedAt)}</div></div>
-      </div>`;
-    }).join('');
+    const snap = await db.collection('trainingRecords').where('pilotUid','==',currentUser.uid).get();
+    recs = snap.docs.map(d => d.data());
   } catch(e) {}
+  // Legacy: completion docs that lived in the training collection
+  try {
+    const snap = await db.collection('training').where('pilotUid','==',currentUser.uid).get();
+    snap.docs.forEach(d => { const t = d.data(); if (t.passed === true || t.completedAt) recs.push({ name: t.eventName || t.title || 'Training event', completedAt: t.completedAt || t.createdAt, notes: t.notes || '' }); });
+  } catch(e) {}
+  if (!recs.length) return;
+  recs.sort((a,b) => ((b.completedAt?.toMillis?.()||0) - (a.completedAt?.toMillis?.()||0)));
+  el.innerHTML = recs.map(t => {
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border)">
+      <span style="font-size:18px">✅</span>
+      <div><div style="font-size:13px;font-weight:600;color:var(--text)">${t.name||'Certification'}</div>
+      <div style="font-size:11px;color:var(--text3)">${formatDate(t.completedAt)}${t.awardedBy?' · by '+t.awardedBy:''}${t.notes?' · '+t.notes:''}</div></div>
+    </div>`;
+  }).join('');
 }
 
 // ── EARNED PILOT WINGS RATING ────────────────────────────────
