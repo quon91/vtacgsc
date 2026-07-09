@@ -159,7 +159,8 @@
           <option value="suspended">Suspended</option>
         </select>
       </div>
-      <div style="margin-bottom:12px"><button class="btn btn-outline btn-sm" onclick="postAllWingRosters(true)">📡 Update Discord wing rosters</button></div>
+      <div style="margin-bottom:12px"><button class="btn btn-outline btn-sm" onclick="postAllWingRosters(true)">📡 Update Discord wing rosters</button>
+        <button class="btn btn-outline btn-sm" onclick="migrateEmailsToPrivate()">🔐 Move emails to private storage</button></div>
       <div id="pilots-list"><div class="empty-state"><div class="icon">👨‍✈️</div><p>Loading pilots...</p></div></div>
     </div>
 
@@ -704,8 +705,10 @@ async function loadApplications() {
   // silently EXCLUDES any pilot doc that lacks the appliedAt field
   // (older registrations), which made pending applications invisible
   // while the sidebar badge still counted them. Sort client-side.
+  await loadPrivateEmails();
   const snap = await db.collection('pilots').where('status','==','pending').get();
   const apps = snap.docs.map(d => ({uid:d.id,...d.data()}))
+    .map(p => { if (!p.email && privateEmails[p.uid]) p.email = privateEmails[p.uid]; return p; })
     .sort((a,b) => (b.appliedAt?.toMillis?.()||0) - (a.appliedAt?.toMillis?.()||0));
   const list = document.getElementById('applications-list');
   if (!apps.length) { list.innerHTML='<div class="empty-state"><div class="icon">✅</div><p>No pending applications</p></div>'; return; }
@@ -722,7 +725,7 @@ async function loadApplications() {
           <span class="badge badge-amber" style="margin-left:auto">PENDING</span>
         </div>
         <div class="pending-detail">
-          <div class="detail-item"><div class="detail-lbl">Full Name</div><div class="detail-val">${p.firstName} ${p.lastName}</div></div>
+          <div class="detail-item"><div class="detail-lbl">Full Name</div><div class="detail-val">${[p.firstName, p.lastName].filter(Boolean).join(' ') || '—'}</div></div>
           <div class="detail-item"><div class="detail-lbl">Discord</div><div class="detail-val">${p.discord||'—'}</div></div>
           <div class="detail-item"><div class="detail-lbl">Preferred Wing</div><div class="detail-val">${getWingName(p.preferredWing)||'—'}</div></div>
           <div class="detail-item"><div class="detail-lbl">Simulator</div><div class="detail-val">${p.simulator||'—'}</div></div>
@@ -794,6 +797,7 @@ async function confirmDeny() {
     // callsign is freed, and if the person signs in again they're
     // routed into a clean re-application (their login still works).
     await db.collection('pilots').doc(editingPilotUid).delete();
+    try { await db.collection('pilotsPrivate').doc(editingPilotUid).delete(); } catch(e) {}
     try {
       await db.collection('auditLog').add({
         eventType: 'application_denied',
@@ -809,10 +813,57 @@ async function confirmDeny() {
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
+// ── PRIVATE EMAIL VAULT ──────────────────────────────────────
+// Emails live in pilotsPrivate (readable only by each pilot and
+// the master admin). Loaded once here and merged into allPilots
+// so all rendering/search/audit code works unchanged — but the
+// data members' browsers download from the roster contains none.
+let privateEmails = null;
+async function loadPrivateEmails() {
+  if (privateEmails) return privateEmails;
+  privateEmails = {};
+  try {
+    const s = await db.collection('pilotsPrivate').get();
+    s.docs.forEach(function(d){ privateEmails[d.id] = (d.data().email || ''); });
+  } catch(e) {}
+  return privateEmails;
+}
+
 async function loadAllPilots() {
+  await loadPrivateEmails();
   const snap = await db.collection('pilots').orderBy('displayName').get();
   allPilots = snap.docs.map(d=>({uid:d.id,...d.data()}));
+  allPilots.forEach(function(p){ if (!p.email && privateEmails[p.uid]) p.email = privateEmails[p.uid]; });
   filterPilots();
+}
+
+// One-time migration: moves any email still sitting on a pilot doc
+// into the private vault and scrubs it off the pilot doc. Safe to
+// run repeatedly — it only touches docs that still carry an email.
+async function migrateEmailsToPrivate() {
+  if (!confirm('Move all emails off pilot documents into private storage (visible only to each pilot and you)?')) return;
+  try {
+    const snap = await db.collection('pilots').get();
+    let moved = 0;
+    for (const d of snap.docs) {
+      const email = d.data().email;
+      if (!email) continue;
+      await db.collection('pilotsPrivate').doc(d.id).set({ email: email }, { merge: true });
+      await db.collection('pilots').doc(d.id).update({ email: firebase.firestore.FieldValue.delete() });
+      moved++;
+    }
+    privateEmails = null;   // force re-read
+    try {
+      await db.collection('auditLog').add({
+        eventType: 'emails_migrated',
+        actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
+        details: { notes: 'Migrated ' + moved + ' email(s) from pilot docs to private storage' },
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch(e) {}
+    toast(moved ? 'Moved ' + moved + ' email(s) to private storage ✓' : 'Nothing to migrate — all emails already private ✓');
+    loadAllPilots();
+  } catch(e) { toast('Migration error: ' + e.message, 'error'); }
 }
 function renderPilots(pilots) {
   const list = document.getElementById('pilots-list');
