@@ -230,6 +230,18 @@ service cloud.firestore {
       allow write: if isActive();
     }
 
+    // ── PILOTS PRIVATE (emails) ──────────────────────────────
+    // Sensitive contact info lives here, NOT on the pilot doc.
+    // Readable ONLY by the pilot themself and the master admin —
+    // deliberately not command staff, and never the wider roster.
+    match /pilotsPrivate/{pilotId} {
+      allow read: if isSignedIn()
+        && (request.auth.uid == pilotId || isMasterAdmin());
+      allow create, update: if isSignedIn()
+        && (request.auth.uid == pilotId || isMasterAdmin());
+      allow delete: if isMasterAdmin();
+    }
+
     // ── TRAINING RECORDS (certifications) ────────────────────
     // Completion records / certs awarded to pilots. Written by
     // command staff or anyone holding the training permission;
