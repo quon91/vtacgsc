@@ -33,22 +33,15 @@
         <ul class="reqs" style="margin-top:8px">
           <li>Must own MSFS 2020 or MSFS 2024</li>
           <li>Must be 16 years or older</li>
-          <li>Must be willing to follow squadron SOPs</li>
-          <li>Must join the vTAC GSC Discord server</li>
+          <li>Must join the <strong>vTAC HQ Discord</strong> and the <strong>vGSC Discord</strong></li>
+          <li>Must be willing to follow <strong>vTAC and vGSC SOPs</strong></li>
         </ul>
+        <div style="margin-top:10px;font-size:12px;color:var(--text2);border-top:1px solid var(--border);padding-top:8px">
+          vGSC is one of several vTAC MAJCOMs — <strong>vACC</strong>, <strong>vAMC</strong>, <strong>vAETC</strong>, <strong>vUSAFE</strong>, <strong>NATO</strong>, and <strong>RAF</strong> are also available through vTAC HQ.
+        </div>
       </div>
 
       <form id="reg-form" onsubmit="handleRegister(event)">
-        <div class="form-row">
-          <div class="form-group">
-            <label>First name</label>
-            <input type="text" id="firstName" placeholder="John" required>
-          </div>
-          <div class="form-group">
-            <label>Last name</label>
-            <input type="text" id="lastName" placeholder="Smith" required>
-          </div>
-        </div>
         <div class="alert alert-info" id="reapply-banner" style="display:none;margin-bottom:16px;font-size:13px">
           ♻️ You're signed in as <strong id="reapply-email"></strong> and have no active application on file.
           Fill out the form below to submit a <strong>new application</strong> — no new account or password needed.
@@ -195,12 +188,12 @@ async function handleRegister(e) {
       uid = cred.user.uid;
     }
 
-    // Create pilot document — status: pending until approved by master admin
+    // Create pilot document — status: pending until approved by master admin.
+    // NOTE: email deliberately NOT stored here. The pilot doc is readable
+    // by every active member (that's how the roster works), so the email
+    // goes into pilotsPrivate — readable only by the pilot and master admin.
     await db.collection('pilots').doc(uid).set({
       uid:           uid,
-      email:         email,
-      firstName:     document.getElementById('firstName').value.trim(),
-      lastName:      document.getElementById('lastName').value.trim(),
       callsign:      callsign.toLowerCase(),
       displayName:   callsign,
       preferredWing: document.getElementById('preferredWing').value,
@@ -220,6 +213,11 @@ async function handleRegister(e) {
       appliedAt:     firebase.firestore.FieldValue.serverTimestamp(),
       lastLogin:     firebase.firestore.FieldValue.serverTimestamp(),
     });
+
+    // Email goes into the private vault — pilot + master admin only
+    try {
+      await db.collection('pilotsPrivate').doc(uid).set({ email: email }, { merge: true });
+    } catch(e) {}
 
     // Notify admins (create notification doc)
     await db.collection('notifications').add({
