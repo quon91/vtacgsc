@@ -153,7 +153,7 @@ select.search-input{min-width:140px;flex:0}
 
         <!-- SORTIE GENERATOR TAB -->
         <div id="tab-random" class="tab-panel2">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Generates a sortie routed over <strong>real-world navaids</strong> any ICAO worldwide</strong> Leave arrival blank for a random airport <strong>arrival = departure</strong> for an out-and-back: the generator rolls a heading, picks a real turn-point navaid 150–400 NM out, and routes you home.</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Generates a sortie routed over <strong>real-world navaids</strong> — VORs, VORTACs, and TACANs along the actual great-circle corridor between your airports (navdata from OurAirports / FAA, airport positions from AviationWeather.gov — <strong>any ICAO worldwide</strong> that reports weather, including overseas bases like OTBH). Leave arrival blank for a random USAF field, or set <strong>arrival = departure</strong> for an out-and-back: the generator rolls a heading, picks a real turn-point navaid 150–400 NM out, and routes you home.</div>
           <div class="form-row">
             <div class="form-group">
               <label>Departure (ICAO)</label>
@@ -919,6 +919,7 @@ async function loadNavaids(statusEl) {
     if (!lines[i]) continue;
     const c = csvSplit(lines[i]);
     // columns: 0 id, 2 ident, 3 name, 4 type, 6 lat, 7 lon
+    // Worldwide — overseas sorties (OTBH, ETAR, RJTY…) route over
     // real navaids in-theater too.
     if (!GOOD[c[4]]) continue;
     const lat = parseFloat(c[6]), lon = parseFloat(c[7]);
@@ -958,6 +959,7 @@ function buildNavChain(A, B, usedSet) {
 // Airport coordinates — instant for the built-in pool, cached after
 // first lookup, and resolved worldwide via THREE AviationWeather.gov
 // endpoints in order (airport → station info → METAR). Overseas
+// military fields like OTBH often miss the airport endpoint but
 // always report METARs, so the chain catches them.
 const _airportCache = {};
 async function getAirportCoords(icao) {
@@ -1437,14 +1439,21 @@ async function loadCommunityRoutes() {
   el.innerHTML = '<div class="empty-state" style="padding:20px"><p>Loading…</p></div>';
   const wingFilter = document.getElementById('cr-wing-filter')?.value || '';
   try {
-    let q = db.collection('communityRoutes').orderBy('createdAt', 'desc').limit(50);
+    // NOTE: no orderBy on the Firestore query. Combining a category
+    // filter with orderBy('createdAt') requires a composite index
+    // (the "query requires an index" error) AND silently drops docs
+    // missing createdAt. Filter server-side, sort client-side.
+    let q = db.collection('communityRoutes').limit(50);
     if (wingFilter) q = q.where('category', '==', wingFilter);
     const snap = await q.get();
     if (snap.empty) {
       el.innerHTML = '<div class="empty-state" style="padding:20px"><div class="icon">🗺</div><p>No community routes yet. Be the first to submit one!</p></div>';
       return;
     }
-    el.innerHTML = snap.docs.map(d => {
+    const docs = snap.docs.slice().sort(function(a, b) {
+      return (b.data().createdAt?.toMillis?.() || 0) - (a.data().createdAt?.toMillis?.() || 0);
+    });
+    el.innerHTML = docs.map(d => {
       const r = d.data();
       window._crCache[d.id] = r;
       const color = WING_COLORS_CR[r.category] || 'var(--text3)';
