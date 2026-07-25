@@ -153,7 +153,7 @@ select.search-input{min-width:140px;flex:0}
 
         <!-- SORTIE GENERATOR TAB -->
         <div id="tab-random" class="tab-panel2">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Generates a sortie routed over <strong>real-world navaids</strong> — VORs, VORTACs, and TACANs along the actual great-circle corridor between your airports (navdata from OurAirports / FAA, airport positions from AviationWeather.gov — <strong>any ICAO worldwide</strong> that reports weather, including overseas bases like OTBH). Leave arrival blank for a random USAF field, or set <strong>arrival = departure</strong> for an out-and-back: the generator rolls a heading, picks a real turn-point navaid 150–400 NM out, and routes you home.</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Generates a sortie routed over <strong>real-world navaids</strong> — VORs, VORTACs, and TACANs along the actual great-circle corridor between your airports (navdata and airport positions from the OurAirports open database — <strong>any ICAO worldwide</strong>, including overseas fields like OTBH, YPDN, and EGVN). Leave arrival blank for a random USAF field, or set <strong>arrival = departure</strong> for an out-and-back: the generator rolls a heading, picks a real turn-point navaid 150–400 NM out, and routes you home.</div>
           <div class="form-row">
             <div class="form-group">
               <label>Departure (ICAO)</label>
@@ -821,7 +821,7 @@ const ACFT_SPEEDS = { 'B-1B Lancer': 650, 'B-2 Spirit': 480, 'B-52H Stratofortre
 
 // ── 🎲 RANDOM SORTIE GENERATOR ────────────────────────────────
 // Routes are built from REAL navdata, no third-party route sites:
-//  · Airport positions — AviationWeather.gov data API
+//  · Airport positions — OurAirports open dataset (worldwide)
 //  · Navaids (VOR / VORTAC / VOR-DME / TACAN) — OurAirports open
 //    dataset (same FAA-derived source family as NASR)
 // The generator plots the great-circle between the airports and
@@ -956,19 +956,136 @@ function buildNavChain(A, B, usedSet) {
   return chain;
 }
 
-// Airport coordinates — instant for the built-in pool, cached after
-// first lookup, and resolved worldwide via THREE AviationWeather.gov
-// endpoints in order (airport → station info → METAR). Overseas
-// military fields like OTBH often miss the airport endpoint but
-// always report METARs, so the chain catches them.
+// ══════════════════════════════════════════════════════════════
+//  NETWORK HELPER — direct first, then a CHAIN of CORS proxies.
+//  api.allorigins.win alone was a single point of failure: when it
+//  rate-limits or 502s, SimBrief AND overseas airport lookups both
+//  die. Now any one working route is enough.
+// ══════════════════════════════════════════════════════════════
+const CORS_PROXIES = [
+  function(u){ return u; },                                                        // direct — works if the host sends CORS headers
+  function(u){ return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); },
+  function(u){ return 'https://corsproxy.io/?url=' + encodeURIComponent(u); },
+  function(u){ return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
+  function(u){ return 'https://thingproxy.freeboard.io/fetch/' + u; },
+];
+
+// Returns parsed JSON, or throws with the LAST real error so the
+// pilot sees something useful instead of "Unexpected token <".
+async function fetchJSONResilient(url) {
+  let lastErr = null;
+  for (let i = 0; i < CORS_PROXIES.length; i++) {
+    let target;
+    try { target = CORS_PROXIES[i](url); } catch (e) { continue; }
+    try {
+      const r = await fetch(target);
+      if (!r.ok) { lastErr = new Error('HTTP ' + r.status + ' via route ' + (i + 1)); continue; }
+      const t = (await r.text()).trim();
+      if (!t) { lastErr = new Error('Empty response via route ' + (i + 1)); continue; }
+      // A proxy error page is HTML, not JSON — skip to the next route
+      // rather than blowing up inside JSON.parse.
+      if (t.charAt(0) !== '{' && t.charAt(0) !== '[') {
+        lastErr = new Error('Non-JSON response via route ' + (i + 1));
+        continue;
+      }
+      return JSON.parse(t);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('All network routes failed');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  WORLDWIDE AIRPORT DATABASE
+//  ~25,000 airports with 4-character idents, straight from the
+//  OurAirports open dataset — the SAME GitHub Pages host the navaid
+//  database already loads from, so no CORS proxy is involved and
+//  nothing can rate-limit it. YPDN, YPTN, OTBH, RJTY, EGVN: all in.
+//  Tries a locally hosted /assets/airports.json first (fast, ~250 KB
+//  gzipped); falls back to the upstream CSV if it isn't deployed yet.
+// ══════════════════════════════════════════════════════════════
+let _airports = null;
+
+function cacheAirports() {
+  try { sessionStorage.setItem('vtac_airports_v2', JSON.stringify(_airports)); } catch (e) {}
+}
+
+async function loadAirports(statusEl) {
+  if (_airports) return _airports;
+  try {
+    const cached = sessionStorage.getItem('vtac_airports_v2');
+    if (cached) { _airports = JSON.parse(cached); return _airports; }
+  } catch (e) {}
+
+  // 1) Local copy generated by tools/make-airports.js and deployed
+  //    with the site. Preferred: one small fetch, no third parties.
+  try {
+    const r = await fetch('/assets/airports.json');
+    if (r.ok) {
+      const j = await r.json();
+      if (j && typeof j === 'object' && Object.keys(j).length > 1000) {
+        _airports = j; cacheAirports(); return _airports;
+      }
+    }
+  } catch (e) {}
+
+  // 2) Upstream OurAirports CSV — same host as navaids.csv.
+  if (statusEl) statusEl.innerHTML = '<span class="loading-spin"></span>Loading worldwide airport database (one time)…';
+  const resp = await fetch('https://davidmegginson.github.io/ourairports-data/airports.csv');
+  if (!resp.ok) throw new Error('Airport database unavailable (HTTP ' + resp.status + ')');
+  const text = await resp.text();
+  const lines = text.split('\n');
+
+  // Header-driven column lookup. OurAirports has reordered and added
+  // columns before (icao_code was inserted in 2024); hardcoded indices
+  // would silently produce garbage coordinates instead of failing.
+  const hdr = csvSplit(lines[0] || '').map(function (h) { return h.trim().toLowerCase(); });
+  const iIdent = hdr.indexOf('ident');
+  const iType  = hdr.indexOf('type');
+  const iLat   = hdr.indexOf('latitude_deg');
+  const iLon   = hdr.indexOf('longitude_deg');
+  if (iIdent < 0 || iLat < 0 || iLon < 0) throw new Error('Airport CSV format changed — column headers not recognised');
+
+  const SKIP = { closed: 1, heliport: 1, seaplane_base: 1, balloonport: 1 };
+  const out = {};
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i]) continue;
+    const c = csvSplit(lines[i]);
+    const ident = (c[iIdent] || '').trim().toUpperCase();
+    if (!/^[A-Z0-9]{4}$/.test(ident)) continue;          // ICAO-shaped idents only
+    if (iType >= 0 && SKIP[(c[iType] || '').trim()]) continue;
+    const lat = parseFloat(c[iLat]), lon = parseFloat(c[iLon]);
+    if (isNaN(lat) || isNaN(lon)) continue;
+    out[ident] = [Math.round(lat * 1e4) / 1e4, Math.round(lon * 1e4) / 1e4];
+  }
+  if (Object.keys(out).length < 1000) throw new Error('Airport database parsed empty — upstream format may have changed');
+  _airports = out;
+  cacheAirports();
+  return out;
+}
+
+// Airport coordinates: built-in pool (instant) → worldwide database
+// → AviationWeather.gov chain as a last resort for odd military
+// idents that report METARs but aren't in the open dataset.
 const _airportCache = {};
-async function getAirportCoords(icao) {
+async function getAirportCoords(icao, statusEl) {
   if (BUILTIN_AIRPORTS[icao]) return BUILTIN_AIRPORTS[icao];
   if (_airportCache[icao]) return _airportCache[icao];
   try {
     const cached = sessionStorage.getItem('vtac_apt_' + icao);
     if (cached) { _airportCache[icao] = JSON.parse(cached); return _airportCache[icao]; }
-  } catch(e) {}
+  } catch (e) {}
+
+  let dbase = null;
+  try { dbase = await loadAirports(statusEl); } catch (e) { console.warn('Airport DB:', e.message); }
+  if (dbase && dbase[icao]) {
+    const got = { lat: dbase[icao][0], lon: dbase[icao][1] };
+    _airportCache[icao] = got;
+    try { sessionStorage.setItem('vtac_apt_' + icao, JSON.stringify(got)); } catch (e) {}
+    return got;
+  }
+
   const endpoints = [
     'https://aviationweather.gov/api/data/airport?ids=' + icao + '&format=json',
     'https://aviationweather.gov/api/data/stationinfo?ids=' + icao + '&format=json',
@@ -978,26 +1095,20 @@ async function getAirportCoords(icao) {
     const got = await tryAirportEndpoint(endpoints[i]);
     if (got) {
       _airportCache[icao] = got;
-      try { sessionStorage.setItem('vtac_apt_' + icao, JSON.stringify(got)); } catch(e) {}
+      try { sessionStorage.setItem('vtac_apt_' + icao, JSON.stringify(got)); } catch (e) {}
       return got;
     }
   }
   return null;
 }
+
 async function tryAirportEndpoint(url) {
-  // direct first, proxy fallback
   try {
-    const r = await fetch(url);
-    if (r.ok) { const c = extractCoords(await r.json()); if (c) return c; }
-  } catch(e) {}
-  try {
-    const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url));
-    const w = await r.json();
-    const c = extractCoords(JSON.parse(w.contents));
-    if (c) return c;
-  } catch(e) {}
-  return null;
+    const j = await fetchJSONResilient(url);
+    return extractCoords(j);
+  } catch (e) { return null; }
 }
+
 function extractCoords(j) {
   const a = Array.isArray(j) ? j[0] : j;
   if (!a) return null;
@@ -1024,10 +1135,10 @@ async function generateSortie() {
   try {
     await loadNavaids(status);
     status.innerHTML = '<span class="loading-spin"></span>Locating ' + dep + (outAndBack ? '' : ' and ' + arr) + '…';
-    const A = await getAirportCoords(dep);
-    const B = outAndBack ? A : await getAirportCoords(arr);
-    if (!A) { status.textContent = ''; toast('Could not locate ' + dep + ' — tried 3 data sources; double-check the ICAO', 'error'); return; }
-    if (!B) { status.textContent = ''; toast('Could not locate ' + arr + ' — tried 3 data sources; double-check the ICAO', 'error'); return; }
+    const A = await getAirportCoords(dep, status);
+    const B = outAndBack ? A : await getAirportCoords(arr, status);
+    if (!A) { status.textContent = ''; toast('Could not locate ' + dep + ' — not in the worldwide airport database. Check the ICAO.', 'error'); return; }
+    if (!B) { status.textContent = ''; toast('Could not locate ' + arr + ' — not in the worldwide airport database. Check the ICAO.', 'error'); return; }
 
     status.innerHTML = '<span class="loading-spin"></span>Routing over real navaids…';
     const used = {};
@@ -1082,7 +1193,7 @@ async function generateSortie() {
     // Result card
     status.textContent = '';
     document.getElementById('rs-title').textContent = '🎲 ' + mtype + ' — ' + dep + ' → ' + arr;
-    document.getElementById('rs-meta').textContent = acft + ' · FL' + Math.round(routeAlt/100) + ' · step ' + step + ' · ' + routeDist + ' NM · ' + profile + ' · navdata: OurAirports/FAA + AviationWeather.gov';
+    document.getElementById('rs-meta').textContent = acft + ' · FL' + Math.round(routeAlt/100) + ' · step ' + step + ' · ' + routeDist + ' NM · ' + profile + ' · navdata: OurAirports worldwide';
     document.getElementById('rs-route').textContent = [dep].concat(waypoints, [arr]).join(' ');
     resBox.style.display = 'block';
     toast(chain.length ? 'Sortie generated over ' + chain.length + ' real navaids ✓' : 'Sortie generated (direct — no navaids on that short leg)');
@@ -1155,19 +1266,26 @@ function updateTailSummary() {
 // ── SIMBRIEF ──────────────────────────────────────────────────
 async function fetchSimBrief() {
   const username = document.getElementById('sb-username').value.trim();
-  if (!username) { toast('Enter your SimBrief username','error'); return; }
+  if (!username) { toast('Enter your SimBrief username', 'error'); return; }
   document.getElementById('sb-result').style.display = 'none';
   document.getElementById('sb-error').style.display = 'none';
   document.getElementById('sb-loading').style.display = 'block';
   try {
     const isNum = /^\d+$/.test(username);
-    const api = isNum
-      ? `https://www.simbrief.com/api/xml.fetcher.php?userid=${username}&json=1`
-      : `https://www.simbrief.com/api/xml.fetcher.php?username=${username}&json=1`;
-    const resp = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(api)}`);
-    const wrapper = await resp.json();
-    const data = JSON.parse(wrapper.contents);
-    if (data.fetch?.status === 'Error') throw new Error(data.fetch.statusMessage || 'SimBrief error');
+    const api = 'https://www.simbrief.com/api/xml.fetcher.php?'
+      + (isNum ? 'userid=' : 'username=') + encodeURIComponent(username) + '&json=1';
+
+    // Was: allorigins only. One flaky proxy = dead feature. Now the
+    // request walks the whole proxy chain until something answers.
+    const data = await fetchJSONResilient(api);
+
+    if (data.fetch && data.fetch.status === 'Error') {
+      throw new Error(data.fetch.statusMessage || 'SimBrief returned an error — has this account generated an OFP yet?');
+    }
+    if (!data.origin || !data.destination) {
+      throw new Error('No flight plan found for "' + username + '". Generate an OFP on simbrief.com first, and check you used your Pilot ID or exact username.');
+    }
+
     sbData = data;
     const orig = data.origin?.icao_code || '?', dest = data.destination?.icao_code || '?';
     const route = data.general?.route || '';
@@ -1177,17 +1295,17 @@ async function fetchSimBrief() {
     const ca = parseInt(data.general?.initial_altitude) || 0;
     document.getElementById('sb-route-title').textContent = orig + ' → ' + dest;
     document.getElementById('sb-ofp-date').textContent = data.params?.date_utc
-      ? new Date(data.params.date_utc * 1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+      ? new Date(data.params.date_utc * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
     document.getElementById('sb-full-route').textContent = orig + ' ' + route + ' ' + dest;
     document.getElementById('sb-dist').textContent = dist;
-    document.getElementById('sb-time').textContent = bt ? Math.floor(parseInt(bt)/60)+'h '+parseInt(bt)%60+'m' : '—';
+    document.getElementById('sb-time').textContent = bt ? Math.floor(parseInt(bt) / 60) + 'h ' + parseInt(bt) % 60 + 'm' : '—';
     document.getElementById('sb-fuel').textContent = fuel ? fuel.toLocaleString() : '—';
-    document.getElementById('sb-alt').textContent = ca ? 'FL'+Math.round(ca/100) : '—';
+    document.getElementById('sb-alt').textContent = ca ? 'FL' + Math.round(ca / 100) : '—';
     document.getElementById('sb-result').style.display = 'block';
-    if (isLoggedIn && currentUser) db.collection('pilots').doc(currentUser.uid).update({simBriefUsername:username}).catch(()=>{});
-  } catch(e) {
+    if (isLoggedIn && currentUser) db.collection('pilots').doc(currentUser.uid).update({ simBriefUsername: username }).catch(() => {});
+  } catch (e) {
     document.getElementById('sb-error').style.display = 'block';
-    document.getElementById('sb-error').innerHTML = `<div class="alert alert-error">${e.message || 'Could not fetch OFP'}</div>`;
+    document.getElementById('sb-error').innerHTML = '<div class="alert alert-error">' + (e.message || 'Could not fetch OFP') + '</div>';
   } finally { document.getElementById('sb-loading').style.display = 'none'; }
 }
 
