@@ -998,23 +998,24 @@ async function fetchJSONResilient(url) {
 
 // ══════════════════════════════════════════════════════════════
 //  WORLDWIDE AIRPORT DATABASE
-//  ~25,000 airports with 4-character idents, straight from the
-//  OurAirports open dataset — the SAME GitHub Pages host the navaid
-//  database already loads from, so no CORS proxy is involved and
-//  nothing can rate-limit it. YPDN, YPTN, OTBH, RJTY, EGVN: all in.
-//  Tries a locally hosted /assets/airports.json first (fast, ~250 KB
+//  EVERY airport on file — ~80,000 entries covering all types and all
+//  ident lengths, from the OurAirports open dataset. Same GitHub Pages
+//  host the navaid database already loads from, so no CORS proxy is
+//  involved and nothing can rate-limit it.
+//  Tries a locally hosted /assets/airports.json first (under 1 MB
 //  gzipped); falls back to the upstream CSV if it isn't deployed yet.
+//  Closed fields are excluded — they don't exist in MSFS scenery.
 // ══════════════════════════════════════════════════════════════
 let _airports = null;
 
 function cacheAirports() {
-  try { sessionStorage.setItem('vtac_airports_v2', JSON.stringify(_airports)); } catch (e) {}
+  try { sessionStorage.setItem('vtac_airports_v3', JSON.stringify(_airports)); } catch (e) {}
 }
 
 async function loadAirports(statusEl) {
   if (_airports) return _airports;
   try {
-    const cached = sessionStorage.getItem('vtac_airports_v2');
+    const cached = sessionStorage.getItem('vtac_airports_v3');
     if (cached) { _airports = JSON.parse(cached); return _airports; }
   } catch (e) {}
 
@@ -1024,7 +1025,7 @@ async function loadAirports(statusEl) {
     const r = await fetch('/assets/airports.json');
     if (r.ok) {
       const j = await r.json();
-      if (j && typeof j === 'object' && Object.keys(j).length > 1000) {
+      if (j && typeof j === 'object' && Object.keys(j).length > 20000) {
         _airports = j; cacheAirports(); return _airports;
       }
     }
@@ -1047,19 +1048,19 @@ async function loadAirports(statusEl) {
   const iLon   = hdr.indexOf('longitude_deg');
   if (iIdent < 0 || iLat < 0 || iLon < 0) throw new Error('Airport CSV format changed — column headers not recognised');
 
-  const SKIP = { closed: 1, heliport: 1, seaplane_base: 1, balloonport: 1 };
+  const SKIP = { closed: 1 };   // everything else is kept
   const out = {};
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i]) continue;
     const c = csvSplit(lines[i]);
     const ident = (c[iIdent] || '').trim().toUpperCase();
-    if (!/^[A-Z0-9]{4}$/.test(ident)) continue;          // ICAO-shaped idents only
+    if (!/^[A-Z0-9]{2,8}$/.test(ident)) continue;        // any ident, incl. US local codes
     if (iType >= 0 && SKIP[(c[iType] || '').trim()]) continue;
     const lat = parseFloat(c[iLat]), lon = parseFloat(c[iLon]);
     if (isNaN(lat) || isNaN(lon)) continue;
     out[ident] = [Math.round(lat * 1e4) / 1e4, Math.round(lon * 1e4) / 1e4];
   }
-  if (Object.keys(out).length < 1000) throw new Error('Airport database parsed empty — upstream format may have changed');
+  if (Object.keys(out).length < 20000) throw new Error('Airport database parsed empty — upstream format may have changed');
   _airports = out;
   cacheAirports();
   return out;
