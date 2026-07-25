@@ -8,10 +8,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate worldwide airport database
+        run: |
+          mkdir -p public/assets
+          node tools/make-airports.js
+
       - uses: w9jds/firebase-action@master
         with:
           args: deploy --only hosting
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           PROJECT_ID: vtacgsc
-
