@@ -348,7 +348,7 @@ async function postFleetStatus(manual) {
       color: tplColor(tpl.color, parseInt((w.color || '#c8a951').replace('#',''), 16)),
       title: fillTpl(tpl.title || '🛩 {wing} — Fleet Status', vars),
       description: fleet.length
-        ? fillTpl(tpl.desc || '{count} aircraft on strength', vars) + ' · ' + vars.aircraft + ' · ' + vars.base
+        ? fillTpl(tpl.desc || '{count} aircraft assigned', vars) + ' · ' + vars.aircraft + ' · ' + vars.base
         : 'No aircraft currently registered.',
       fields: fields,
       footer: { text: fillTpl(tpl.footer || 'Updated by {by} · VTAC Global Strike Command', vars) },
