@@ -17,6 +17,7 @@
 .ac-meta{font-size:11px;color:var(--text3);margin-top:4px;font-family:var(--mono)}
 .ac-status{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-radius:12px;padding:3px 10px}
 .st-available{background:rgba(61,186,110,.12);color:var(--green2);border:1px solid rgba(61,186,110,.35)}
+.st-offstation{background:rgba(224,144,48,.12);color:var(--amber);border:1px solid rgba(224,144,48,.35)}
 .st-inflight{background:rgba(74,144,217,.12);color:var(--blue2);border:1px solid rgba(74,144,217,.35)}
 .st-maintenance{background:rgba(224,144,48,.12);color:var(--amber);border:1px solid rgba(224,144,48,.35)}
 .ac-edit-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%;padding-top:10px;margin-top:6px;border-top:1px dashed var(--border)}
@@ -66,6 +67,7 @@
           <label>Status</label>
           <select id="ac-status">
             <option value="available">Available</option>
+             <option value="offstation">Off Station</option>
             <option value="inflight">In Flight</option>
             <option value="maintenance">Maintenance</option>
           </select>
@@ -110,6 +112,7 @@ function esc(s) {
 const STATUS = {
   available:   { label: 'Available',   cls: 'st-available',   emoji: '🟢' },
   inflight:    { label: 'In Flight',   cls: 'st-inflight',    emoji: '🔵' },
+  offstation: { label: 'Off Station', cls: 'st-offstation', emoji: '🚀' },
   maintenance: { label: 'Maintenance', cls: 'st-maintenance', emoji: '🟠' },
 };
 
