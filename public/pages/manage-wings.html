@@ -197,6 +197,31 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
 <script>
+// ══════════════════════════════════════════════════════════════
+//  HTML ESCAPING — stored-XSS protection.
+//  Partner discord/website values land in href attributes here, so
+//  safeUrl() also blocks javascript: and data: URIs. Local
+//  fallbacks; a site-wide definition in firebase-config.js wins.
+// ══════════════════════════════════════════════════════════════
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  };
+}
+if (typeof escAttr !== 'function') {
+  window.escAttr = function (s) {
+    return esc(String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+  };
+}
+if (typeof safeUrl !== 'function') {
+  window.safeUrl = function (u) {
+    var s = String(u == null ? '' : u).trim();
+    return /^(https?:|\/|\.\/|#|mailto:)/i.test(s) ? esc(s) : '';
+  };
+}
+
 let allWings = {}, allPartners = [], selectedWingColor = '#c8a951', sqRows = 0;
 
 function onAuthReady(user, pilot) {
@@ -233,28 +258,28 @@ function renderWings() {
     return `
     <div class="wing-card">
       <div class="wing-card-header">
-        <div class="wing-color-dot" style="background:${color}"></div>
-        <div class="wing-card-title">${wing.name||wingId}</div>
-        <span style="font-size:12px;color:var(--text3)">${wing.base||''}</span>
+        <div class="wing-color-dot" style="background:${esc(color)}"></div>
+        <div class="wing-card-title">${esc(wing.name||wingId)}</div>
+        <span style="font-size:12px;color:var(--text3)">${esc(wing.base||'')}</span>
         <div style="display:flex;gap:6px;margin-left:12px">
-          <button class="btn btn-outline btn-xs" onclick="openEditWingModal('${wingId}')">Edit Wing</button>
-          <button class="btn btn-danger btn-xs" onclick="deleteWing('${wingId}')">Delete</button>
+          <button class="btn btn-outline btn-xs" onclick="openEditWingModal('${escAttr(wingId)}')">Edit Wing</button>
+          <button class="btn btn-danger btn-xs" onclick="deleteWing('${escAttr(wingId)}')">Delete</button>
         </div>
       </div>
       <div class="wing-card-body">
         <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px">
-          <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Aircraft</div><div style="font-size:13px;color:var(--text)">${(wing.aircraft||[]).join(', ')||'—'}</div></div>
-          <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Location</div><div style="font-size:13px;color:var(--text)">${wing.location||'—'}</div></div>
+          <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Aircraft</div><div style="font-size:13px;color:var(--text)">${esc((wing.aircraft||[]).join(', ')||'—')}</div></div>
+          <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Location</div><div style="font-size:13px;color:var(--text)">${esc(wing.location||'—')}</div></div>
           <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Squadrons</div><div style="font-size:13px;color:var(--text)">${Object.keys(sqs).length}</div></div>
         </div>
         <div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px">Squadrons</div>
         ${Object.entries(sqs).map(([sqId,sq])=>`
           <div class="sq-row">
-            <div class="sq-name">${sq.name||sqId} ${sq.nickname?`<span style="font-size:11px;color:var(--text3)">"${sq.nickname}"</span>`:''}</div>
-            ${sq.callsign?`<span class="sq-callsign">${sq.callsign}</span>`:'<span style="font-size:11px;color:var(--text3)">No callsign</span>'}
-            <button class="btn btn-outline btn-xs" onclick="openSqModal('${wingId}','${sqId}')">Edit</button>
+            <div class="sq-name">${esc(sq.name||sqId)} ${sq.nickname?`<span style="font-size:11px;color:var(--text3)">"${esc(sq.nickname)}"</span>`:''}</div>
+            ${sq.callsign?`<span class="sq-callsign">${esc(sq.callsign)}</span>`:'<span style="font-size:11px;color:var(--text3)">No callsign</span>'}
+            <button class="btn btn-outline btn-xs" onclick="openSqModal('${escAttr(wingId)}','${escAttr(sqId)}')">Edit</button>
           </div>`).join('')}
-        <button class="btn btn-outline btn-xs" onclick="openAddSqModal('${wingId}')" style="margin-top:10px">+ Add Squadron</button>
+        <button class="btn btn-outline btn-xs" onclick="openAddSqModal('${escAttr(wingId)}')" style="margin-top:10px">+ Add Squadron</button>
       </div>
     </div>`}).join('');
 }
@@ -274,6 +299,9 @@ function openAddWingModal() {
   sqBuilderItems = [];
   renderSqBuilder();
   document.getElementById('add-wing-modal').classList.add('open');
+}
+function openAddPartnerModal() {
+  document.getElementById('add-partner-modal').classList.add('open');
 }
 function openEditWingModal(wingId) {
   const w = allWings[wingId];
@@ -305,9 +333,9 @@ function renderSqBuilder() {
   const el = document.getElementById('sq-builder-list');
   el.innerHTML = sqBuilderItems.map((sq,i)=>`
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-      <input type="text" placeholder="Squadron name" value="${sq.name||''}" oninput="sqBuilderItems[${i}].name=this.value" style="font-size:12px">
-      <input type="text" placeholder="Callsign (e.g. BONE)" value="${sq.callsign||''}" oninput="sqBuilderItems[${i}].callsign=this.value.toUpperCase()" maxlength="10" style="font-size:12px">
-      <input type="text" placeholder="Nickname (optional)" value="${sq.nickname||''}" oninput="sqBuilderItems[${i}].nickname=this.value" style="font-size:12px">
+      <input type="text" placeholder="Squadron name" value="${esc(sq.name||'')}" oninput="sqBuilderItems[${i}].name=this.value" style="font-size:12px">
+      <input type="text" placeholder="Callsign (e.g. BONE)" value="${esc(sq.callsign||'')}" oninput="sqBuilderItems[${i}].callsign=this.value.toUpperCase()" maxlength="10" style="font-size:12px">
+      <input type="text" placeholder="Nickname (optional)" value="${esc(sq.nickname||'')}" oninput="sqBuilderItems[${i}].nickname=this.value" style="font-size:12px">
       <button class="btn btn-danger btn-xs" onclick="sqBuilderItems.splice(${i},1);renderSqBuilder()">✕</button>
     </div>`).join('') || '<div style="font-size:13px;color:var(--text3);padding:8px 0">No squadrons — click Add Squadron below</div>';
 }
@@ -368,7 +396,7 @@ function renderPool() {
   if (!currentPool.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3)">No callsigns in pool yet</div>'; return; }
   el.innerHTML = currentPool.map((c,i)=>`
     <div style="display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;margin-bottom:4px">
-      <span style="font-family:var(--mono);font-size:13px;color:var(--text);flex:1">${c}</span>
+      <span style="font-family:var(--mono);font-size:13px;color:var(--text);flex:1">${esc(c)}</span>
       <button type="button" onclick="currentPool.splice(${i},1);renderPool()" style="background:none;border:none;color:var(--red2);cursor:pointer;font-size:14px">×</button>
     </div>`).join('');
 }
@@ -386,6 +414,8 @@ function openAddSqModal(wingId) {
   document.getElementById('sq-m-name').value = '';
   document.getElementById('sq-m-callsign').value = '';
   document.getElementById('sq-m-nickname').value = '';
+  currentPool = [];
+  renderPool();
   document.getElementById('sq-modal').classList.add('open');
 }
 async function saveSqModal() {
@@ -426,21 +456,27 @@ async function deleteSquadron() {
 function renderPartners() {
   const el = document.getElementById('partners-list');
   if (!allPartners.length) { el.innerHTML='<div class="empty-state"><div class="icon">🤝</div><p>No partner wings yet</p></div>'; return; }
-  el.innerHTML = allPartners.map(p=>`
+  el.innerHTML = allPartners.map(p=>{
+    // Partner links are pasted URLs that land in href. safeUrl()
+    // strips anything that isn't http(s)/relative, so a
+    // javascript: link can't be clicked into execution.
+    const discordHref = safeUrl(p.discord);
+    const siteHref    = safeUrl(p.website);
+    return `
     <div class="partner-card">
       <div class="partner-logo">
-        ${p.logo?`<img src="${p.logo}" style="width:52px;height:52px;border-radius:50%;object-fit:cover" onerror="this.style.display='none'">`:'🛩'}
+        ${p.logo?`<img src="${safeUrl(p.logo)}" style="width:52px;height:52px;border-radius:50%;object-fit:cover" onerror="this.style.display='none'">`:'🛩'}
       </div>
       <div class="partner-info">
-        <div class="partner-name">${p.name}</div>
-        <div class="partner-meta">${p.aircraft||''} ${p.notes?'· '+p.notes:''}</div>
+        <div class="partner-name">${esc(p.name)}</div>
+        <div class="partner-meta">${esc(p.aircraft||'')} ${p.notes?'· '+esc(p.notes):''}</div>
         <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
-          ${p.discord?`<a href="${p.discord}" target="_blank" class="btn btn-outline btn-xs">Discord</a>`:''}
-          ${p.website?`<a href="${p.website}" target="_blank" class="btn btn-outline btn-xs">Website</a>`:''}
+          ${discordHref?`<a href="${discordHref}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-xs">Discord</a>`:''}
+          ${siteHref?`<a href="${siteHref}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-xs">Website</a>`:''}
         </div>
       </div>
-      <button class="btn btn-danger btn-xs" onclick="deletePartner('${p.id}')">Remove</button>
-    </div>`).join('');
+      <button class="btn btn-danger btn-xs" onclick="deletePartner('${escAttr(p.id)}')">Remove</button>
+    </div>`;}).join('');
 }
 function previewPartnerLogo() {
   const url = document.getElementById('p-logo').value.trim();
