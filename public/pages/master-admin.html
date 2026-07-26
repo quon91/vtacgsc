@@ -457,13 +457,31 @@
       <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
         <select id="admin-audit-filter" onchange="adminLoadAudit()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--sans)">
           <option value="">All events</option>
-          <option value="pilot_approved">Pilot Approved</option>
-          <option value="pilot_denied">Pilot Denied</option>
-          <option value="pilot_rank_changed">Rank Changed</option>
-          <option value="flight_logged">Flight Logged</option>
-          <option value="flight_deleted">Flight Deleted</option>
-          <option value="cert_awarded">Cert Awarded</option>
-          <option value="news_posted">News Posted</option>
+          <optgroup label="Personnel">
+            <option value="pilot_approved">Pilot Approved</option>
+            <option value="pilot_denied">Pilot Denied</option>
+            <option value="pilot_rank_changed">Rank Changed</option>
+            <option value="cert_awarded">Cert Awarded</option>
+          </optgroup>
+          <optgroup label="Operations">
+            <option value="flight_logged">Flight Logged</option>
+            <option value="flight_deleted">Flight Deleted</option>
+            <option value="event_created">Event Scheduled</option>
+          </optgroup>
+          <optgroup label="Fleet">
+            <option value="fleet_aircraft_added">Aircraft Added</option>
+            <option value="fleet_aircraft_updated">Aircraft Updated</option>
+            <option value="fleet_aircraft_removed">Aircraft Removed</option>
+          </optgroup>
+          <optgroup label="Site">
+            <option value="news_posted">News Posted</option>
+            <option value="news_deleted">News Deleted</option>
+            <option value="emails_migrated">Emails Migrated</option>
+          </optgroup>
+          <optgroup label="Legacy">
+            <option value="application_denied">Application Denied (old name)</option>
+            <option value="training_cert_awarded">Cert Awarded (old name)</option>
+          </optgroup>
         </select>
         <button class="btn btn-outline btn-sm" onclick="adminLoadAudit()">🔄 Refresh</button>
         <span id="admin-audit-count" style="font-size:12px;color:var(--text2)"></span>
@@ -693,6 +711,25 @@ function showSec(id) {
   if (id==='viewas')       renderViewAsSection();
 }
 
+// ── AUDIT LOG ─────────────────────────────────────────────────
+// Every eventType written here MUST appear in the Audit Log filter
+// dropdown below. They had drifted completely apart: the dropdown
+// offered pilot_approved / pilot_denied / cert_awarded / news_posted
+// while the code wrote application_denied / training_cert_awarded and
+// nothing at all for approve, rank change or news — so every filter
+// came back empty. One helper now, one canonical name list.
+async function logAudit(eventType, notes, extra) {
+  try {
+    await db.collection('auditLog').add(Object.assign({
+      eventType: eventType,
+      actor: { uid: currentUser ? currentUser.uid : null,
+               callsign: (currentPilot && (currentPilot.displayName || currentPilot.callsign)) || '—' },
+      details: Object.assign({ notes: notes || '' }, extra || {}),
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    }));
+  } catch(e) { console.warn('audit skipped:', e.message); }
+}
+
 let allPilots = [], pendingApps = [];
 let editingPilotUid = null;
 
@@ -810,6 +847,10 @@ async function confirmApprove() {
       squadron:  sq || null,
       approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
+    const ap = allPilots.find(x=>x.uid===editingPilotUid) || pendingApps.find(x=>x.uid===editingPilotUid) || {};
+    logAudit('pilot_approved',
+      'Approved ' + (ap.displayName || ap.callsign || editingPilotUid) + ' → ' + (getWingName(wing)||wing) + ' · ' + role,
+      {pilotCallsign: ap.displayName || ap.callsign || ''});
     toast('Pilot approved and activated!');
     closeModal('approve-modal');
     loadAll();
@@ -829,7 +870,7 @@ async function confirmDeny() {
     try { await db.collection('pilotsPrivate').doc(editingPilotUid).delete(); } catch(e) {}
     try {
       await db.collection('auditLog').add({
-        eventType: 'application_denied',
+        eventType: 'pilot_denied',
         actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
         details: { notes: 'Application denied & record deleted: ' + (p.displayName || p.callsign || editingPilotUid) + (p.email ? ' (' + p.email + ')' : '') + (reason ? ' — reason: ' + reason : '') },
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1005,7 +1046,7 @@ async function addTrainingRecord() {
     });
     try {
       await db.collection('auditLog').add({
-        eventType: 'training_cert_awarded',
+        eventType: 'cert_awarded',
         actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
         details: { notes: 'Cert awarded to ' + (p ? (p.displayName || p.callsign) : uid) + ': ' + name },
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1156,6 +1197,11 @@ async function saveRankChange() {
       majcom:   document.getElementById('rank-modal-majcom').value||'afgsc',
       status:   document.getElementById('rank-modal-status').value,
     });
+    const rp = allPilots.find(x=>x.uid===editingPilotUid) || {};
+    logAudit('pilot_rank_changed',
+      'Updated ' + (rp.displayName || rp.callsign || editingPilotUid) + ' → rank ' +
+      document.getElementById('rank-modal-rank').value + ' · roles: ' + selectedRoles.join(', '),
+      {pilotCallsign: rp.displayName || rp.callsign || ''});
     toast('Pilot updated!');
     closeModal('rank-modal');
     loadAllPilots();
@@ -1383,12 +1429,14 @@ async function postNews() {
   const body  = document.getElementById('news-body').value.trim();
   if (!title||!body) { toast('Fill in title and body','error'); return; }
   await db.collection('news').add({ title, body, createdAt: firebase.firestore.FieldValue.serverTimestamp(), authorUid: currentUser.uid });
+  logAudit('news_posted', 'Announcement posted: ' + title, {newsTitle: title});
   document.getElementById('news-title').value=''; document.getElementById('news-body').value='';
   toast('Posted!'); loadNews();
 }
 async function deleteNews(id) {
   if (!confirm('Delete this announcement?')) return;
   await db.collection('news').doc(id).delete();
+  logAudit('news_deleted', 'Announcement deleted');
   toast('Deleted'); loadNews();
 }
 
@@ -2258,8 +2306,11 @@ async function adminFetchAuditPage(reset) {
   const filterEl = document.getElementById('admin-audit-filter');
   const filter = filterEl ? filterEl.value : '';
   try {
+    // Only orderBy — no where(). Combining eventType + timestamp
+    // needs a composite index, and without one the whole log errored
+    // out. Sort server-side on the single indexed field, filter the
+    // page client-side.
     let q = db.collection('auditLog').orderBy('timestamp','desc').limit(_ADMIN_AUDIT_PAGE);
-    if (filter) q = q.where('eventType','==',filter);
     if (!reset && _adminAuditLast) q = q.startAfter(_adminAuditLast);
 
     const snap = await q.get();
@@ -2267,7 +2318,8 @@ async function adminFetchAuditPage(reset) {
     const moreBtn = document.getElementById('admin-audit-more');
     if (moreBtn) moreBtn.style.display = snap.docs.length === _ADMIN_AUDIT_PAGE ? 'block' : 'none';
 
-    const entries = snap.docs.map(function(d) { return Object.assign({id:d.id}, d.data()); });
+    let entries = snap.docs.map(function(d) { return Object.assign({id:d.id}, d.data()); });
+    if (filter) entries = entries.filter(function(e){ return e.eventType === filter; });
     const countEl = document.getElementById('admin-audit-count');
     if (countEl) countEl.textContent = entries.length + (snap.docs.length===_ADMIN_AUDIT_PAGE?'+':'') + ' entries';
 
@@ -2275,7 +2327,9 @@ async function adminFetchAuditPage(reset) {
     if (!list) return;
 
     if (!entries.length && reset) {
-      list.innerHTML = '<div class="empty-state"><p>No audit entries yet. Actions taken on the site will appear here.</p></div>';
+      list.innerHTML = filter
+        ? '<div class="empty-state"><p>No <strong>' + esc(filter) + '</strong> entries on this page. Try “Load more”, or switch to All events.</p></div>'
+        : '<div class="empty-state"><p>No audit entries yet. Actions taken on the site will appear here.</p></div>';
       return;
     }
 
@@ -2284,6 +2338,10 @@ async function adminFetchAuditPage(reset) {
       pilot_rank_changed:'var(--gold)', flight_logged:'var(--green)',
       flight_deleted:'var(--red)', cert_awarded:'var(--gold)',
       cert_revoked:'var(--amber)', news_posted:'var(--blue)',
+      news_deleted:'var(--red)', event_created:'var(--blue)',
+      fleet_aircraft_added:'var(--green)', fleet_aircraft_updated:'var(--gold)',
+      fleet_aircraft_removed:'var(--red)', emails_migrated:'var(--amber)',
+      application_denied:'var(--red)', training_cert_awarded:'var(--gold)',
     };
 
     const html = entries.map(function(e) {
