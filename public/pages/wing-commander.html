@@ -172,6 +172,32 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
 <script>
+// ══════════════════════════════════════════════════════════════
+//  HTML ESCAPING — stored-XSS protection.
+//  Callsigns and squadron names are written by other pilots and
+//  rendered here into innerHTML. Local fallbacks: if
+//  firebase-config.js already defines these site-wide, that
+//  version wins, so deploy order doesn't matter.
+// ══════════════════════════════════════════════════════════════
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  };
+}
+if (typeof escAttr !== 'function') {
+  window.escAttr = function (s) {
+    return esc(String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+  };
+}
+if (typeof safeUrl !== 'function') {
+  window.safeUrl = function (u) {
+    var s = String(u == null ? '' : u).trim();
+    return /^(https?:|\/|\.\/|#|mailto:)/i.test(s) ? esc(s) : '';
+  };
+}
+
 let myWingId = null, myWingData = null, wingPilots = [], editingUid = null;
 
 function onAuthReady(user, pilot) {
@@ -218,7 +244,7 @@ function buildPoolTabs() {
   const entries = Object.entries(sqs);
   if (!entries.length) { tabs.innerHTML=''; document.getElementById('pool-editor').innerHTML='<div class="empty-state"><p>No squadrons in this wing</p></div>'; return; }
   activePoolSq = entries[0][0];
-  tabs.innerHTML = entries.map(([id,sq],i)=>`<button class="tab-btn ${i===0?'active':''}" onclick="switchPoolTab('${id}',this)">${sq.name}</button>`).join('');
+  tabs.innerHTML = entries.map(([id,sq],i)=>`<button class="tab-btn ${i===0?'active':''}" onclick="switchPoolTab('${escAttr(id)}',this)">${esc(sq.name)}</button>`).join('');
   renderPoolEditor();
 }
 function switchPoolTab(sqId, btn) {
@@ -232,15 +258,15 @@ function renderPoolEditor() {
   const pool = sq?.callsignPool || [];
   const el = document.getElementById('pool-editor');
   el.innerHTML = `
-    <div style="margin-bottom:10px" id="pool-items-${activePoolSq}">
+    <div style="margin-bottom:10px" id="pool-items-${esc(activePoolSq)}">
       ${pool.length ? pool.map((c,i)=>`
         <div style="display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;margin-bottom:5px">
-          <span style="font-family:var(--mono);font-size:13px;color:var(--text);flex:1">${c}</span>
+          <span style="font-family:var(--mono);font-size:13px;color:var(--text);flex:1">${esc(c)}</span>
           <button onclick="removePoolCallsign(${i})" style="background:none;border:none;color:var(--red2);cursor:pointer;font-size:15px">×</button>
         </div>`).join('') : '<div style="font-size:12px;color:var(--text3)">No callsigns yet for this squadron</div>'}
     </div>
     <div style="display:flex;gap:8px">
-      <input type="text" id="new-pool-cs" placeholder="e.g. ${sq?.callsign||'BONE'} 0${pool.length+1}" style="flex:1" maxlength="20">
+      <input type="text" id="new-pool-cs" placeholder="e.g. ${esc(sq?.callsign||'BONE')} 0${pool.length+1}" style="flex:1" maxlength="20">
       <button class="btn btn-primary btn-sm" onclick="addPoolCallsignWC()">+ Add</button>
     </div>`;
 }
@@ -276,7 +302,7 @@ function buildSqTabs() {
   const sqs  = myWingData?.squadrons || {};
   const tabs  = document.getElementById('sq-tabs');
   tabs.innerHTML = '<button class="tab-btn active" onclick="renderRoster(null,this)">All Squadrons</button>' +
-    Object.entries(sqs).map(([id,sq])=>`<button class="tab-btn" onclick="renderRoster('${id}',this)">${sq.name}</button>`).join('');
+    Object.entries(sqs).map(([id,sq])=>`<button class="tab-btn" onclick="renderRoster('${escAttr(id)}',this)">${esc(sq.name)}</button>`).join('');
 }
 
 function renderRoster(sqFilter, btn) {
@@ -291,15 +317,15 @@ function renderRoster(sqFilter, btn) {
         <tbody>
           ${pilots.map(p=>`
             <tr>
-              <td><strong>${p.displayName||p.callsign}</strong>${p.radioCallsign?`<span class="callsign-tag" style="margin-left:6px">${p.radioCallsign}</span>`:''}</td>
-              <td>${getRankAbbr(p.rank||'rec')} — ${getRankName(p.rank||'rec')}</td>
-              <td><span class="badge badge-gray">${p.role||'pilot'}</span></td>
-              <td>${getSqName(myWingId,p.squadron)||'—'}</td>
+              <td><strong>${esc(p.displayName||p.callsign)}</strong>${p.radioCallsign?`<span class="callsign-tag" style="margin-left:6px">${esc(p.radioCallsign)}</span>`:''}</td>
+              <td>${esc(getRankAbbr(p.rank||'rec'))} — ${esc(getRankName(p.rank||'rec'))}</td>
+              <td><span class="badge badge-gray">${esc(p.role||'pilot')}</span></td>
+              <td>${esc(getSqName(myWingId,p.squadron)||'—')}</td>
               <td>${p.totalFlights||0}</td>
               <td>${Math.round(p.flightHours||0)}h</td>
               <td style="display:flex;gap:5px">
-                <button class="btn btn-outline btn-xs" onclick="openRankModal('${p.uid}')">Rank</button>
-                <button class="btn btn-blue btn-xs" onclick="openCallsignModal('${p.uid}')">Callsign</button>
+                <button class="btn btn-outline btn-xs" onclick="openRankModal('${escAttr(p.uid)}')">Rank</button>
+                <button class="btn btn-blue btn-xs" onclick="openCallsignModal('${escAttr(p.uid)}')">Callsign</button>
               </td>
             </tr>`).join('')}
         </tbody>
@@ -314,11 +340,11 @@ function renderSqCallsigns() {
   el.innerHTML = Object.entries(sqs).map(([sqId,sq])=>`
     <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--border)">
       <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${sq.name}</div>
-        <div style="font-size:11px;color:var(--text3)">Current callsign: <span class="callsign-tag">${sq.callsign||'Not set'}</span></div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(sq.name)}</div>
+        <div style="font-size:11px;color:var(--text3)">Current callsign: <span class="callsign-tag">${esc(sq.callsign||'Not set')}</span></div>
       </div>
-      <input type="text" id="sq-cs-${sqId}" value="${sq.callsign||''}" placeholder="e.g. BONE" maxlength="10" style="width:120px">
-      <button class="btn btn-primary btn-sm" onclick="saveSqCallsign('${sqId}')">Save</button>
+      <input type="text" id="sq-cs-${esc(sqId)}" value="${esc(sq.callsign||'')}" placeholder="e.g. BONE" maxlength="10" style="width:120px">
+      <button class="btn btn-primary btn-sm" onclick="saveSqCallsign('${escAttr(sqId)}')">Save</button>
     </div>`).join('');
 }
 
@@ -341,11 +367,11 @@ function renderPilotCallsigns() {
   el.innerHTML = wingPilots.map(p=>`
     <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:0.5px solid var(--border)">
       <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${p.displayName||p.callsign}</div>
-        <div style="font-size:11px;color:var(--text3)">${getSqName(myWingId,p.squadron)||'Unassigned'}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(p.displayName||p.callsign)}</div>
+        <div style="font-size:11px;color:var(--text3)">${esc(getSqName(myWingId,p.squadron)||'Unassigned')}</div>
       </div>
-      ${p.radioCallsign?`<span class="callsign-tag">${p.radioCallsign}</span>`:'<span style="font-size:11px;color:var(--text3)">No radio callsign</span>'}
-      <button class="btn btn-outline btn-xs" onclick="openCallsignModal('${p.uid}')">Edit</button>
+      ${p.radioCallsign?`<span class="callsign-tag">${esc(p.radioCallsign)}</span>`:'<span style="font-size:11px;color:var(--text3)">No radio callsign</span>'}
+      <button class="btn btn-outline btn-xs" onclick="openCallsignModal('${escAttr(p.uid)}')">Edit</button>
     </div>`).join('');
 }
 
@@ -386,7 +412,7 @@ function openRankModal(uid) {
   const sel = document.getElementById('rm-rank');
   // Wing commanders can set ranks up to one below their own level
   sel.innerHTML = RANKS.filter(r=>r.level < myRankLevel)
-    .map(r=>`<option value="${r.id}" ${r.id===p?.rank?'selected':''}>${r.name}</option>`).join('');
+    .map(r=>`<option value="${esc(r.id)}" ${r.id===p?.rank?'selected':''}>${esc(r.name)}</option>`).join('');
   document.getElementById('rm-role').value = p?.role||'pilot';
   document.getElementById('rank-modal').classList.add('open');
 }
@@ -410,10 +436,10 @@ function searchPilots() {
   el.innerHTML = found.map(p=>`
     <div class="pilot-row">
       <div class="pilot-row-info">
-        <div class="pilot-row-name">${p.displayName||p.callsign}</div>
-        <div class="pilot-row-meta">${getRankName(p.rank||'rec')} · ${getSqName(myWingId,p.squadron)||'—'}</div>
+        <div class="pilot-row-name">${esc(p.displayName||p.callsign)}</div>
+        <div class="pilot-row-meta">${esc(getRankName(p.rank||'rec'))} · ${esc(getSqName(myWingId,p.squadron)||'—')}</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="openRankModal('${p.uid}')">Edit Rank</button>
+      <button class="btn btn-outline btn-sm" onclick="openRankModal('${escAttr(p.uid)}')">Edit Rank</button>
     </div>`).join('') || '<div class="empty-state"><p>No pilots found</p></div>';
 }
 
@@ -424,7 +450,7 @@ async function loadFlights() {
     const el   = document.getElementById('wing-flights');
     if (snap.empty) { el.innerHTML='<div class="empty-state"><div class="icon">✈️</div><p>No flights logged yet</p></div>'; return; }
     el.innerHTML = '<div class="card" style="overflow-x:auto"><table class="data-table"><thead><tr><th>Pilot</th><th>Route</th><th>Aircraft</th><th>Duration</th><th>Date</th></tr></thead><tbody>'+
-      snap.docs.map(d=>{const f=d.data();return`<tr><td><strong>${f.pilotCallsign||'—'}</strong></td><td style="font-family:var(--mono)">${f.departure}→${f.arrival}</td><td>${f.aircraft||'—'}</td><td>${Math.floor((f.durationMins||0)/60)}h${(f.durationMins||0)%60}m</td><td>${formatDate(f.loggedAt)}</td></tr>`;}).join('')+
+      snap.docs.map(d=>{const f=d.data();return`<tr><td><strong>${esc(f.pilotCallsign||'—')}</strong></td><td style="font-family:var(--mono)">${esc(f.departure)}→${esc(f.arrival)}</td><td>${esc(f.aircraft||'—')}</td><td>${Math.floor((f.durationMins||0)/60)}h${(f.durationMins||0)%60}m</td><td>${esc(formatDate(f.loggedAt))}</td></tr>`;}).join('')+
       '</tbody></table></div>';
   } catch(e) {}
 }
