@@ -141,6 +141,29 @@
 <script src="/js/firebase-config.js"></script>
 <script src="/js/nav.js"></script>
 <script>
+// ── HTML ESCAPING (local fallback; firebase-config's version wins) ──
+// Pilot callsigns, squadron names/nicknames and callsign pools all
+// come from Firestore and land in innerHTML here. safeUrl() also
+// blocks javascript:/data: URIs in the wing logo and avatar images.
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  };
+}
+if (typeof escAttr !== 'function') {
+  window.escAttr = function (s) {
+    return esc(String(s == null ? '' : s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+  };
+}
+if (typeof safeUrl !== 'function') {
+  window.safeUrl = function (u) {
+    var s = String(u == null ? '' : u).trim();
+    return /^(https?:|\/|\.\/|#|mailto:)/i.test(s) ? esc(s) : '';
+  };
+}
+
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
 
 const wingId = new URLSearchParams(location.search).get('id') || '7bw';
@@ -176,8 +199,9 @@ async function loadWing() {
   const color = wingData.color || '#c8a951';
   document.getElementById('wing-hero').style.background = 'radial-gradient(ellipse at top, ' + color + '15, transparent 60%)';
   const emblemEl = document.getElementById('wing-emblem');
-  if (wingData.logoUrl) {
-    emblemEl.innerHTML = '<img src="' + wingData.logoUrl + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+  const logo = safeUrl(wingData.logoUrl);
+  if (logo) {
+    emblemEl.innerHTML = '<img src="' + logo + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
     emblemEl.style.background = 'transparent';
   } else {
     emblemEl.style.background = color;
@@ -219,26 +243,26 @@ function renderCommanderBanner(pilots) {
   if (!commander && !deputies.length) { el.innerHTML = ''; return; }
   const color = wingData.color || '#c8a951';
   el.innerHTML = `
-    <div class="card" style="margin-bottom:24px;border-color:${color}55">
-      <div class="card-header" style="background:${color}15">
-        <div class="card-icon" style="background:${color}">⭐</div>
+    <div class="card" style="margin-bottom:24px;border-color:${esc(color)}55">
+      <div class="card-header" style="background:${esc(color)}15">
+        <div class="card-icon" style="background:${esc(color)}">⭐</div>
         <div class="card-title">Wing Command Staff</div>
       </div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
         ${commander ? `
           <div style="display:flex;align-items:center;gap:12px">
-            ${commander.avatarUrl?`<img src="${commander.avatarUrl}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid ${color}">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:18px">⭐</div>`}
+            ${safeUrl(commander.avatarUrl)?`<img src="${safeUrl(commander.avatarUrl)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid ${esc(color)}">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:18px">⭐</div>`}
             <div>
-              <div style="font-size:15px;font-weight:700;color:var(--text)">${commander.displayName||commander.callsign}</div>
-              <div style="font-size:12px;color:${color}">Wing Commander · ${getRankName(commander.rank||'rec')}</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text)">${esc(commander.displayName||commander.callsign)}</div>
+              <div style="font-size:12px;color:${esc(color)}">Wing Commander · ${esc(getRankName(commander.rank||'rec'))}</div>
             </div>
           </div>` : ''}
         ${deputies.map(d=>`
           <div style="display:flex;align-items:center;gap:12px">
-            ${d.avatarUrl?`<img src="${d.avatarUrl}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border2)">`:`<div style="width:36px;height:36px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:14px">🎖</div>`}
+            ${safeUrl(d.avatarUrl)?`<img src="${safeUrl(d.avatarUrl)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border2)">`:`<div style="width:36px;height:36px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:14px">🎖</div>`}
             <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text)">${d.displayName||d.callsign}</div>
-              <div style="font-size:11px;color:var(--text2)">Squadron Commander · ${getSqName(wingId,d.squadron)||''}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(d.displayName||d.callsign)}</div>
+              <div style="font-size:11px;color:var(--text2)">Squadron Commander · ${esc(getSqName(wingId,d.squadron)||'')}</div>
             </div>
           </div>`).join('')}
       </div>
@@ -249,7 +273,7 @@ function renderRoster(pilots) {
   const el = document.getElementById('full-roster');
   if (!pilots.length) { el.innerHTML='<div class="empty-state"><div class="icon">👨‍✈️</div><p>No active pilots in this wing yet</p></div>'; return; }
   el.innerHTML = `<div class="card" style="overflow-x:auto"><table class="data-table"><thead><tr><th>Callsign</th><th>Rank</th><th>Squadron</th><th>Flights</th><th>Hours</th></tr></thead><tbody>
-    ${pilots.map(p=>`<tr><td><strong>${p.displayName||p.callsign}</strong></td><td>${getRankAbbr(p.rank||'rec')}</td><td>${getSqName(wingId,p.squadron)||'—'}</td><td>${p.totalFlights||0}</td><td>${Math.round(p.flightHours||0)}h</td></tr>`).join('')}
+    ${pilots.map(p=>`<tr><td><strong>${esc(p.displayName||p.callsign)}</strong></td><td>${esc(getRankAbbr(p.rank||'rec'))}</td><td>${esc(getSqName(wingId,p.squadron)||'—')}</td><td>${p.totalFlights||0}</td><td>${Math.round(p.flightHours||0)}h</td></tr>`).join('')}
   </tbody></table></div>`;
 }
 
@@ -264,15 +288,15 @@ function renderSquadrons() {
     <div class="sq-card">
       <div class="sq-card-head">
         <div>
-          <div class="sq-card-name">${sq.name}</div>
-          ${sq.nickname?`<div class="sq-card-nick">"${sq.nickname}"</div>`:''}
+          <div class="sq-card-name">${esc(sq.name)}</div>
+          ${sq.nickname?`<div class="sq-card-nick">"${esc(sq.nickname)}"</div>`:''}
         </div>
         <div class="sq-callsign-pool">
-          ${pool.length ? pool.map(c=>`<span class="cs-pill">${c}</span>`).join('') : '<span style="font-size:11px;color:var(--text3)">No callsigns set</span>'}
+          ${pool.length ? pool.map(c=>`<span class="cs-pill">${esc(c)}</span>`).join('') : '<span style="font-size:11px;color:var(--text3)">No callsigns set</span>'}
         </div>
       </div>
       <div class="roster-mini">
-        ${sqPilots.length ? sqPilots.map(p=>`<div style="font-size:13px;color:var(--text2);padding:3px 0">${p.displayName||p.callsign} — ${getRankName(p.rank||'rec')}</div>`).join('') : '<div class="empty-roster">No pilots assigned</div>'}
+        ${sqPilots.length ? sqPilots.map(p=>`<div style="font-size:13px;color:var(--text2);padding:3px 0">${esc(p.displayName||p.callsign)} — ${esc(getRankName(p.rank||'rec'))}</div>`).join('') : '<div class="empty-roster">No pilots assigned</div>'}
       </div>
     </div>`;
   }).join('') || '<div class="empty-state"><p>No squadrons configured for this wing</p></div>';
@@ -342,7 +366,7 @@ async function uploadWingLogo(input) {
     await db.collection('wings').doc(wingId).set({ logoUrl: url }, { merge: true });
     wingData.logoUrl = url;
     const emblemEl = document.getElementById('wing-emblem');
-    emblemEl.innerHTML = '<img src="' + url + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    emblemEl.innerHTML = '<img src="' + safeUrl(url) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
     emblemEl.style.background = 'transparent';
     toast('Wing logo updated!');
   } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
