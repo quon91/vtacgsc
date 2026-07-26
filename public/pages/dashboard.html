@@ -105,6 +105,15 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js?v=2"></script>
 <script>
+// ── HTML ESCAPING (local fallback; firebase-config's version wins) ──
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  };
+}
+
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
 
 function onAuthReady(user, pilot) {
@@ -116,7 +125,7 @@ function onAuthReady(user, pilot) {
   document.getElementById('dash-sub').textContent = getWingName(pilot.wing) + (pilot.squadron ? ' · ' + getSqName(pilot.wing, pilot.squadron) : '') + ' · ' + getRankName(pilot.rank||'rec');
   document.getElementById('my-flights').textContent = pilot.totalFlights || 0;
   document.getElementById('my-hours').textContent = Math.round(pilot.flightHours || 0) + 'h';
-  document.getElementById('my-wing-link').href = '/pages/wing.html?id=' + (pilot.wing || '7bw');
+  document.getElementById('my-wing-link').href = '/pages/wing.html?id=' + encodeURIComponent(pilot.wing || '7bw');
 
   loadMyFlights(user.uid);
   renderDashWingsBadges(pilot);
@@ -131,8 +140,8 @@ function renderDashWingsBadges(p) {
     <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:0.5px solid var(--border)">
       ${renderWingsBadgeSVG(b.id, 44)}
       <div>
-        <div style="font-size:13px;font-weight:700;color:var(--gold)">${b.name}</div>
-        <div style="font-size:11px;color:var(--text3)">Awarded ${formatDate(b.awardedAt)}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--gold)">${esc(b.name)}</div>
+        <div style="font-size:11px;color:var(--text3)">Awarded ${esc(formatDate(b.awardedAt))}</div>
       </div>
     </div>`).join('');
 }
@@ -145,8 +154,8 @@ function renderDashMedals(p) {
     <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:0.5px solid var(--border)">
       ${renderRibbonSVG(m.id, 46, 16)}
       <div>
-        <div style="font-size:13px;font-weight:700;color:var(--text)">${m.name}</div>
-        <div style="font-size:11px;color:var(--text3)">Awarded ${formatDate(m.awardedAt)}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${esc(m.name)}</div>
+        <div style="font-size:11px;color:var(--text3)">Awarded ${esc(formatDate(m.awardedAt))}</div>
       </div>
     </div>`).join('');
 }
@@ -160,8 +169,8 @@ async function loadMyFlights(uid) {
       const f = d.data();
       return `<div class="recent-item">
         <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;color:var(--text);font-family:var(--mono)">${f.departure} → ${f.arrival}</div>
-          <div style="font-size:11px;color:var(--text3)">${f.aircraft||''} · ${formatDate(f.loggedAt)}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);font-family:var(--mono)">${esc(f.departure)} → ${esc(f.arrival)}</div>
+          <div style="font-size:11px;color:var(--text3)">${esc(f.aircraft||'')} · ${esc(formatDate(f.loggedAt))}</div>
         </div>
         <div style="font-size:13px;color:var(--text2)">${Math.floor((f.durationMins||0)/60)}h ${(f.durationMins||0)%60}m</div>
       </div>`;
