@@ -130,6 +130,22 @@
 <script src="/js/firebase-config.js"></script>
 <script src="/js/nav.js"></script>
 <script>
+// ── HTML ESCAPING (local fallback; firebase-config's version wins) ──
+// Base details (ICAO, name, location, runways, frequencies) are
+// editable by wing commanders and land in innerHTML here.
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  };
+}
+if (typeof escAttr !== 'function') {
+  window.escAttr = function (s) {
+    return esc(String(s == null ? '' : s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+  };
+}
+
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
 
 let allWingsData = {}, currentPilotRole=null, currentPilotWing=null;
@@ -175,9 +191,9 @@ function renderTimeline(tl) {
   return '<div class="timeline">' + tl.map(t => `
     <div class="tl-item">
       <div class="tl-dot ${t.active?'active':''}"></div>
-      <div class="tl-year">${t.year}</div>
-      <div class="tl-aircraft">${t.aircraft}</div>
-      <div class="tl-desc">${t.desc}</div>
+      <div class="tl-year">${esc(t.year)}</div>
+      <div class="tl-aircraft">${esc(t.aircraft)}</div>
+      <div class="tl-desc">${esc(t.desc)}</div>
     </div>`).join('') + '</div>';
 }
 
@@ -204,30 +220,30 @@ function renderBases() {
     return `
     <div class="base-card">
       <div class="base-card-top">
-        <div class="base-icao">${b.icao||icao}</div>
+        <div class="base-icao">${esc(b.icao||icao)}</div>
         <div class="base-info">
-          <div class="base-name">${b.name||wing.base||'Unnamed Base'}</div>
-          <div class="base-loc">📍 ${b.location||wing.location||'—'}</div>
-          <div class="base-wing-tag" style="background:${color}22;color:${color}">${wing.name}</div>
-          ${_hist.founded ? `<div class="base-founded">🏛 Founded <span>${_hist.founded}</span></div>` : ''}
+          <div class="base-name">${esc(b.name||wing.base||'Unnamed Base')}</div>
+          <div class="base-loc">📍 ${esc(b.location||wing.location||'—')}</div>
+          <div class="base-wing-tag" style="background:${esc(color)}22;color:${esc(color)}">${esc(wing.name)}</div>
+          ${_hist.founded ? `<div class="base-founded">🏛 Founded <span>${esc(_hist.founded)}</span></div>` : ''}
         </div>
-        ${canEditWing(wingId)?`<button class="edit-pencil" onclick="openBaseEditor('${wingId}')">✏ Edit</button>`:''}
+        ${canEditWing(wingId)?`<button class="edit-pencil" onclick="openBaseEditor('${escAttr(wingId)}')">✏ Edit</button>`:''}
       </div>
       <!-- BASE TABS -->
       <div class="base-tabs">
-        <button class="base-tab" data-base="${wingId}" data-base="${wingId}" onclick="switchBaseTab('${wingId}','history',this)">🏛 Base History</button>
-        <button class="base-tab" data-base="${wingId}" data-base="${wingId}" onclick="switchBaseTab('${wingId}','timeline',this)">✈ Aircraft Timeline</button>
+        <button class="base-tab active" data-base="${esc(wingId)}" onclick="switchBaseTab('${escAttr(wingId)}','history',this)">🏛 Base History</button>
+        <button class="base-tab" data-base="${esc(wingId)}" onclick="switchBaseTab('${escAttr(wingId)}','timeline',this)">✈ Aircraft Timeline</button>
       </div>
 
       <!-- TAB: BASE HISTORY -->
-      <div id="btab-${wingId}-history" class="base-tab-panel active" data-base="${wingId}">
+      <div id="btab-${esc(wingId)}-history" class="base-tab-panel active" data-base="${esc(wingId)}">
         ${_hist.history
-          ? `<div class="base-history-text">${_hist.history}</div>`
+          ? `<div class="base-history-text">${esc(_hist.history)}</div>`
           : '<div style="font-size:13px;color:var(--text3)">No history written yet for this base.</div>'}
       </div>
 
       <!-- TAB: AIRCRAFT TIMELINE -->
-      <div id="btab-${wingId}-timeline" class="base-tab-panel" data-base="${wingId}">
+      <div id="btab-${esc(wingId)}-timeline" class="base-tab-panel" data-base="${esc(wingId)}">
         ${renderTimeline(_tl)}
       </div>
 
@@ -263,10 +279,10 @@ function renderRwyBuilder() {
   const el = document.getElementById('rwy-builder-list');
   el.innerHTML = rwyBuilderItems.map((r,i)=>`
     <div class="rwy-builder-row">
-      <input type="text" placeholder="34L" value="${r.id||''}" oninput="rwyBuilderItems[${i}].id=this.value" style="font-size:12px">
-      <input type="text" placeholder="Heading °" value="${r.heading||''}" oninput="rwyBuilderItems[${i}].heading=this.value" style="font-size:12px">
-      <input type="text" placeholder="Length ft" value="${r.length||''}" oninput="rwyBuilderItems[${i}].length=this.value" style="font-size:12px">
-      <input type="text" placeholder="ILS 110.3 IDYS 359°" value="${r.ilsFreq?`${r.ilsFreq} ${r.ilsIdent||''} ${r.ilsCourse||''}`:''}" oninput="parseIlsInput(${i},this.value)" style="font-size:12px">
+      <input type="text" placeholder="34L" value="${esc(r.id||'')}" oninput="rwyBuilderItems[${i}].id=this.value" style="font-size:12px">
+      <input type="text" placeholder="Heading °" value="${esc(r.heading||'')}" oninput="rwyBuilderItems[${i}].heading=this.value" style="font-size:12px">
+      <input type="text" placeholder="Length ft" value="${esc(r.length||'')}" oninput="rwyBuilderItems[${i}].length=this.value" style="font-size:12px">
+      <input type="text" placeholder="ILS 110.3 IDYS 359°" value="${esc(r.ilsFreq?`${r.ilsFreq} ${r.ilsIdent||''} ${r.ilsCourse||''}`:'')}" oninput="parseIlsInput(${i},this.value)" style="font-size:12px">
       <button type="button" onclick="rwyBuilderItems.splice(${i},1);renderRwyBuilder()" style="background:none;border:none;color:var(--red2);cursor:pointer;font-size:15px">×</button>
     </div>`).join('') || '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">No runways added yet</div>';
 }
