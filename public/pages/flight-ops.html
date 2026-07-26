@@ -494,6 +494,22 @@ function showOps(which){
   if(t==='plan') showOps('plan');
 })();
 
+// ── AUDIT LOG ─────────────────────────────────────────────────
+// Event type strings MUST match the filter options in
+// master-admin.html → Audit Log, or the entry is written but can
+// never be found. Canonical names live in that dropdown.
+async function logAudit(eventType, notes, extra) {
+  try {
+    await db.collection('auditLog').add(Object.assign({
+      eventType: eventType,
+      actor: { uid: currentUser ? currentUser.uid : null,
+               callsign: (myPilot && (myPilot.callsign || myPilot.displayName)) || '—' },
+      details: Object.assign({ notes: notes || '' }, extra || {}),
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    }));
+  } catch(e) { console.warn('audit skipped:', e.message); }
+}
+
 // ── SHARED STATE ──────────────────────────────────────────────
 let myPilot=null, isLoggedIn=false, canDelAny=false;
 let allFlights=[], activeTab='all', wingFleet=[];
@@ -544,6 +560,10 @@ const FLIGHT_TYPES = {
   other:   { label:'Other',    color:'var(--green)' },
 };
 // Free-text fields land in innerHTML, so they get escaped on the way out.
+// escAttr additionally JS-escapes for values inside onclick="fn('...')".
+function escAttr(s){
+  return esc(String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+}
 function esc(s){
   return String(s==null?'':s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -672,6 +692,8 @@ async function delFlight(id){
   await db.collection('flights').doc(id).delete();
   if(f.pilotUid) db.collection('pilots').doc(f.pilotUid).update({totalFlights:firebase.firestore.FieldValue.increment(-1),flightHours:firebase.firestore.FieldValue.increment(-(f.durationMins||0)/60)}).catch(()=>{});
   allFlights=allFlights.filter(x=>x.id!==id);
+  logAudit('flight_deleted', 'Deleted flight '+(f.departure||'?')+' → '+(f.arrival||'?')+' by '+(f.pilotCallsign||'Unknown'),
+           {pilotCallsign:f.pilotCallsign||'', departure:f.departure||'', arrival:f.arrival||''});
   refreshFlightStats();
   render();
   toast('Flight deleted');
@@ -836,6 +858,8 @@ async function submitFlight(){
         postWingFleetStatus(myPilot.wing);
       }catch(e){console.warn('Fleet update skipped:',e.message);}
     }
+    logAudit('flight_logged', (myPilot.callsign||'Pilot')+' logged '+dep+' → '+arr+' ('+flight.aircraft+')',
+             {pilotCallsign:myPilot.callsign||'', departure:dep, arrival:arr});
     closeModal();toast('Flight logged ✓');loadFlights();loadWingFleet();loadFleetAll();
     // Discord webhook — wing flight log channel
     try{
@@ -1706,26 +1730,40 @@ async function savePlan() {
 }
 
 async function loadSavedPlans() {
-  if (!isLoggedIn) return;
+  const el = document.getElementById('saved-plans-list');
+  if (!isLoggedIn) { el.innerHTML='<div class="empty-state" style="padding:20px"><p>Log in to save plans</p></div>'; return; }
+  el.innerHTML = '<div class="empty-state" style="padding:20px"><p>Loading your plans…</p></div>';
   try {
+    // NO orderBy. Combining where('pilotUid') with orderBy('createdAt')
+    // needs a composite index; without one Firestore throws and the
+    // list silently stayed on "Log in to save plans" forever. Same
+    // fix already applied to community routes and pending apps:
+    // filter server-side, sort client-side.
     const snap = await db.collection('flightPlans')
-      .where('pilotUid','==',currentUser.uid)
-      .orderBy('createdAt','desc').limit(15).get();
-    const el = document.getElementById('saved-plans-list');
+      .where('pilotUid','==',currentUser.uid).limit(50).get();
     if (snap.empty) { el.innerHTML='<div class="empty-state" style="padding:20px"><p>No saved plans yet</p></div>'; return; }
-    el.innerHTML = snap.docs.map(d=>{const p=d.data();return `
+    const docs = snap.docs.slice().sort(function(a,b){
+      return (b.data().createdAt?.toMillis?.()||0) - (a.data().createdAt?.toMillis?.()||0);
+    }).slice(0,15);
+    window._plansCache = {};
+    docs.forEach(d=>window._plansCache[d.id]=d.data());
+    el.innerHTML = docs.map(d=>{const p=d.data();return `
       <div class="saved-plan-card">
-        <div class="spc-route">${p.departure} → ${p.arrival}</div>
-        <div class="spc-meta">${p.aircraft||''}${p.tail?' · '+p.tail:''} · ${p.distance||''} · ${p.estTime||''}${p.fromSimBrief?' · <span style="color:var(--blue2)">SimBrief</span>':''}</div>
+        <div class="spc-route">${esc(p.departure)} → ${esc(p.arrival)}</div>
+        <div class="spc-meta">${esc(p.aircraft||'')}${p.tail?' · '+esc(p.tail):''} · ${esc(p.distance||'')} · ${esc(p.estTime||'')}${p.fromSimBrief?' · <span style="color:var(--blue2)">SimBrief</span>':''}</div>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-xs" onclick="loadPlan('${d.id}')">Load</button>
-          <button class="btn btn-outline btn-xs" onclick="exportPlanById('${d.id}')">🎮 MSFS</button>
-          <button class="btn btn-danger btn-xs" onclick="deletePlan('${d.id}')">Delete</button>
+          <button class="btn btn-outline btn-xs" onclick="loadPlan('${escAttr(d.id)}')">Load</button>
+          <button class="btn btn-outline btn-xs" onclick="exportPlanById('${escAttr(d.id)}')">🎮 MSFS</button>
+          <button class="btn btn-danger btn-xs" onclick="deletePlan('${escAttr(d.id)}')">Delete</button>
         </div>
       </div>`;}).join('');
-    window._plansCache = {};
-    snap.forEach(d=>window._plansCache[d.id]=d.data());
-  } catch(e) {}
+  } catch(e) {
+    // Never swallow this again — a silent catch here is what made the
+    // panel look permanently logged-out.
+    console.error('loadSavedPlans:', e);
+    el.innerHTML = '<div class="alert alert-error" style="font-size:12px">Could not load saved plans: '
+      + esc(e.message) + '</div>';
+  }
 }
 
 function loadPlan(id) {
