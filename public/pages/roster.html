@@ -130,6 +130,31 @@
 <script src="/js/firebase-config.js"></script>
 <script src="/js/nav.js"></script>
 <script>
+// ══════════════════════════════════════════════════════════════
+//  HTML ESCAPING — stored-XSS protection.
+//  This page renders every pilot's callsign, medal names and
+//  avatar URL to every member. Local fallbacks; a site-wide
+//  definition in firebase-config.js takes precedence.
+// ══════════════════════════════════════════════════════════════
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  };
+}
+if (typeof escAttr !== 'function') {
+  window.escAttr = function (s) {
+    return esc(String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+  };
+}
+if (typeof safeUrl !== 'function') {
+  window.safeUrl = function (u) {
+    var s = String(u == null ? '' : u).trim();
+    return /^(https?:|\/|\.\/|#|mailto:)/i.test(s) ? esc(s) : '';
+  };
+}
+
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
 
 // ── MAJCOMS ──────────────────────────────────────────────────
@@ -248,13 +273,13 @@ function renderTier(tier, sectionId, listId, spotlight) {
     }
 
     const badgesHtml = roles.map(function(r){
-      return '<span class="badge" style="background:'+r.color+'22;color:'+r.color+';border:1px solid '+r.color+'55">'+r.name+'</span>';
+      return '<span class="badge" style="background:'+esc(r.color)+'22;color:'+esc(r.color)+';border:1px solid '+esc(r.color)+'55">'+esc(r.name)+'</span>';
     }).join('');
     const wingsHtml = wingsBadges.length ? '<div class="wings-badge-row">' + wingsBadges.map(function(w){
-      return '<div class="wings-badge-wrap" title="'+w.name+'">'+renderWingsBadgeSVG(w.id, 28)+'<span class="wings-badge-label">'+w.name+'</span></div>';
+      return '<div class="wings-badge-wrap" title="'+esc(w.name)+'">'+renderWingsBadgeSVG(w.id, 28)+'<span class="wings-badge-label">'+esc(w.name)+'</span></div>';
     }).join('') + '</div>' : '';
     const medalsHtml = medals.length ? '<div class="ribbon-row">' + medals.map(function(m){
-      return '<div class="ribbon-wrap">'+renderRibbonSVG(m.id, 40, 14)+'<div class="ribbon-tooltip">'+m.name+'</div></div>';
+      return '<div class="ribbon-wrap">'+renderRibbonSVG(m.id, 40, 14)+'<div class="ribbon-tooltip">'+esc(m.name)+'</div></div>';
     }).join('') + '</div>' : '';
     const statsHtml = '<div class="roster-stats">'
       + '<div class="rs-item"><div class="rs-val">'+(p.totalFlights||0)+'</div><div class="rs-lbl">Flights</div></div>'
@@ -263,21 +288,21 @@ function renderTier(tier, sectionId, listId, spotlight) {
 
     if (spotlight) {
       return '<div class="command-card">'
-        + '<div class="command-avatar">' + (p.avatarUrl ? '<img src="'+p.avatarUrl+'" style="width:68px;height:68px;border-radius:50%;object-fit:cover">' : '★') + '</div>'
+        + '<div class="command-avatar">' + (p.avatarUrl ? '<img src="'+safeUrl(p.avatarUrl)+'" style="width:68px;height:68px;border-radius:50%;object-fit:cover">' : '★') + '</div>'
         + '<div class="roster-info">'
-        +   '<div class="command-name">'+(p.displayName||p.callsign)+'</div>'
-        +   '<div class="roster-meta">'+unitLine+'</div>'
+        +   '<div class="command-name">'+esc(p.displayName||p.callsign)+'</div>'
+        +   '<div class="roster-meta">'+esc(unitLine)+'</div>'
         +   '<div class="roster-roles">'+badgesHtml+'</div>'
         +   wingsHtml + medalsHtml
         + '</div>'
         + statsHtml
         + '</div>';
     }
-    return '<div class="roster-card" style="border-left:3px solid '+wingColor+'">'
-      + '<div class="roster-avatar">' + (p.avatarUrl ? '<img src="'+p.avatarUrl+'" style="width:52px;height:52px;border-radius:50%;object-fit:cover">' : (tier==='wing'?'⭐':'🎖')) + '</div>'
+    return '<div class="roster-card" style="border-left:3px solid '+esc(wingColor)+'">'
+      + '<div class="roster-avatar">' + (p.avatarUrl ? '<img src="'+safeUrl(p.avatarUrl)+'" style="width:52px;height:52px;border-radius:50%;object-fit:cover">' : (tier==='wing'?'⭐':'🎖')) + '</div>'
       + '<div class="roster-info">'
-      +   '<div class="roster-name">'+(p.displayName||p.callsign)+'</div>'
-      +   '<div class="roster-meta">'+unitLine+'</div>'
+      +   '<div class="roster-name">'+esc(p.displayName||p.callsign)+'</div>'
+      +   '<div class="roster-meta">'+esc(unitLine)+'</div>'
       +   '<div class="roster-roles">'+badgesHtml+'</div>'
       +   wingsHtml + medalsHtml
       + '</div>'
@@ -295,7 +320,7 @@ function renderMajcomFilters() {
   let html = '<button class="rf-btn active" onclick="filterMajcom(null,this)">All Commands</button>';
   Object.entries(MAJCOMS).forEach(([id, m]) => {
     if (!present.has(id)) return;
-    html += `<button class="rf-btn" onclick="filterMajcom('${id}',this)">${m.abbr}</button>`;
+    html += `<button class="rf-btn" onclick="filterMajcom('${escAttr(id)}',this)">${esc(m.abbr)}</button>`;
   });
   el.innerHTML = html;
 }
@@ -342,26 +367,26 @@ function renderRosterList() {
     const mj = MAJCOMS[pilotMajcom(p)] || MAJCOMS.afgsc;
     const isPartner = pilotMajcom(p) !== 'afgsc';
     const unitLine = isPartner
-      ? `<span class="majcom-badge" style="background:${mj.color}22;color:${mj.color};border:1px solid ${mj.color}55">${mj.abbr}</span> ${mj.name}`
-      : `${getWingName(p.wing)||'Unassigned'}${p.squadron?' · '+getSqName(p.wing,p.squadron):''}`;
+      ? `<span class="majcom-badge" style="background:${esc(mj.color)}22;color:${esc(mj.color)};border:1px solid ${esc(mj.color)}55">${esc(mj.abbr)}</span> ${esc(mj.name)}`
+      : `${esc(getWingName(p.wing)||'Unassigned')}${p.squadron?' · '+esc(getSqName(p.wing,p.squadron)):''}`;
     return `
     <div class="roster-card">
-      <div class="roster-avatar">${p.avatarUrl?`<img src="${p.avatarUrl}" style="width:52px;height:52px;border-radius:50%;object-fit:cover">`:'✈'}</div>
+      <div class="roster-avatar">${p.avatarUrl?`<img src="${safeUrl(p.avatarUrl)}" style="width:52px;height:52px;border-radius:50%;object-fit:cover">`:'✈'}</div>
       <div class="roster-info">
-        <div class="roster-name">${p.displayName||p.callsign}</div>
-        <div class="roster-meta">${getRankName(p.rank||'rec')} · ${unitLine}</div>
+        <div class="roster-name">${esc(p.displayName||p.callsign)}</div>
+        <div class="roster-meta">${esc(getRankName(p.rank||'rec'))} · ${unitLine}</div>
         <div class="roster-roles">
-          ${roles.map(r=>`<span class="badge" style="background:${r.color}22;color:${r.color};border:1px solid ${r.color}55">${r.name}</span>`).join('')}
+          ${roles.map(r=>`<span class="badge" style="background:${esc(r.color)}22;color:${esc(r.color)};border:1px solid ${esc(r.color)}55">${esc(r.name)}</span>`).join('')}
         </div>
         ${wingsBadges.length ? `<div class="wings-badge-row">${wingsBadges.map(w=>`
-          <div class="wings-badge-wrap" title="${w.name}">
+          <div class="wings-badge-wrap" title="${esc(w.name)}">
             ${renderWingsBadgeSVG(w.id, 28)}
-            <span class="wings-badge-label">${w.name}</span>
+            <span class="wings-badge-label">${esc(w.name)}</span>
           </div>`).join('')}</div>` : ''}
         ${medals.length ? `<div class="ribbon-row">${medals.map(m=>`
           <div class="ribbon-wrap">
             ${renderRibbonSVG(m.id, 40, 14)}
-            <div class="ribbon-tooltip">${m.name}</div>
+            <div class="ribbon-tooltip">${esc(m.name)}</div>
           </div>`).join('')}</div>` : ''}
       </div>
       <div class="roster-stats">
