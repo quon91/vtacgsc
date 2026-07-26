@@ -612,6 +612,35 @@
 <script src="/js/firebase-config.js?v=2"></script>
 <script src="/js/nav.js"></script>
 <script>
+// ══════════════════════════════════════════════════════════════
+//  HTML ESCAPING — stored-XSS protection
+//  Applicant motivations, callsigns, bios, cert notes and audit
+//  entries are all written by other people and rendered here into
+//  innerHTML, inside YOUR master-admin session. Unescaped, a value
+//  like <img src=x onerror="..."> executes with your privileges.
+//  These are local fallbacks: if firebase-config.js already defines
+//  them site-wide, that version wins and these are skipped, so the
+//  page is safe to deploy in either order.
+// ══════════════════════════════════════════════════════════════
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  };
+}
+if (typeof escAttr !== 'function') {
+  window.escAttr = function (s) {
+    return esc(String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+  };
+}
+if (typeof safeUrl !== 'function') {
+  window.safeUrl = function (u) {
+    var s = String(u == null ? '' : u).trim();
+    return /^(https?:|\/|\.\/|#|mailto:)/i.test(s) ? esc(s) : '';
+  };
+}
+
 if (typeof renderRibbonSVG !== 'function') {
   console.error('[VTAC] renderRibbonSVG missing from firebase-config.js — using fallback.');
   window.renderRibbonSVG = function(medalId, w, h) {
@@ -689,13 +718,13 @@ function renderDashPending() {
     <div class="pilot-row">
       <div class="pilot-row-avatar">✈</div>
       <div class="pilot-row-info">
-        <div class="pilot-row-name">${p.displayName || p.callsign}</div>
-        <div class="pilot-row-meta">${p.email} · Applied ${formatDate(p.appliedAt)}</div>
+        <div class="pilot-row-name">${esc(p.displayName || p.callsign)}</div>
+        <div class="pilot-row-meta">${esc(p.email || '—')} · Applied ${esc(formatDate(p.appliedAt))}</div>
       </div>
       <div class="pilot-row-actions">
-        <button class="btn btn-green btn-xs" onclick="openApproveModal('${p.uid}')">Approve</button>
-        <button class="btn btn-danger btn-xs" onclick="openDenyModal('${p.uid}')">Deny</button>
-        <button class="btn btn-outline btn-xs" onclick="pingDiscordAccess('${p.uid}','${p.displayName||p.callsign}')" title="Ping Discord">🔔</button>
+        <button class="btn btn-green btn-xs" onclick="openApproveModal('${escAttr(p.uid)}')">Approve</button>
+        <button class="btn btn-danger btn-xs" onclick="openDenyModal('${escAttr(p.uid)}')">Deny</button>
+        <button class="btn btn-outline btn-xs" onclick="pingDiscordAccess('${escAttr(p.uid)}')" title="Ping Discord">🔔</button>
       </div>
     </div>`).join('');
 }
@@ -719,24 +748,24 @@ async function loadApplications() {
         <div class="pc-header">
           <div style="font-size:32px">✈</div>
           <div>
-            <div class="pc-callsign">${p.displayName || p.callsign}</div>
-            <div style="font-size:12px;color:var(--text3)">${p.email} · Applied ${formatDate(p.appliedAt)}</div>
+            <div class="pc-callsign">${esc(p.displayName || p.callsign)}</div>
+            <div style="font-size:12px;color:var(--text3)">${esc(p.email || '—')} · Applied ${esc(formatDate(p.appliedAt))}</div>
           </div>
           <span class="badge badge-amber" style="margin-left:auto">PENDING</span>
         </div>
         <div class="pending-detail">
-          <div class="detail-item"><div class="detail-lbl">Full Name</div><div class="detail-val">${[p.firstName, p.lastName].filter(Boolean).join(' ') || '—'}</div></div>
-          <div class="detail-item"><div class="detail-lbl">Discord</div><div class="detail-val">${p.discord||'—'}</div></div>
-          <div class="detail-item"><div class="detail-lbl">Preferred Wing</div><div class="detail-val">${getWingName(p.preferredWing)||'—'}</div></div>
-          <div class="detail-item"><div class="detail-lbl">Simulator</div><div class="detail-val">${p.simulator||'—'}</div></div>
-          <div class="detail-item"><div class="detail-lbl">Experience</div><div class="detail-val">${p.experience||'—'}</div></div>
-          <div class="detail-item"><div class="detail-lbl">Applied</div><div class="detail-val">${formatDate(p.appliedAt)}</div></div>
+          <div class="detail-item"><div class="detail-lbl">Full Name</div><div class="detail-val">${esc([p.firstName, p.lastName].filter(Boolean).join(' ') || '—')}</div></div>
+          <div class="detail-item"><div class="detail-lbl">Discord</div><div class="detail-val">${esc(p.discord||'—')}</div></div>
+          <div class="detail-item"><div class="detail-lbl">Preferred Wing</div><div class="detail-val">${esc(getWingName(p.preferredWing)||'—')}</div></div>
+          <div class="detail-item"><div class="detail-lbl">Simulator</div><div class="detail-val">${esc(p.simulator||'—')}</div></div>
+          <div class="detail-item"><div class="detail-lbl">Experience</div><div class="detail-val">${esc(p.experience||'—')}</div></div>
+          <div class="detail-item"><div class="detail-lbl">Applied</div><div class="detail-val">${esc(formatDate(p.appliedAt))}</div></div>
         </div>
-        ${p.motivation?`<div style="font-size:13px;color:var(--text2);background:var(--card2);border-radius:7px;padding:10px 12px;margin-top:8px"><strong style="color:var(--text)">Motivation:</strong> ${p.motivation}</div>`:''}
+        ${p.motivation?`<div style="font-size:13px;color:var(--text2);background:var(--card2);border-radius:7px;padding:10px 12px;margin-top:8px"><strong style="color:var(--text)">Motivation:</strong> ${esc(p.motivation)}</div>`:''}
         <div class="pc-actions">
-          <button class="btn btn-green btn-sm" onclick="openApproveModal('${p.uid}')">✓ Approve</button>
-          <button class="btn btn-danger btn-sm" onclick="openDenyModal('${p.uid}')">✗ Deny</button>
-          <button class="btn btn-outline btn-sm" onclick="pingDiscordAccess('${p.uid}','${p.displayName||p.callsign}')" title="Send Discord notification">🔔 Ping</button>
+          <button class="btn btn-green btn-sm" onclick="openApproveModal('${escAttr(p.uid)}')">✓ Approve</button>
+          <button class="btn btn-danger btn-sm" onclick="openDenyModal('${escAttr(p.uid)}')">✗ Deny</button>
+          <button class="btn btn-outline btn-sm" onclick="pingDiscordAccess('${escAttr(p.uid)}')" title="Send Discord notification">🔔 Ping</button>
         </div>
       </div>`;
   });
@@ -763,7 +792,7 @@ function updateSqOptions() {
   const sel  = document.getElementById('approve-squadron');
   const sqs  = WINGS[wing]?.squadrons || {};
   sel.innerHTML = '<option value="">None — command staff / unassigned</option>'
-    + Object.entries(sqs).map(([id,sq])=>`<option value="${id}">${sq.name}</option>`).join('');
+    + Object.entries(sqs).map(([id,sq])=>`<option value="${esc(id)}">${esc(sq.name)}</option>`).join('');
 }
 
 async function confirmApprove() {
@@ -871,14 +900,14 @@ function renderPilots(pilots) {
   const statusColors = {active:'badge-green',pending:'badge-amber',denied:'badge-red',suspended:'badge-red'};
   list.innerHTML = pilots.map(p=>`
     <div class="pilot-row">
-      <div class="pilot-row-avatar">${p.avatarUrl?`<img src="${p.avatarUrl}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:'✈'}</div>
+      <div class="pilot-row-avatar">${p.avatarUrl?`<img src="${safeUrl(p.avatarUrl)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:'✈'}</div>
       <div class="pilot-row-info">
-        <div class="pilot-row-name">${p.displayName||p.callsign} <span style="font-size:12px;color:var(--text3);font-weight:400">(${getRankAbbr(p.rank||'rec')})</span></div>
-        <div class="pilot-row-meta">${getWingName(p.wing)||'Unassigned'} · ${p.email} · ${p.totalFlights||0} flights</div>
+        <div class="pilot-row-name">${esc(p.displayName||p.callsign)} <span style="font-size:12px;color:var(--text3);font-weight:400">(${esc(getRankAbbr(p.rank||'rec'))})</span></div>
+        <div class="pilot-row-meta">${esc(getWingName(p.wing)||'Unassigned')} · ${esc(p.email||'—')} · ${p.totalFlights||0} flights</div>
       </div>
       <div class="pilot-row-actions">
-        <span class="badge ${statusColors[p.status]||'badge-gray'}">${p.status||'unknown'}</span>
-        <button class="btn btn-outline btn-xs" onclick="openRankModal('${p.uid}')">Edit</button>
+        <span class="badge ${statusColors[p.status]||'badge-gray'}">${esc(p.status||'unknown')}</span>
+        <button class="btn btn-outline btn-xs" onclick="openRankModal('${escAttr(p.uid)}')">Edit</button>
       </div>
     </div>`).join('');
 }
@@ -910,7 +939,7 @@ async function loadTrainingRecords() {
   document.getElementById('tr-pilot').innerHTML = allPilots
     .filter(p => p.status === 'active')
     .sort((a,b)=>(a.displayName||a.callsign||'').localeCompare(b.displayName||b.callsign||''))
-    .map(p => `<option value="${p.uid}">${p.displayName||p.callsign||p.uid}</option>`).join('');
+    .map(p => `<option value="${esc(p.uid)}">${esc(p.displayName||p.callsign||p.uid)}</option>`).join('');
   let recs = [];
   try {
     const s = await db.collection('trainingRecords').get();
@@ -941,16 +970,16 @@ async function loadTrainingRecords() {
   el.innerHTML = Object.entries(byPilot).map(([uid, list]) => {
     const p = allPilots.find(x => x.uid === uid);
     const nm = p ? (p.displayName || p.callsign) : (list[0].pilotCallsign || 'Unknown pilot');
-    const wing = p && p.wing ? ` · <span style="color:var(--text3)">${getWingAbbrMA(p.wing)}</span>` : '';
+    const wing = p && p.wing ? ` · <span style="color:var(--text3)">${esc(getWingAbbrMA(p.wing))}</span>` : '';
     return `<div class="card" style="margin-bottom:12px"><div class="card-body">
-      <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:8px">${nm}${wing} <span style="font-size:11px;color:var(--text3);font-weight:400">· ${list.length} record${list.length>1?'s':''}</span></div>
+      <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:8px">${esc(nm)}${wing} <span style="font-size:11px;color:var(--text3);font-weight:400">· ${list.length} record${list.length>1?'s':''}</span></div>
       ${list.map(r => `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--border)">
         <span style="font-size:15px">✅</span>
         <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;color:var(--text)">${r.name || 'Certification'}</div>
-          <div style="font-size:11px;color:var(--text3)">${r.completedAt && r.completedAt.toDate ? r.completedAt.toDate().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : ''}${r.awardedBy ? ' · by ' + r.awardedBy : ''}${r.notes ? ' · ' + r.notes : ''}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(r.name || 'Certification')}</div>
+          <div style="font-size:11px;color:var(--text3)">${r.completedAt && r.completedAt.toDate ? esc(r.completedAt.toDate().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})) : ''}${r.awardedBy ? ' · by ' + esc(r.awardedBy) : ''}${r.notes ? ' · ' + esc(r.notes) : ''}</div>
         </div>
-        ${r.src === 'rec' ? `<button class="btn btn-danger btn-xs" onclick="deleteTrainingRecord('${r.id}')">Remove</button>` : ''}
+        ${r.src === 'rec' ? `<button class="btn btn-danger btn-xs" onclick="deleteTrainingRecord('${escAttr(r.id)}')">Remove</button>` : ''}
       </div>`).join('')}
     </div></div>`;
   }).join('');
@@ -1087,7 +1116,7 @@ function openRankModal(uid) {
   if (!p) return;
   document.getElementById('rank-modal-name').textContent = p.displayName||p.callsign;
   const rankSel = document.getElementById('rank-modal-rank');
-  rankSel.innerHTML = RANKS.map(r=>`<option value="${r.id}" ${r.id===p.rank?'selected':''}>${r.name}</option>`).join('');
+  rankSel.innerHTML = RANKS.map(r=>`<option value="${esc(r.id)}" ${r.id===p.rank?'selected':''}>${esc(r.name)}</option>`).join('');
   renderRankModalRoles(getPilotRoleIds(p));
   document.getElementById('rank-modal-wing').value   = p.wing||'';
   document.getElementById('rank-modal-status').value = p.status||'active';
@@ -1100,10 +1129,10 @@ function renderRankModalRoles(selectedRoleIds) {
   const entries = Object.entries(ROLES).filter(([id]) => id !== 'pending').sort((a,b)=>(b[1].level||0)-(a[1].level||0));
   el.innerHTML = entries.map(([roleId, role]) => `
     <label class="perm-check">
-      <input type="checkbox" value="${roleId}" class="rank-modal-role-cb" ${selectedRoleIds.includes(roleId)?'checked':''}>
+      <input type="checkbox" value="${esc(roleId)}" class="rank-modal-role-cb" ${selectedRoleIds.includes(roleId)?'checked':''}>
       <span style="display:inline-flex;align-items:center;gap:6px">
-        <span style="width:10px;height:10px;border-radius:50%;background:${role.color||'#888'};display:inline-block"></span>
-        ${role.isMasterAdmin ? 'Master Admin (hidden)' : role.name}
+        <span style="width:10px;height:10px;border-radius:50%;background:${esc(role.color||'#888')};display:inline-block"></span>
+        ${role.isMasterAdmin ? 'Master Admin (hidden)' : esc(role.name)}
       </span>
     </label>`).join('');
 }
@@ -1111,7 +1140,7 @@ function updateRankSqOptions(selectedSq) {
   const wing = document.getElementById('rank-modal-wing').value;
   const sel  = document.getElementById('rank-modal-sq');
   const sqs  = WINGS[wing]?.squadrons||{};
-  sel.innerHTML = '<option value="">Unassigned</option>'+Object.entries(sqs).map(([id,sq])=>`<option value="${id}" ${id===selectedSq?'selected':''}>${sq.name}</option>`).join('');
+  sel.innerHTML = '<option value="">Unassigned</option>'+Object.entries(sqs).map(([id,sq])=>`<option value="${esc(id)}" ${id===selectedSq?'selected':''}>${esc(sq.name)}</option>`).join('');
 }
 async function saveRankChange() {
   if (!editingPilotUid) return;
@@ -1143,10 +1172,10 @@ function searchForRank() {
     <div class="pilot-row">
       <div class="pilot-row-avatar">✈</div>
       <div class="pilot-row-info">
-        <div class="pilot-row-name">${p.displayName||p.callsign}</div>
-        <div class="pilot-row-meta">${getRankName(p.rank||'rec')} · ${getWingName(p.wing)||'Unassigned'}</div>
+        <div class="pilot-row-name">${esc(p.displayName||p.callsign)}</div>
+        <div class="pilot-row-meta">${esc(getRankName(p.rank||'rec'))} · ${esc(getWingName(p.wing)||'Unassigned')}</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="openRankModal('${p.uid}')">Edit Rank</button>
+      <button class="btn btn-outline btn-sm" onclick="openRankModal('${escAttr(p.uid)}')">Edit Rank</button>
     </div>`).join('');
 }
 
@@ -1164,27 +1193,27 @@ async function loadRosters(wingId) {
       <div class="card-header" style="background:rgba(200,169,81,.08)">
         <div class="card-icon" style="background:var(--${wingId})">⭐</div>
         <div class="card-title">Wing Command Staff</div>
-        <button class="btn btn-outline btn-xs" style="margin-left:auto" onclick="openAssignCommanderModal('${wingId}')">Assign Commander</button>
+        <button class="btn btn-outline btn-xs" style="margin-left:auto" onclick="openAssignCommanderModal('${escAttr(wingId)}')">Assign Commander</button>
       </div>
       <div class="card-body">
         ${commander ? `
           <div class="pilot-row" style="background:var(--card2);margin-bottom:${deputy.length?'10px':'0'}">
-            <div class="pilot-row-avatar">${commander.avatarUrl?`<img src="${commander.avatarUrl}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:'⭐'}</div>
+            <div class="pilot-row-avatar">${commander.avatarUrl?`<img src="${safeUrl(commander.avatarUrl)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:'⭐'}</div>
             <div class="pilot-row-info">
-              <div class="pilot-row-name">${commander.displayName||commander.callsign} <span class="badge badge-gold" style="margin-left:6px">WING COMMANDER</span></div>
-              <div class="pilot-row-meta">${getRankName(commander.rank||'rec')} · ${commander.email||''}</div>
+              <div class="pilot-row-name">${esc(commander.displayName||commander.callsign)} <span class="badge badge-gold" style="margin-left:6px">WING COMMANDER</span></div>
+              <div class="pilot-row-meta">${esc(getRankName(commander.rank||'rec'))} · ${esc(commander.email||'')}</div>
             </div>
-            <button class="btn btn-outline btn-xs" onclick="openRankModal('${commander.uid}')">Edit</button>
+            <button class="btn btn-outline btn-xs" onclick="openRankModal('${escAttr(commander.uid)}')">Edit</button>
           </div>` : `
           <div style="font-size:13px;color:var(--text3);padding:8px 0">⚠ No Wing Commander assigned for this wing yet.</div>`}
         ${deputy.length ? deputy.map(d=>`
           <div class="pilot-row" style="background:var(--card2)">
-            <div class="pilot-row-avatar">${d.avatarUrl?`<img src="${d.avatarUrl}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:'🎖'}</div>
+            <div class="pilot-row-avatar">${d.avatarUrl?`<img src="${safeUrl(d.avatarUrl)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:'🎖'}</div>
             <div class="pilot-row-info">
-              <div class="pilot-row-name">${d.displayName||d.callsign} <span class="badge badge-blue" style="margin-left:6px">SQ COMMANDER · ${getSqName(wingId,d.squadron)||'—'}</span></div>
-              <div class="pilot-row-meta">${getRankName(d.rank||'rec')} · ${d.email||''}</div>
+              <div class="pilot-row-name">${esc(d.displayName||d.callsign)} <span class="badge badge-blue" style="margin-left:6px">SQ COMMANDER · ${esc(getSqName(wingId,d.squadron)||'—')}</span></div>
+              <div class="pilot-row-meta">${esc(getRankName(d.rank||'rec'))} · ${esc(d.email||'')}</div>
             </div>
-            <button class="btn btn-outline btn-xs" onclick="openRankModal('${d.uid}')">Edit</button>
+            <button class="btn btn-outline btn-xs" onclick="openRankModal('${escAttr(d.uid)}')">Edit</button>
           </div>`).join('') : ''}
       </div>
     </div>`;
@@ -1193,7 +1222,7 @@ async function loadRosters(wingId) {
     const sqPilots = pilots.filter(p=>p.squadron===sqId && p.role !== 'wing_commander');
     return `
       <div class="wing-banner w-${wingId}" style="margin-bottom:14px">
-        <div class="wing-label" style="color:var(--${wingId})">${sq.name}</div>
+        <div class="wing-label" style="color:var(--${wingId})">${esc(sq.name)}</div>
         <div style="font-size:13px;color:var(--text2)">${sqPilots.length} pilots</div>
       </div>
       <div class="card" style="margin-bottom:20px;overflow-x:auto">
@@ -1202,12 +1231,12 @@ async function loadRosters(wingId) {
           <tbody>
             ${sqPilots.length ? sqPilots.map(p=>`
               <tr>
-                <td><strong>${p.displayName||p.callsign}</strong></td>
-                <td>${getRankName(p.rank||'rec')}</td>
-                <td>${getAllDisplayRoles(p).map(r=>`<span class="badge" style="background:${r.color}26;color:${r.color};border:1px solid ${r.color}55;margin-right:3px">${r.name}</span>`).join('')}</td>
+                <td><strong>${esc(p.displayName||p.callsign)}</strong></td>
+                <td>${esc(getRankName(p.rank||'rec'))}</td>
+                <td>${getAllDisplayRoles(p).map(r=>`<span class="badge" style="background:${esc(r.color)}26;color:${esc(r.color)};border:1px solid ${esc(r.color)}55;margin-right:3px">${esc(r.name)}</span>`).join('')}</td>
                 <td>${p.totalFlights||0}</td>
                 <td>${Math.round((p.flightHours||0))}h</td>
-                <td><button class="btn btn-outline btn-xs" onclick="openRankModal('${p.uid}')">Edit</button></td>
+                <td><button class="btn btn-outline btn-xs" onclick="openRankModal('${escAttr(p.uid)}')">Edit</button></td>
               </tr>`).join('')
             : '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">No pilots assigned to this squadron</td></tr>'}
           </tbody>
@@ -1239,7 +1268,7 @@ async function loadAllFlights() {
   const el = document.getElementById('all-flights-list');
   if (snap.empty) { el.innerHTML='<div class="empty-state"><div class="icon">✈️</div><p>No flights logged yet</p></div>'; return; }
   el.innerHTML = '<div class="card" style="overflow-x:auto"><table class="data-table"><thead><tr><th>Pilot</th><th>Route</th><th>Aircraft</th><th>Duration</th><th>Date</th><th>Wing</th></tr></thead><tbody>' +
-    snap.docs.map(d=>{const f=d.data();return `<tr><td><strong>${f.pilotCallsign||'—'}</strong></td><td style="font-family:var(--mono)">${f.departure}→${f.arrival}</td><td>${f.aircraft||'—'}</td><td>${Math.floor((f.durationMins||0)/60)}h${(f.durationMins||0)%60}m</td><td>${formatDate(f.loggedAt)}</td><td>${getWingName(f.wing)||'—'}</td></tr>`;}).join('') +
+    snap.docs.map(d=>{const f=d.data();return `<tr><td><strong>${esc(f.pilotCallsign||'—')}</strong></td><td style="font-family:var(--mono)">${esc(f.departure)}→${esc(f.arrival)}</td><td>${esc(f.aircraft||'—')}</td><td>${Math.floor((f.durationMins||0)/60)}h${(f.durationMins||0)%60}m</td><td>${esc(formatDate(f.loggedAt))}</td><td>${esc(getWingName(f.wing)||'—')}</td></tr>`;}).join('') +
     '</tbody></table></div>';
 }
 
@@ -1253,8 +1282,8 @@ function renderSlides(slides) {
   if (!slides.length) { el.innerHTML='<div class="empty-state"><div class="icon">🖼</div><p>No slides yet</p></div>'; return; }
   el.innerHTML = slides.map((s,i)=>`
     <div class="pilot-row">
-      <img src="${s.url}" style="width:80px;height:50px;object-fit:cover;border-radius:5px;flex-shrink:0" onerror="this.style.background='#500';this.nextElementSibling.querySelector('.pilot-row-name').innerHTML='⚠️ Broken image — ' + (this.parentElement.querySelector('.pilot-row-name')?.textContent||'')">
-      <div class="pilot-row-info"><div class="pilot-row-name">${s.caption||'No caption'}</div><div class="pilot-row-meta" style="font-family:var(--mono);word-break:break-all">${s.url}</div></div>
+      <img src="${safeUrl(s.url)}" style="width:80px;height:50px;object-fit:cover;border-radius:5px;flex-shrink:0" onerror="this.style.background='#500'">
+      <div class="pilot-row-info"><div class="pilot-row-name">${esc(s.caption||'No caption')}</div><div class="pilot-row-meta" style="font-family:var(--mono);word-break:break-all">${esc(s.url)}</div></div>
       <button class="btn btn-danger btn-xs" onclick="removeSlide(${i})">Remove</button>
     </div>`).join('');
 }
@@ -1341,11 +1370,11 @@ async function loadNews() {
     <div class="card" style="margin-bottom:10px">
       <div class="card-body">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-          <strong style="font-size:15px">${n.title}</strong>
-          <span style="font-size:11px;color:var(--text3);margin-left:auto">${formatDate(n.createdAt)}</span>
-          <button class="btn btn-danger btn-xs" onclick="deleteNews('${d.id}')">Delete</button>
+          <strong style="font-size:15px">${esc(n.title)}</strong>
+          <span style="font-size:11px;color:var(--text3);margin-left:auto">${esc(formatDate(n.createdAt))}</span>
+          <button class="btn btn-danger btn-xs" onclick="deleteNews('${escAttr(d.id)}')">Delete</button>
         </div>
-        <div style="font-size:13px;color:var(--text2)">${n.body}</div>
+        <div style="font-size:13px;color:var(--text2)">${esc(n.body)}</div>
       </div>
     </div>`;}).join('');
 }
@@ -1409,24 +1438,24 @@ async function buildWingNameEditor() {
   const el = document.getElementById('wing-name-editor');
   el.innerHTML = Object.entries(liveWingsData).map(([wingId,wing])=>`
     <div style="margin-bottom:16px;padding:14px;background:var(--card2);border-radius:8px;border-left:3px solid var(--${wingId},#c8a951)">
-      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">${wing.name}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">${esc(wing.name)}</div>
       ${Object.entries(wing.squadrons||{}).map(([sqId,sq])=>`
         <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
           <div class="form-row" style="margin-bottom:8px">
             <div class="form-group" style="margin:0">
               <label style="font-size:10px">Squadron name</label>
-              <input type="text" id="sq-name-${sqId}" value="${sq.name||''}" placeholder="${sq.name||''}">
+              <input type="text" id="sq-name-${esc(sqId)}" value="${esc(sq.name||'')}" placeholder="${esc(sq.name||'')}">
             </div>
             <div class="form-group" style="margin:0">
               <label style="font-size:10px">Squadron callsign prefix</label>
-              <input type="text" id="sq-call-${sqId}" value="${sq.callsign||''}" placeholder="e.g. BONE">
+              <input type="text" id="sq-call-${esc(sqId)}" value="${esc(sq.callsign||'')}" placeholder="e.g. BONE">
             </div>
           </div>
           <label style="font-size:10px">Flight callsign pool</label>
-          <div id="pool-list-${sqId}" style="margin:6px 0"></div>
+          <div id="pool-list-${esc(sqId)}" style="margin:6px 0"></div>
           <div style="display:flex;gap:8px">
-            <input type="text" id="pool-new-${sqId}" placeholder="e.g. ${sq.callsign||'BONE'} 0${(sq.callsignPool||[]).length+1}" style="flex:1;font-size:13px" maxlength="20">
-            <button type="button" class="btn btn-outline btn-sm" onclick="addCallsignToPool('${wingId}','${sqId}')">+ Add</button>
+            <input type="text" id="pool-new-${esc(sqId)}" placeholder="e.g. ${esc(sq.callsign||'BONE')} 0${(sq.callsignPool||[]).length+1}" style="flex:1;font-size:13px" maxlength="20">
+            <button type="button" class="btn btn-outline btn-sm" onclick="addCallsignToPool('${escAttr(wingId)}','${escAttr(sqId)}')">+ Add</button>
           </div>
         </div>`).join('')}
     </div>`).join('');
@@ -1445,8 +1474,8 @@ function renderCallsignPool(wingId, sqId) {
   if (!pool.length) { el.innerHTML = '<div style="font-size:11px;color:var(--text3)">No flight callsigns yet</div>'; return; }
   el.innerHTML = pool.map((c,i)=>`
     <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(74,144,217,.12);border:1px solid rgba(74,144,217,.3);color:var(--blue2);border-radius:14px;padding:3px 10px;font-size:11px;font-weight:700;font-family:var(--mono);margin:3px 4px 3px 0">
-      ${c}
-      <button type="button" onclick="removeCallsignFromPool('${wingId}','${sqId}',${i})" style="background:none;border:none;color:var(--red2);cursor:pointer;font-size:13px;padding:0;line-height:1">×</button>
+      ${esc(c)}
+      <button type="button" onclick="removeCallsignFromPool('${escAttr(wingId)}','${escAttr(sqId)}',${i})" style="background:none;border:none;color:var(--red2);cursor:pointer;font-size:13px;padding:0;line-height:1">×</button>
     </span>`).join('');
 }
 
@@ -1559,15 +1588,15 @@ function logoSlotRow(wingId, sqId, label, url, isWing) {
   return `
     <div class="logo-slot-row">
       <div class="logo-slot-preview">
-        ${url ? `<img src="${url}" style="width:100%;height:100%;object-fit:cover" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'⚠',style:'color:var(--red2)'}))">`
+        ${url ? `<img src="${safeUrl(url)}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`
               : '<span style="font-size:9px;color:var(--text3)">None</span>'}
       </div>
-      <div class="logo-slot-label">${label}${isWing?' <span class="badge badge-gold" style="margin-left:4px;font-size:9px">WING</span>':''}</div>
-      <input type="url" id="logo-url-${key}" placeholder="Paste image link (Discord, imgur…)" style="flex:1;min-width:180px;font-size:12px">
-      <button class="btn btn-primary btn-xs" onclick="setWingSqLogoFromUrl('${wingId}','${sqId||''}')">Use URL</button>
-      <input type="file" id="logo-file-${key}" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadWingSqLogo(this,'${wingId}','${sqId||''}')">
-      <button class="btn btn-outline btn-xs" onclick="document.getElementById('logo-file-${key}').click()">Upload</button>
-      ${url ? `<button class="btn btn-danger btn-xs" onclick="removeWingSqLogo('${wingId}','${sqId||''}')">Remove</button>` : ''}
+      <div class="logo-slot-label">${esc(label)}${isWing?' <span class="badge badge-gold" style="margin-left:4px;font-size:9px">WING</span>':''}</div>
+      <input type="url" id="logo-url-${esc(key)}" placeholder="Paste image link (Discord, imgur…)" style="flex:1;min-width:180px;font-size:12px">
+      <button class="btn btn-primary btn-xs" onclick="setWingSqLogoFromUrl('${escAttr(wingId)}','${escAttr(sqId||'')}')">Use URL</button>
+      <input type="file" id="logo-file-${esc(key)}" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadWingSqLogo(this,'${escAttr(wingId)}','${escAttr(sqId||'')}')">
+      <button class="btn btn-outline btn-xs" onclick="document.getElementById('logo-file-${escAttr(key)}').click()">Upload</button>
+      ${url ? `<button class="btn btn-danger btn-xs" onclick="removeWingSqLogo('${escAttr(wingId)}','${escAttr(sqId||'')}')">Remove</button>` : ''}
     </div>`;
 }
 
@@ -1684,8 +1713,8 @@ function renderPermissionCheckboxes() {
   const el = document.getElementById('nr-permissions');
   el.innerHTML = ALL_PERMISSIONS.map(p => `
     <label class="perm-check">
-      <input type="checkbox" value="${p.id}" class="new-role-perm">
-      ${p.label}
+      <input type="checkbox" value="${esc(p.id)}" class="new-role-perm">
+      ${esc(p.label)}
     </label>`).join('');
 }
 
@@ -1722,18 +1751,18 @@ function renderRolesList() {
     const isBuiltIn = ['master_admin','wing_commander','sq_commander','instructor','pilot','trainee','pending'].includes(roleId);
     const permTags = (role.permissions||[]).map(pid => {
       const p = ALL_PERMISSIONS.find(x => x.id === pid);
-      return p ? `<span class="role-perm-tag">${p.label}</span>` : '';
+      return p ? `<span class="role-perm-tag">${esc(p.label)}</span>` : '';
     }).join('');
     return `
       <div class="role-card">
         <div class="role-card-head">
-          <div class="role-dot" style="background:${role.color||'#888'}"></div>
+          <div class="role-dot" style="background:${esc(role.color||'#888')}"></div>
           <div style="flex:1">
-            <div class="role-card-name">${role.name}${role.isMasterAdmin?'<span class="hidden-badge">Hidden identity</span>':''}</div>
+            <div class="role-card-name">${esc(role.name)}${role.isMasterAdmin?'<span class="hidden-badge">Hidden identity</span>':''}</div>
             <div class="role-card-level">Authority level ${role.level||0}${isBuiltIn?' · built-in role':''}</div>
           </div>
-          <button class="btn btn-outline btn-xs" onclick="openEditRoleModal('${roleId}')">Edit</button>
-          ${!isBuiltIn ? `<button class="btn btn-danger btn-xs" onclick="deleteRole('${roleId}')">Delete</button>` : ''}
+          <button class="btn btn-outline btn-xs" onclick="openEditRoleModal('${escAttr(roleId)}')">Edit</button>
+          ${!isBuiltIn ? `<button class="btn btn-danger btn-xs" onclick="deleteRole('${escAttr(roleId)}')">Delete</button>` : ''}
         </div>
         ${role.isMasterAdmin ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">This role silently has ALL permissions.</div>' : ''}
         ${permTags ? `<div class="role-perm-tags">${permTags}</div>` : (!role.isMasterAdmin ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">No special permissions</div>' : '')}
@@ -1750,8 +1779,8 @@ function openEditRoleModal(roleId) {
   document.getElementById('er-color').value = role.color || '#c8a951';
   document.getElementById('er-permissions').innerHTML = ALL_PERMISSIONS.map(p => `
     <label class="perm-check">
-      <input type="checkbox" value="${p.id}" class="edit-role-perm" ${(role.permissions||[]).includes(p.id)?'checked':''}>
-      ${p.label}
+      <input type="checkbox" value="${esc(p.id)}" class="edit-role-perm" ${(role.permissions||[]).includes(p.id)?'checked':''}>
+      ${esc(p.label)}
     </label>`).join('');
   document.getElementById('role-edit-modal').classList.add('open');
 }
@@ -1791,12 +1820,12 @@ function searchPilotForMedal() {
   const found = allPilots.filter(p => (p.displayName||p.callsign||'').toLowerCase().includes(q));
   el.innerHTML = found.slice(0,8).map(p => `
     <div class="pilot-row">
-      <div class="pilot-row-avatar">${p.avatarUrl?`<img src="${p.avatarUrl}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:'✈'}</div>
+      <div class="pilot-row-avatar">${p.avatarUrl?`<img src="${safeUrl(p.avatarUrl)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:'✈'}</div>
       <div class="pilot-row-info">
-        <div class="pilot-row-name">${p.displayName||p.callsign}</div>
-        <div class="pilot-row-meta">${getRankName(p.rank||'rec')} · ${getWingName(p.wing)||'Unassigned'}</div>
+        <div class="pilot-row-name">${esc(p.displayName||p.callsign)}</div>
+        <div class="pilot-row-meta">${esc(getRankName(p.rank||'rec'))} · ${esc(getWingName(p.wing)||'Unassigned')}</div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="selectMedalPilot('${p.uid}')">Select</button>
+      <button class="btn btn-primary btn-sm" onclick="selectMedalPilot('${escAttr(p.uid)}')">Select</button>
     </div>`).join('') || '<div style="font-size:13px;color:var(--text3)">No pilots found</div>';
 }
 
@@ -1825,16 +1854,16 @@ function renderMedalsCatalog() {
   const el = document.getElementById('medals-catalog-list');
   el.innerHTML = categories.map(cat => `
     <div style="margin-bottom:18px">
-      <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin-bottom:8px">${cat}</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin-bottom:8px">${esc(cat)}</div>
       ${MEDALS_CATALOG.filter(m=>m.category===cat).map(m => `
         <div class="pilot-row" style="background:var(--card2)">
           <div style="flex-shrink:0">${renderRibbonSVG(m.id, 44, 16)}</div>
           <div class="pilot-row-info">
-            <div class="pilot-row-name">${m.name}</div>
+            <div class="pilot-row-name">${esc(m.name)}</div>
           </div>
           ${held.includes(m.id)
-            ? `<span class="badge badge-green">Awarded</span><button class="btn btn-danger btn-xs" onclick="revokeMedal('${m.id}')">Revoke</button>`
-            : `<button class="btn btn-primary btn-xs" onclick="awardMedal('${m.id}','${m.name}')">Award</button>`}
+            ? `<span class="badge badge-green">Awarded</span><button class="btn btn-danger btn-xs" onclick="revokeMedal('${escAttr(m.id)}')">Revoke</button>`
+            : `<button class="btn btn-primary btn-xs" onclick="awardMedal('${escAttr(m.id)}','${escAttr(m.name)}')">Award</button>`}
         </div>`).join('')}
     </div>`).join('');
 }
@@ -1846,12 +1875,12 @@ function renderWingsBadges() {
     <div class="pilot-row" style="background:var(--card2)">
       <div style="flex-shrink:0">${renderWingsBadgeSVG(w.id, 40)}</div>
       <div class="pilot-row-info">
-        <div class="pilot-row-name">${w.name}</div>
-        <div class="pilot-row-meta">${w.desc}</div>
+        <div class="pilot-row-name">${esc(w.name)}</div>
+        <div class="pilot-row-meta">${esc(w.desc)}</div>
       </div>
       ${held.includes(w.id)
-        ? `<span class="badge badge-green">Awarded</span><button class="btn btn-danger btn-xs" onclick="revokeWingsBadge('${w.id}')">Revoke</button>`
-        : `<button class="btn btn-primary btn-xs" onclick="awardWingsBadge('${w.id}','${w.name}')">Award</button>`}
+        ? `<span class="badge badge-green">Awarded</span><button class="btn btn-danger btn-xs" onclick="revokeWingsBadge('${escAttr(w.id)}')">Revoke</button>`
+        : `<button class="btn btn-primary btn-xs" onclick="awardWingsBadge('${escAttr(w.id)}','${escAttr(w.name)}')">Award</button>`}
     </div>`).join('');
 }
 
@@ -1862,9 +1891,9 @@ function renderCurrentMedals() {
   if (!medals.length && !wings.length) { el.innerHTML = '<div class="empty-state"><p>No medals or wings awarded yet</p></div>'; return; }
   el.innerHTML =
     (wings.length ? `<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Pilot Wings</div>` +
-      wings.map(w=>`<div class="pilot-row" style="background:var(--card2)"><div style="flex-shrink:0">${renderWingsBadgeSVG(w.id, 36)}</div><div class="pilot-row-info"><div class="pilot-row-name">${w.name}</div><div class="pilot-row-meta">Awarded ${formatDate(w.awardedAt)}</div></div></div>`).join('') : '') +
+      wings.map(w=>`<div class="pilot-row" style="background:var(--card2)"><div style="flex-shrink:0">${renderWingsBadgeSVG(w.id, 36)}</div><div class="pilot-row-info"><div class="pilot-row-name">${esc(w.name)}</div><div class="pilot-row-meta">Awarded ${esc(formatDate(w.awardedAt))}</div></div></div>`).join('') : '') +
     (medals.length ? `<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">Decorations</div>` +
-      medals.map(m=>`<div class="pilot-row" style="background:var(--card2)"><div style="flex-shrink:0">${renderRibbonSVG(m.id, 44, 16)}</div><div class="pilot-row-info"><div class="pilot-row-name">${m.name}</div><div class="pilot-row-meta">Awarded ${formatDate(m.awardedAt)}</div></div></div>`).join('') : '');
+      medals.map(m=>`<div class="pilot-row" style="background:var(--card2)"><div style="flex-shrink:0">${renderRibbonSVG(m.id, 44, 16)}</div><div class="pilot-row-info"><div class="pilot-row-name">${esc(m.name)}</div><div class="pilot-row-meta">Awarded ${esc(formatDate(m.awardedAt))}</div></div></div>`).join('') : '');
 }
 
 async function awardMedal(medalId, medalName) {
@@ -1914,9 +1943,9 @@ async function loadWingSettings() {
   const el = document.getElementById('wing-settings-content');
   el.innerHTML = Object.entries(WINGS).map(([wingId,wing])=>`
     <div class="wing-banner w-${wingId}" style="margin-bottom:16px">
-      <div class="wing-label" style="color:var(--${wingId})">${wing.name}</div>
-      <div class="wing-name" style="color:var(--${wingId})">${wing.name}</div>
-      <div class="wing-base">📍 ${wing.base}</div>
+      <div class="wing-label" style="color:var(--${wingId})">${esc(wing.name)}</div>
+      <div class="wing-name" style="color:var(--${wingId})">${esc(wing.name)}</div>
+      <div class="wing-base">📍 ${esc(wing.base)}</div>
       <div style="margin-top:12px;display:flex;gap:10px">
         <button class="btn btn-outline btn-sm" onclick="showSec('rosters')">View Roster</button>
         <button class="btn btn-outline btn-sm" onclick="showSec('customize')">Edit Names</button>
@@ -1924,7 +1953,7 @@ async function loadWingSettings() {
     </div>`).join('');
 }
 
-async function pingDiscordAccess(uid, name) {
+async function pingDiscordAccess(uid) {
   let webhookUrl = '';
   try {
     const s = await db.collection('settings').doc('webhooks').get();
@@ -1941,7 +1970,7 @@ async function pingDiscordAccess(uid, name) {
   }
 
   const pilot = allPilots.find(p => p.uid === uid) || pendingApps.find(p => p.uid === uid);
-  const callsign = pilot?.displayName || pilot?.callsign || name || uid;
+  const callsign = pilot?.displayName || pilot?.callsign || uid;
   const discord  = pilot?.discord ? `Discord: **${pilot.discord}**` : 'No Discord username on file';
   const wing     = pilot?.preferredWing ? getWingName(pilot.preferredWing) : 'No preference';
   const sim      = pilot?.simulator || '—';
@@ -2078,15 +2107,15 @@ function renderAdminEmbedCards() {
     const key = entry[0], et = entry[1];
     const t = _adminEmbedTpls[key] || {};
     const inp = function(field, label, def) {
-      return '<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:3px">' + label + '</div>'
-        + '<input id="et-' + key + '-' + field + '" type="text" value="' + (t[field] ? String(t[field]).replace(/"/g,'&quot;') : '') + '" placeholder="' + String(def||'').replace(/"/g,'&quot;') + '" '
-        + 'oninput="adminUpdateEmbedPreview(\'' + key + '\')" '
+      return '<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:3px">' + esc(label) + '</div>'
+        + '<input id="et-' + esc(key) + '-' + esc(field) + '" type="text" value="' + esc(t[field] || '') + '" placeholder="' + esc(def || '') + '" '
+        + 'oninput="adminUpdateEmbedPreview(\'' + escAttr(key) + '\')" '
         + 'style="width:100%;padding:8px 12px;background:#0a0c14;border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;font-family:var(--mono);outline:none"></div>';
     };
     return '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden">'
       + '<div style="padding:12px 16px;background:var(--card2);border-bottom:1px solid var(--border)">'
-      + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + et.label + '</div>'
-      + '<div style="font-size:11px;color:var(--text3)">Sent to: ' + et.where + ' · Variables: <span style="font-family:var(--mono);color:var(--gold2)">' + et.vars + '</span></div>'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + esc(et.label) + '</div>'
+      + '<div style="font-size:11px;color:var(--text3)">Sent to: ' + esc(et.where) + ' · Variables: <span style="font-family:var(--mono);color:var(--gold2)">' + esc(et.vars) + '</span></div>'
       + '</div>'
       + '<div style="padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:14px" class="et-grid">'
       + '<div>'
@@ -2095,14 +2124,14 @@ function renderAdminEmbedCards() {
       +   inp('footer', 'Footer', et.def.footer || '(no footer)')
       +   '<div style="display:flex;align-items:center;gap:8px;margin-top:4px">'
       +   '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">Color</div>'
-      +   '<input id="et-' + key + '-color" type="text" value="' + (t.color||'') + '" placeholder="default" maxlength="7" oninput="adminUpdateEmbedPreview(\'' + key + '\')" '
+      +   '<input id="et-' + esc(key) + '-color" type="text" value="' + esc(t.color||'') + '" placeholder="default" maxlength="7" oninput="adminUpdateEmbedPreview(\'' + escAttr(key) + '\')" '
       +   'style="width:90px;padding:6px 10px;background:#0a0c14;border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;font-family:var(--mono);outline:none">'
-      +   '<input type="color" value="' + (t.color && /^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : '#c8a951') + '" onchange="document.getElementById(\'et-' + key + '-color\').value=this.value;adminUpdateEmbedPreview(\'' + key + '\')" style="width:32px;height:30px;padding:0;border:none;border-radius:6px;cursor:pointer;background:none">'
+      +   '<input type="color" value="' + (t.color && /^#[0-9a-fA-F]{6}$/.test(t.color) ? esc(t.color) : '#c8a951') + '" onchange="document.getElementById(\'et-' + escAttr(key) + '-color\').value=this.value;adminUpdateEmbedPreview(\'' + escAttr(key) + '\')" style="width:32px;height:30px;padding:0;border:none;border-radius:6px;cursor:pointer;background:none">'
       +   '<span style="font-size:10px;color:var(--text3)">blank = default (wing colors where applicable)</span>'
       +   '</div>'
       + '</div>'
       + '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:3px">Preview</div>'
-      +   '<div id="et-preview-' + key + '"></div>'
+      +   '<div id="et-preview-' + esc(key) + '"></div>'
       + '</div>'
       + '</div></div>';
   }).join('');
@@ -2119,10 +2148,10 @@ function adminUpdateEmbedPreview(key) {
   const color  = /^#[0-9a-fA-F]{6}$/.test(colorV) ? colorV : '#c8a951';
   const el = document.getElementById('et-preview-' + key);
   if (!el) return;
-  el.innerHTML = '<div style="background:#2b2d31;border-left:4px solid ' + color + ';border-radius:4px;padding:10px 12px">'
-    + '<div style="font-size:13px;font-weight:700;color:#fff">' + title + '</div>'
-    + (desc ? '<div style="font-size:12px;color:#dbdee1;margin-top:4px">' + desc + '</div>' : '')
-    + (footer ? '<div style="font-size:10px;color:#949ba4;margin-top:8px">' + footer + '</div>' : '')
+  el.innerHTML = '<div style="background:#2b2d31;border-left:4px solid ' + esc(color) + ';border-radius:4px;padding:10px 12px">'
+    + '<div style="font-size:13px;font-weight:700;color:#fff">' + esc(title) + '</div>'
+    + (desc ? '<div style="font-size:12px;color:#dbdee1;margin-top:4px">' + esc(desc) + '</div>' : '')
+    + (footer ? '<div style="font-size:10px;color:#949ba4;margin-top:8px">' + esc(footer) + '</div>' : '')
     + '</div>';
 }
 
@@ -2157,7 +2186,7 @@ function renderAdminWebhookCards() {
   if (!container) return;
 
   container.innerHTML = Object.entries(groups).map(([group, channels]) => {
-    const groupHtml = '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)">' + group + '</div>';
+    const groupHtml = '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)">' + esc(group) + '</div>';
     const cardsHtml = channels.map(function(pair) {
       const key = pair[0], ch = pair[1];
       const cfg = _adminWhConfig[key] || {};
@@ -2165,14 +2194,14 @@ function renderAdminWebhookCards() {
       return '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden">'
         + '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--card2);border-bottom:1px solid var(--border)">'
         + '<div style="width:8px;height:8px;border-radius:50%;background:' + (has?'var(--green)':'var(--text3)') + '"></div>'
-        + '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--text)">' + ch.label + '</div>'
-        + '<div style="font-size:11px;color:var(--text3)">' + ch.events + '</div></div>'
+        + '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--text)">' + esc(ch.label) + '</div>'
+        + '<div style="font-size:11px;color:var(--text3)">' + esc(ch.events) + '</div></div>'
         + '<span style="font-size:11px;color:' + (has?'var(--green2)':'var(--text3)') + '">' + (has?'● Active':'○ Not set') + '</span>'
         + '</div>'
         + '<div style="padding:12px 16px;display:flex;gap:8px">'
-        + '<input id="wh-admin-' + key + '" type="text" value="' + (cfg.url||'') + '" placeholder="https://discord.com/api/webhooks/..." '
+        + '<input id="wh-admin-' + esc(key) + '" type="text" value="' + esc(cfg.url||'') + '" placeholder="https://discord.com/api/webhooks/..." '
         + 'style="flex:1;padding:8px 12px;background:#0a0c14;border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;font-family:var(--mono);outline:none">'
-        + '<button onclick="adminTestWebhook(\'' + key + '\')" style="padding:6px 12px;background:rgba(74,144,217,.15);color:var(--blue2);border:1px solid rgba(74,144,217,.3);border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--sans)">Test</button>'
+        + '<button onclick="adminTestWebhook(\'' + escAttr(key) + '\')" style="padding:6px 12px;background:rgba(74,144,217,.15);color:var(--blue2);border:1px solid rgba(74,144,217,.3);border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--sans)">Test</button>'
         + '</div></div>';
     }).join('');
     return groupHtml + cardsHtml;
@@ -2270,10 +2299,10 @@ async function adminFetchAuditPage(reset) {
       const dotColor = COLORS[e.eventType] || 'var(--text3)';
       return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:.5px solid var(--border);font-size:12px">'
         + '<div style="width:7px;height:7px;border-radius:50%;background:' + dotColor + ';flex-shrink:0"></div>'
-        + '<div style="width:90px;flex-shrink:0;color:var(--text3);font-family:var(--mono);font-size:11px">' + time + '</div>'
-        + '<div style="width:120px;flex-shrink:0;color:var(--gold);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (e.actor?e.actor.callsign:'—') + '</div>'
-        + '<div style="flex-shrink:0;font-size:10px;padding:1px 7px;border-radius:8px;background:var(--card2);border:1px solid var(--border);font-family:var(--mono)">' + (e.eventType||'—') + '</div>'
-        + '<div style="flex:1;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + detail + '</div>'
+        + '<div style="width:90px;flex-shrink:0;color:var(--text3);font-family:var(--mono);font-size:11px">' + esc(time) + '</div>'
+        + '<div style="width:120px;flex-shrink:0;color:var(--gold);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.actor?e.actor.callsign:'—') + '</div>'
+        + '<div style="flex-shrink:0;font-size:10px;padding:1px 7px;border-radius:8px;background:var(--card2);border:1px solid var(--border);font-family:var(--mono)">' + esc(e.eventType||'—') + '</div>'
+        + '<div style="flex:1;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(detail) + '</div>'
         + '</div>';
     }).join('');
 
@@ -2281,7 +2310,7 @@ async function adminFetchAuditPage(reset) {
     else list.insertAdjacentHTML('beforeend', html);
   } catch(e) {
     const list = document.getElementById('admin-audit-list');
-    if (list) list.innerHTML = '<div class="alert alert-error">Error: ' + e.message + '<br><small>You may need to create a Firestore index for auditLog (eventType ASC + timestamp DESC).</small></div>';
+    if (list) list.innerHTML = '<div class="alert alert-error">Error: ' + esc(e.message) + '<br><small>You may need to create a Firestore index for auditLog (eventType ASC + timestamp DESC).</small></div>';
   }
 }
 
@@ -2295,7 +2324,7 @@ function renderViewAsSection() {
   const notice = document.getElementById('viewas-active-notice');
   if (active) {
     const label = active === 'logged_out' ? 'Logged-out visitor' : (ROLES[active]?.name || active);
-    notice.innerHTML = '<div class="alert alert-info" style="margin-bottom:14px;font-size:12px;border-color:var(--amber)">👁 A View As session is currently active: <strong>' + label + '</strong> <button class="btn btn-outline btn-xs" style="margin-left:10px" onclick="exitViewAs()">Exit now</button></div>';
+    notice.innerHTML = '<div class="alert alert-info" style="margin-bottom:14px;font-size:12px;border-color:var(--amber)">👁 A View As session is currently active: <strong>' + esc(label) + '</strong> <button class="btn btn-outline btn-xs" style="margin-left:10px" onclick="exitViewAs()">Exit now</button></div>';
   } else {
     notice.innerHTML = '';
   }
@@ -2317,12 +2346,12 @@ function renderViewAsSection() {
 
   const roleCards = entries.map(([roleId, role]) => `
     <div class="pilot-row">
-      <div style="width:14px;height:14px;border-radius:50%;background:${role.color||'#888'};flex-shrink:0"></div>
+      <div style="width:14px;height:14px;border-radius:50%;background:${esc(role.color||'#888')};flex-shrink:0"></div>
       <div class="pilot-row-info">
-        <div class="pilot-row-name">${role.name}</div>
+        <div class="pilot-row-name">${esc(role.name)}</div>
         <div class="pilot-row-meta">Authority level ${role.level||0}${(role.permissions||[]).length ? ' · ' + role.permissions.length + ' permission' + (role.permissions.length===1?'':'s') : ' · no special permissions'}</div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="startViewAs('${roleId}')">👁 View as this role</button>
+      <button class="btn btn-primary btn-sm" onclick="startViewAs('${escAttr(roleId)}')">👁 View as this role</button>
     </div>`).join('');
 
   el.innerHTML = loggedOutCard + roleCards;
