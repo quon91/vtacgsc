@@ -305,6 +305,24 @@
 <script src="/js/firebase-config.js"></script>
 <script src="/js/nav.js"></script>
 <script>
+// ── HTML ESCAPING (local fallback; firebase-config's version wins) ──
+// Callsigns can be assigned by a wing commander, and medals/certs by
+// command staff — so this page renders other people's text, not just
+// your own. Everything going into innerHTML is escaped.
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  };
+}
+if (typeof safeUrl !== 'function') {
+  window.safeUrl = function (u) {
+    var s = String(u == null ? '' : u).trim();
+    return /^(https?:|\/|\.\/|#|mailto:|data:image\/)/i.test(s) ? esc(s) : '';
+  };
+}
+
 let pilotData = null;
 let callsigns = [];
 let selectedAccent = '#c8a951';
@@ -420,8 +438,8 @@ function renderCallsigns() {
   }
   el.innerHTML = callsigns.map((cs, i) => `
     <div class="callsign-item">
-      <span class="badge ${typeColors[cs.type]||'badge-gray'} cs-type">${cs.type}</span>
-      <span class="cs-value">${cs.value}</span>
+      <span class="badge ${typeColors[cs.type]||'badge-gray'} cs-type">${esc(cs.type)}</span>
+      <span class="cs-value">${esc(cs.value)}</span>
       ${i === 0 ? '<span style="font-size:10px;color:var(--gold);font-weight:600">PRIMARY</span>' : ''}
       <button class="cs-edit" onclick="moveCallsignUp(${i})" ${i===0?'disabled style="opacity:.3"':''} title="Move up">↑</button>
       <button class="cs-remove" onclick="removeCallsign(${i})" title="Remove">×</button>
@@ -591,6 +609,23 @@ async function uploadWings(input) {
     toast('Wings updated! (' + origKB + 'KB \u2192 ' + newKB + 'KB)');
   } catch(e) { URL.revokeObjectURL(prev); toast('Upload failed: '+e.message,'error'); }
 }
+
+// Removes the uploaded pilot wings image from the profile.
+async function removeWings() {
+  if (!confirm('Remove your pilot wings image?')) return;
+  try {
+    await db.collection('pilots').doc(currentUser.uid).update({
+      pilotWingsUrl: firebase.firestore.FieldValue.delete()
+    });
+    document.getElementById('wings-preview').style.display = 'none';
+    document.getElementById('wings-placeholder').style.display = 'block';
+    document.getElementById('remove-wings-btn').style.display = 'none';
+    document.getElementById('wings-status').textContent = '';
+    const dw = document.getElementById('disp-wings'); if (dw) dw.style.display = 'none';
+    toast('Wings image removed');
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
 // ── DRAG & DROP ───────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   const aw = document.querySelector('.avatar-wrap');
@@ -665,8 +700,8 @@ async function loadCerts() {
   el.innerHTML = recs.map(t => {
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border)">
       <span style="font-size:18px">✅</span>
-      <div><div style="font-size:13px;font-weight:600;color:var(--text)">${t.name||'Certification'}</div>
-      <div style="font-size:11px;color:var(--text3)">${formatDate(t.completedAt)}${t.awardedBy?' · by '+t.awardedBy:''}${t.notes?' · '+t.notes:''}</div></div>
+      <div><div style="font-size:13px;font-weight:600;color:var(--text)">${esc(t.name||'Certification')}</div>
+      <div style="font-size:11px;color:var(--text3)">${esc(formatDate(t.completedAt))}${t.awardedBy?' · by '+esc(t.awardedBy):''}${t.notes?' · '+esc(t.notes):''}</div></div>
     </div>`;
   }).join('');
 }
@@ -680,8 +715,8 @@ function renderEarnedWingsBadges(p) {
     <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:0.5px solid var(--border)">
       ${renderWingsBadgeSVG(b.id, 48)}
       <div>
-        <div style="font-size:14px;font-weight:700;color:var(--gold)">${b.name}</div>
-        <div style="font-size:11px;color:var(--text3)">Awarded ${formatDate(b.awardedAt)}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold)">${esc(b.name)}</div>
+        <div style="font-size:11px;color:var(--text3)">Awarded ${esc(formatDate(b.awardedAt))}</div>
       </div>
     </div>`).join('');
 }
@@ -695,8 +730,8 @@ function renderEarnedMedals(p) {
     <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:0.5px solid var(--border)">
       ${renderRibbonSVG(m.id, 50, 18)}
       <div>
-        <div style="font-size:14px;font-weight:700;color:var(--text)">${m.name}</div>
-        <div style="font-size:11px;color:var(--text3)">Awarded ${formatDate(m.awardedAt)}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${esc(m.name)}</div>
+        <div style="font-size:11px;color:var(--text3)">Awarded ${esc(formatDate(m.awardedAt))}</div>
       </div>
     </div>`).join('');
 }
