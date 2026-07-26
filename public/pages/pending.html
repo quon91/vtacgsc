@@ -57,6 +57,15 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
 <script>
+// ── HTML ESCAPING (local fallback; firebase-config's version wins) ──
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  };
+}
+
 // This page is in firebase-config's isPendingPage() allowlist, so
 // pending users are NOT redirected away from it. The lockdown gate
 // still applies to logged-out visitors via onAuthReady below.
@@ -87,10 +96,10 @@ function renderApplication(pilot) {
     : '—';
 
   document.getElementById('app-detail').innerHTML =
-    '<div class="detail-item"><div class="detail-lbl">Callsign</div><div class="detail-val">' + (pilot.displayName || pilot.callsign || '—') + '</div></div>' +
-    '<div class="detail-item"><div class="detail-lbl">Preferred Wing</div><div class="detail-val">' + (wingNames[pilot.preferredWing] || '—') + '</div></div>' +
-    '<div class="detail-item"><div class="detail-lbl">Simulator</div><div class="detail-val">' + (simNames[pilot.simulator] || pilot.simulator || '—') + '</div></div>' +
-    '<div class="detail-item"><div class="detail-lbl">Submitted</div><div class="detail-val">' + applied + '</div></div>';
+    '<div class="detail-item"><div class="detail-lbl">Callsign</div><div class="detail-val">' + esc(pilot.displayName || pilot.callsign || '—') + '</div></div>' +
+    '<div class="detail-item"><div class="detail-lbl">Preferred Wing</div><div class="detail-val">' + esc(wingNames[pilot.preferredWing] || '—') + '</div></div>' +
+    '<div class="detail-item"><div class="detail-lbl">Simulator</div><div class="detail-val">' + esc(simNames[pilot.simulator] || pilot.simulator || '—') + '</div></div>' +
+    '<div class="detail-item"><div class="detail-lbl">Submitted</div><div class="detail-val">' + esc(applied) + '</div></div>';
 }
 
 // Re-reads the pilot doc. If approved, celebrate + enter the site.
