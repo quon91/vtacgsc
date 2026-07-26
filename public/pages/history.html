@@ -77,6 +77,20 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
 <script>
+// ── HTML ESCAPING (local fallback; firebase-config's version wins) ──
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  };
+}
+if (typeof escAttr !== 'function') {
+  window.escAttr = function (s) {
+    return esc(String(s == null ? '' : s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+  };
+}
+
 function toggleMobileNav(){document.getElementById('nav-links').classList.toggle('open');}
 
 let entries = [], canEdit = false;
@@ -107,10 +121,10 @@ function renderTimeline() {
   el.innerHTML = entries.map(e => `
     <div class="tl-item">
       <div class="tl-dot"></div>
-      <button class="tl-remove" onclick="removeEntry('${e.id}')">Remove ✕</button>
-      <div class="tl-date">${e.date}</div>
-      <div class="tl-title">${e.title} ${canEdit?`<button class="edit-pencil" style="margin-left:8px" onclick="openEditEntry('${e.id}')">✏</button>`:''}</div>
-      <div class="tl-body">${e.body}</div>
+      <button class="tl-remove" onclick="removeEntry('${escAttr(e.id)}')">Remove ✕</button>
+      <div class="tl-date">${esc(e.date)}</div>
+      <div class="tl-title">${esc(e.title)} ${canEdit?`<button class="edit-pencil" style="margin-left:8px" onclick="openEditEntry('${escAttr(e.id)}')">✏</button>`:''}</div>
+      <div class="tl-body">${esc(e.body)}</div>
     </div>`).join('');
 }
 
