@@ -29,6 +29,22 @@
 
 (function () {
 
+  // ── 0. HTML ESCAPING ────────────────────────────────────────
+  // This file writes the site logo URL, the pilot's avatar URL and
+  // a role name into innerHTML on EVERY page. Those values come
+  // from Firestore, so they get escaped here too. Local fallbacks:
+  // if firebase-config.js already defines esc/safeUrl site-wide,
+  // that version is used and these are skipped.
+  var esc = (typeof window.esc === 'function') ? window.esc : function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  };
+  var safeUrl = (typeof window.safeUrl === 'function') ? window.safeUrl : function (u) {
+    var s = String(u == null ? '' : u).trim();
+    return /^(https?:|\/|\.\/|#|mailto:)/i.test(s) ? esc(s) : '';
+  };
+
   // ── 1. SINGLE SOURCE OF TRUTH FOR NAV LINKS ─────────────────
   var NAV_LINKS = [
     { href: '/index.html',                label: 'Home' },
@@ -49,7 +65,7 @@
     if (path === '/' || path === '') path = '/index.html';
     el.innerHTML = NAV_LINKS.map(function (l) {
       var active = (path === l.href);
-      return '<a href="' + l.href + '"' + (active ? ' class="active"' : '') + '>' + l.label + '</a>';
+      return '<a href="' + esc(l.href) + '"' + (active ? ' class="active"' : '') + '>' + esc(l.label) + '</a>';
     }).join('');
   }
 
@@ -57,9 +73,10 @@
   function applyBranding(d) {
     if (!d) return;
     var emblems = document.querySelectorAll('.nav-emblem');
-    if (d.logoUrl) {
+    var logo = safeUrl(d.logoUrl);
+    if (logo) {
       emblems.forEach(function (em) {
-        em.innerHTML = '<img src="' + d.logoUrl + '" alt="Logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+        em.innerHTML = '<img src="' + logo + '" alt="Logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
       });
     } else if (d.badge) {
       emblems.forEach(function (em) { em.textContent = d.badge; });
@@ -107,12 +124,13 @@
       } else {
         try { avatarUrl = sessionStorage.getItem('vtac_avatar') || ''; } catch (e) {}
       }
+      var safeAvatar = safeUrl(avatarUrl);
 
       if (navArea) {
         navArea.innerHTML =
           '<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>' +
-          (avatarUrl
-            ? '<a href="/pages/profile.html" title="My Profile"><img src="' + avatarUrl + '" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);margin-left:8px;vertical-align:middle;display:inline-block" alt=""></a>'
+          (safeAvatar
+            ? '<a href="/pages/profile.html" title="My Profile"><img src="' + safeAvatar + '" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);margin-left:8px;vertical-align:middle;display:inline-block" alt=""></a>'
             : '');
       }
       if (authArea) authArea.style.display = 'none';
@@ -134,7 +152,7 @@
               rankEl.textContent = (typeof getRankAbbr === 'function') ? getRankAbbr(pilot.rank || 'ab') : '';
             }
           }
-          if (avatarEl && avatarUrl) avatarEl.src = avatarUrl;
+          if (avatarEl && safeAvatar) avatarEl.src = avatarUrl;
         }
       }
     } else {
@@ -167,7 +185,7 @@
     bar.id = 'viewas-banner';
     bar.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#e09030;color:#0a0c14;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:14px;padding:9px 16px;box-shadow:0 -4px 16px rgba(0,0,0,.45);font-family:var(--sans,sans-serif)';
     bar.innerHTML =
-      '<span>👁 Viewing site as: ' + label + '</span>' +
+      '<span>👁 Viewing site as: ' + esc(label) + '</span>' +
       '<button id="viewas-exit-btn" style="background:#0a0c14;color:#e09030;border:none;border-radius:16px;padding:5px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Exit view</button>';
     document.body.appendChild(bar);
     document.body.style.paddingBottom = '52px'; // keep footer clear of the bar
