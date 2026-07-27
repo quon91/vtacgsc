@@ -212,6 +212,21 @@
 <script src="/js/firebase-config.js"></script>
 <script src="/js/nav.js"></script>
 <script>
+// ── HTML ESCAPING (local fallback; firebase-config's version wins) ──
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  };
+}
+if (typeof safeUrl !== 'function') {
+  window.safeUrl = function (u) {
+    var s = String(u == null ? '' : u).trim();
+    return /^(https?:|\/|\.\/|#|mailto:)/i.test(s) ? esc(s) : '';
+  };
+}
+
 function toggleMobileNav() { document.getElementById('nav-links').classList.toggle('open'); }
 
 // Same access check as training-manager.html and the Firestore rule:
@@ -247,17 +262,41 @@ const CAT_STYLE = {
   'general':{ grid: 'grid-general', color: 'var(--gold)'  },
 };
 
+// The `training` collection holds TWO different kinds of document:
+// training MODULES (what this page lists) and legacy per-pilot
+// completion records (read by profile.html and the admin Training
+// Records panel). Completion records carry pilotUid; modules never
+// do. Without this filter they render as "Untitled module" cards
+// that go nowhere.
+function isTrainingModule(m) {
+  if (!m) return false;
+  if (m.pilotUid) return false;                       // completion record, not a module
+  return !!(m.title || (Array.isArray(m.tabs) && m.tabs.length) || m.contentHtml || m.url);
+}
+
 async function loadDynamicModules() {
   let mods = [];
   try {
-    const snap = await db.collection('training').orderBy('createdAt', 'asc').get();
-    mods = snap.docs.map(function(d){ return d.data(); });
+    // NO orderBy. orderBy('createdAt') silently EXCLUDES any module
+    // saved without that field, which made modules vanish from this
+    // page while still showing in the Training Manager. Fetch, then
+    // sort client-side.
+    const snap = await db.collection('training').get();
+    // CRITICAL: keep the Firestore document ID. This used to be
+    // `d.data()` alone, so m.id was undefined and every built-in
+    // module linked to view.html?id=undefined — which is exactly
+    // why view.html reported "This training module no longer
+    // exists". The ID is applied LAST so a stray `id` field inside
+    // the document can never overwrite the real one.
+    mods = snap.docs.map(function(d){ return Object.assign({}, d.data(), { id: d.id }); });
   } catch(e) {
-    try {
-      const snap = await db.collection('training').get();
-      mods = snap.docs.map(function(d){ return d.data(); });
-    } catch(e2) { return; }
+    console.error('loadDynamicModules:', e);
+    return;
   }
+
+  mods = mods.filter(isTrainingModule).sort(function(a, b) {
+    return (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0);
+  });
   if (!mods.length) return;
 
   let hasGeneral = false;
@@ -268,17 +307,21 @@ async function loadDynamicModules() {
     if ((m.category || 'general') === 'general') hasGeneral = true;
     // Built-in modules (written in the Training Manager's editor)
     // link to their auto-created page; link modules go to their URL.
-    const url = ((Array.isArray(m.tabs) && m.tabs.length) || m.contentHtml) ? ('/pages/training/view.html?id=' + m.id) : (m.url || '#');
-    const external = /^https?:\/\//i.test(url);
+    const builtIn = (Array.isArray(m.tabs) && m.tabs.length) || m.contentHtml;
+    const href = builtIn
+      ? ('/pages/training/view.html?id=' + encodeURIComponent(m.id))
+      : safeUrl(m.url);
+    if (!href) return;                       // link module with a missing/unsafe URL — skip it
+    const external = /^https?:\/\//i.test(href);
     const card = document.createElement('a');
     card.className = 'tc-module-card';
     card.setAttribute('style', 'border-top:2px solid ' + cat.color);
-    card.href = url;
+    card.href = href;
     if (external) { card.target = '_blank'; card.rel = 'noopener'; }
     card.innerHTML =
       '<div class="tc-module-icon">📘</div>' +
-      '<div><div class="tc-module-title">' + (m.title || 'Untitled module') + (external ? ' ↗' : '') + '</div>' +
-      (m.description ? '<div class="tc-module-desc">' + m.description + '</div>' : '') +
+      '<div><div class="tc-module-title">' + esc(m.title || 'Untitled module') + (external ? ' ↗' : '') + '</div>' +
+      (m.description ? '<div class="tc-module-desc">' + esc(m.description) + '</div>' : '') +
       '<div class="tc-module-arrow" style="color:' + cat.color + '">Open ' + (external ? 'link' : 'guide') + ' →</div></div>';
     grid.appendChild(card);
   });
