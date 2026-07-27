@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="B-1B Lancer air-to-air refueling — rejoin, precontact, contact, onload and breakaway procedures for the 7th Bomb Wing.">
+<title>Air-to-Air Refueling — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.tp-hero{padding:48px 24px 34px;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.tp-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:22px;overflow-x:auto}
+.tab-btn{padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--text3);font-family:var(--sans);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .12s}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.cl{list-style:none;padding:0;margin:0}
+.cl li{font-size:13px;color:var(--text2);padding:5px 0;display:flex;gap:8px;line-height:1.65}
+.cl li::before{content:"▸";color:var(--gold);flex-shrink:0}
+.cl li strong{color:var(--text)}
+.steps{counter-reset:step;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:step;position:relative;padding:9px 0 9px 38px;font-size:13px;color:var(--text2);line-height:1.7;border-bottom:.5px solid var(--border)}
+.steps li:last-child{border-bottom:none}
+.steps li::before{content:counter(step);position:absolute;left:0;top:9px;width:24px;height:24px;border-radius:50%;background:rgba(200,169,81,.12);border:1px solid rgba(200,169,81,.4);color:var(--gold);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.steps li strong{color:var(--text)}
+.callout{border-left:3px solid var(--amber);background:rgba(224,144,48,.07);border-radius:0 8px 8px 0;padding:12px 16px;margin:14px 0;font-size:13px;color:var(--text2);line-height:1.7}
+.callout strong{color:var(--amber)}
+.callout.danger{border-left-color:var(--red2);background:rgba(208,64,64,.07)}
+.callout.danger strong{color:var(--red2)}
+.kv{width:100%;font-size:13px;border-collapse:collapse}
+.kv td{padding:7px 0;border-bottom:.5px solid var(--border);color:var(--text2)}
+.kv td:first-child{color:var(--text3);width:52%}
+.kv td:last-child{font-family:var(--mono);color:var(--gold2);text-align:right}
+.pos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:4px}
+.pos{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.pos-name{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
+.pos-detail{font-size:12px;color:var(--text2);line-height:1.6}
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html">
+      <div class="nav-emblem">GSC</div>
+      <div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div>
+    </a>
+    <div class="nav-links" id="nav-links"></div>
+    <div class="nav-right" id="nav-right-area"></div>
+    <button class="nav-mobile-btn" onclick="document.getElementById('nav-links').classList.toggle('open')">☰</button>
+  </div>
+</nav>
+
+<div class="tp-hero">
+  <div class="container" style="max-width:920px">
+    <div class="hero-eyebrow" style="color:var(--gold)">7th Bomb Wing · B-1B Lancer</div>
+    <h1 style="font-size:clamp(26px,5vw,38px);font-weight:900;color:var(--text);margin:6px 0">
+      Air-to-Air <span style="color:var(--gold)">Refueling</span>
+    </h1>
+    <p style="font-size:14px;color:var(--text2);max-width:680px;line-height:1.7">
+      Tanker rejoin, precontact, contact, onload and breakaway. Phase 2 qualification
+      material — read this before your first AR sortie with an IP.
+    </p>
+  </div>
+</div>
+
+<div class="container page-body" style="max-width:920px">
+
+  <div class="tp-tabs">
+    <button class="tab-btn active" data-panel="overview">Overview</button>
+    <button class="tab-btn"        data-panel="setup">Before the Join</button>
+    <button class="tab-btn"        data-panel="procedure">Rejoin to Contact</button>
+    <button class="tab-btn"        data-panel="onload">Onload &amp; Breakaway</button>
+    <button class="tab-btn"        data-panel="numbers">Numbers</button>
+    <button class="tab-btn"        data-panel="errors">Common Errors</button>
+  </div>
+
+  <div class="tab-panel active" id="panel-overview">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">⛽</div><div class="card-title">What this qualification covers</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--text2);line-height:1.8;margin:0 0 12px">
+          Air refueling is a Phase 2 event. You'll rejoin on a tanker, stabilize in
+          precontact, take a simulated onload, and separate with a controlled breakaway.
+          The B-1B takes fuel through a receptacle on the upper fuselage just aft of the
+          radome, so the boom comes in over your canopy — you fly the aircraft, the boom
+          operator flies the boom.
+        </p>
+        <ul class="cl">
+          <li><strong>Prerequisite:</strong> Instrument Qualification complete</li>
+          <li><strong>Tanker:</strong> KC-135 Stratotanker or KC-10 Extender</li>
+          <li><strong>Grading standard:</strong> two or fewer inadvertent disconnects</li>
+          <li><strong>Awards:</strong> AR QUAL certification toward B-1B CMR</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon blue">📍</div><div class="card-title">The four positions</div></div>
+      <div class="card-body">
+        <div class="pos-grid">
+          <div class="pos">
+            <div class="pos-name">Observation</div>
+            <div class="pos-detail">Left wing of the tanker, stepped down. Where you hold before being cleared in.</div>
+          </div>
+          <div class="pos">
+            <div class="pos-name">Precontact</div>
+            <div class="pos-detail">50 ft directly aft of the boom, matched speed. Stabilize here before anything else.</div>
+          </div>
+          <div class="pos">
+            <div class="pos-name">Contact</div>
+            <div class="pos-detail">Boom latched into the receptacle. Hold position using the director lights.</div>
+          </div>
+          <div class="pos">
+            <div class="pos-name">Breakaway</div>
+            <div class="pos-detail">Emergency separation. Idle, descend, and clear aft — no exceptions, no discussion.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-setup">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">✅</div><div class="card-title">Before you launch</div></div>
+      <div class="card-body">
+        <ol class="steps">
+          <li><strong>Confirm the tanker is established.</strong> It must be in its orbit before you launch. Rejoining on a tanker still climbing to the track is the single most common cause of a failed first attempt.</li>
+          <li><strong>Set the AR track and altitude.</strong> Load the anchor point into the FMS as a waypoint so you have steering to it.</li>
+          <li><strong>Brief the rejoin type.</strong> Point parallel, en route, or overtake — agree it with your IP before pushback, not on frequency.</li>
+          <li><strong>Brief breakaway triggers.</strong> Everyone says the word "breakaway" the same way and means the same thing.</li>
+          <li><strong>Check your fuel state.</strong> Know your onload requirement and your bingo before you need them.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Sim note:</strong> the AI tanker holds a rigid track and will not adjust for
+      you. Everything you're about to do is your correction, not a negotiation.
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon green">🛠</div><div class="card-title">Aircraft configuration</div></div>
+      <div class="card-body">
+        <ul class="cl">
+          <li><strong>Wings:</strong> 15° sweep — the standard AR setting on the B-1B</li>
+          <li><strong>Autopilot:</strong> off before precontact. Hand-fly from there in.</li>
+          <li><strong>Autothrottle:</strong> off. You need direct throttle authority for closure control.</li>
+          <li><strong>Slats/flaps:</strong> up</li>
+          <li><strong>Receptacle:</strong> open and confirm the ready indication before calling precontact</li>
+          <li><strong>Exterior lights:</strong> as briefed for the time of day</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-procedure">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon blue">▶</div><div class="card-title">Rejoin through contact</div></div>
+      <div class="card-body">
+        <ol class="steps">
+          <li><strong>Establish contact with the tanker.</strong> Call your position, altitude and fuel requirement.</li>
+          <li><strong>Close from astern.</strong> Approach 1,000 ft below the tanker's altitude until you're inside 1 NM, then begin the climb to join.</li>
+          <li><strong>Control your overtake.</strong> No more than 30 knots closure at 1 NM. Bleed it to roughly 10 knots by half a mile. Overtake is the thing that ends most first attempts.</li>
+          <li><strong>Move to observation.</strong> Left wing, stepped down, matched airspeed. Take a breath here.</li>
+          <li><strong>Request precontact.</strong> Move directly astern of the boom, 50 ft back, and stabilize. You must be steady before you call ready.</li>
+          <li><strong>Call ready.</strong> Wait for the boom operator's clearance. Do not advance without it.</li>
+          <li><strong>Close to contact.</strong> Small throttle inputs — one adjustment, wait, assess, then adjust again. Chasing the boom is what causes disconnects.</li>
+          <li><strong>Hold contact.</strong> Fly the director lights, not the boom. Keep the tanker's wing in the same place in your windscreen.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>The one habit that fixes everything:</strong> stabilize before you correct.
+      Make one input, let the aircraft settle, then decide whether you still need the
+      second one. You usually don't.
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-onload">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">⛽</div><div class="card-title">Taking fuel</div></div>
+      <div class="card-body">
+        <ol class="steps">
+          <li><strong>Confirm transfer.</strong> Watch the fuel totalizer climb. If it isn't moving, you aren't latched — call it.</li>
+          <li><strong>Monitor your CG.</strong> The B-1B shifts noticeably as the tanks fill. Expect to re-trim through the onload.</li>
+          <li><strong>Hold position.</strong> Same references, same small inputs. The aircraft gets heavier and less responsive as you fill.</li>
+          <li><strong>Watch the limits.</strong> Drifting outside the boom envelope triggers an automatic disconnect.</li>
+          <li><strong>Call complete.</strong> When you reach your onload, tell the boom operator.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">↘</div><div class="card-title">Normal separation</div></div>
+      <div class="card-body">
+        <ol class="steps">
+          <li><strong>Disconnect.</strong> Boom operator releases, or you use the disconnect switch.</li>
+          <li><strong>Back straight out.</strong> Reduce power slightly and drift aft — do not turn while under the tanker.</li>
+          <li><strong>Descend clear.</strong> Once well aft, descend 500 ft and clear to one side.</li>
+          <li><strong>Close the receptacle</strong> and reconfigure for the next phase of the mission.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="callout danger">
+      <strong>Breakaway:</strong> called by anyone, any time, for closure you can't control,
+      an unsafe boom position, or an aircraft emergency. Throttles to idle, descend
+      immediately, separate straight aft. You do not discuss a breakaway while it's
+      happening — you execute it and talk afterwards.
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-numbers">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon green">📊</div><div class="card-title">Reference numbers</div></div>
+      <div class="card-body">
+        <table class="kv">
+          <tr><td>Rejoin airspeed</td><td>280–320 KIAS</td></tr>
+          <tr><td>Typical AR altitude</td><td>FL200–FL280</td></tr>
+          <tr><td>Max overtake at 1 NM</td><td>30 kts</td></tr>
+          <tr><td>Overtake at 0.5 NM</td><td>10 kts</td></tr>
+          <tr><td>Precontact standoff</td><td>50 ft</td></tr>
+          <tr><td>Wing sweep</td><td>15°</td></tr>
+          <tr><td>Breakaway descent</td><td>500 ft minimum</td></tr>
+          <tr><td>Grading limit — disconnects</td><td>≤ 2</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon">📋</div><div class="card-title">Grade 3 standards</div></div>
+      <div class="card-body">
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Event</th><th>Grade 3 standard (Q)</th><th>Unqualified</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Rejoin</strong></td><td>≤30 kts overtake at 1 NM, controlled closure</td><td>Overshoot, or closure requiring a breakaway</td></tr>
+              <tr><td><strong>Precontact</strong></td><td>Stable ±10 ft for 5 seconds before calling ready</td><td>Called ready while still moving</td></tr>
+              <tr><td><strong>Contact</strong></td><td>≤2 inadvertent disconnects</td><td>3+ disconnects, or unable to establish contact</td></tr>
+              <tr><td><strong>Onload</strong></td><td>Position held, CG monitored and trimmed</td><td>Drift outside envelope requiring operator disconnect</td></tr>
+              <tr><td><strong>Breakaway</strong></td><td>Immediate idle, descent, straight-aft separation</td><td>Turn under the tanker, or delayed response</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-errors">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon red">!</div><div class="card-title">Common student errors</div></div>
+      <div class="card-body">
+        <ul class="cl">
+          <li><strong>Over-controlling in contact.</strong> Coach: "One input. Wait. Now look again."</li>
+          <li><strong>Excessive overtake.</strong> Coach: "Check your closure at a mile, not at a hundred feet."</li>
+          <li><strong>Calling ready while still moving.</strong> Coach: "Stabilize first, then call."</li>
+          <li><strong>Chasing the boom with the eyes.</strong> Coach: "Fly the tanker's wing, not the boom."</li>
+          <li><strong>Ignoring the CG shift.</strong> Coach: "You're 20,000 lb heavier than a minute ago — trim it."</li>
+          <li><strong>Turning under the tanker on separation.</strong> Coach: "Straight back first, then turn."</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon">🎓</div><div class="card-title">IP pre-brief checklist</div></div>
+      <div class="card-body">
+        <ul class="cl">
+          <li>Student states rejoin type, contact altitude and airspeed before pushback</li>
+          <li>Student states the breakaway triggers in their own words</li>
+          <li>Student states their onload requirement and bingo fuel</li>
+          <li>Confirm tanker is established on track before the student launches</li>
+          <li>Brief that autothrottle and autopilot come off before precontact</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:34px">
+    <a href="/pages/training/index.html" class="btn btn-outline btn-sm">← Back to Training Center</a>
+  </div>
+
+</div>
+
+<footer class="site-footer">
+  <p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p>
+  <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+function onAuthReady(user, pilot) { }
+
+document.querySelectorAll('.tp-tabs .tab-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.tp-tabs .tab-btn').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    var panel = document.getElementById('panel-' + btn.dataset.panel);
+    if (panel) panel.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+</script>
+</body>
+</html>

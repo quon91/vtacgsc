@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="B-1B Lancer weapons employment — bay loadouts, SMS setup, target designation, release criteria and safe escape for the 7th Bomb Wing.">
+<title>Weapons Employment — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.tp-hero{padding:48px 24px 34px;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.tp-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:22px;overflow-x:auto}
+.tab-btn{padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--text3);font-family:var(--sans);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .12s}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.cl{list-style:none;padding:0;margin:0}
+.cl li{font-size:13px;color:var(--text2);padding:5px 0;display:flex;gap:8px;line-height:1.65}
+.cl li::before{content:"▸";color:var(--gold);flex-shrink:0}
+.cl li strong{color:var(--text)}
+.steps{counter-reset:step;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:step;position:relative;padding:9px 0 9px 38px;font-size:13px;color:var(--text2);line-height:1.7;border-bottom:.5px solid var(--border)}
+.steps li:last-child{border-bottom:none}
+.steps li::before{content:counter(step);position:absolute;left:0;top:9px;width:24px;height:24px;border-radius:50%;background:rgba(200,169,81,.12);border:1px solid rgba(200,169,81,.4);color:var(--gold);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.steps li strong{color:var(--text)}
+.callout{border-left:3px solid var(--amber);background:rgba(224,144,48,.07);border-radius:0 8px 8px 0;padding:12px 16px;margin:14px 0;font-size:13px;color:var(--text2);line-height:1.7}
+.callout strong{color:var(--amber)}
+.callout.danger{border-left-color:var(--red2);background:rgba(208,64,64,.07)}
+.callout.danger strong{color:var(--red2)}
+.kv{width:100%;font-size:13px;border-collapse:collapse}
+.kv td{padding:7px 0;border-bottom:.5px solid var(--border);color:var(--text2)}
+.kv td:first-child{color:var(--text3);width:52%}
+.kv td:last-child{font-family:var(--mono);color:var(--gold2);text-align:right}
+.bay-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.bay{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;border-top:2px solid var(--gold)}
+.bay-name{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
+.bay-detail{font-size:12px;color:var(--text2);line-height:1.6}
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html">
+      <div class="nav-emblem">GSC</div>
+      <div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div>
+    </a>
+    <div class="nav-links" id="nav-links"></div>
+    <div class="nav-right" id="nav-right-area"></div>
+    <button class="nav-mobile-btn" onclick="document.getElementById('nav-links').classList.toggle('open')">☰</button>
+  </div>
+</nav>
+
+<div class="tp-hero">
+  <div class="container" style="max-width:920px">
+    <div class="hero-eyebrow" style="color:var(--gold)">7th Bomb Wing · B-1B Lancer</div>
+    <h1 style="font-size:clamp(26px,5vw,38px);font-weight:900;color:var(--text);margin:6px 0">
+      Weapons <span style="color:var(--gold)">Employment</span>
+    </h1>
+    <p style="font-size:14px;color:var(--text2);max-width:680px;line-height:1.7">
+      Bay loadouts, stores management, target designation, release criteria and safe
+      escape. Phase 3 material — this is what Surface Attack Certification is graded on.
+    </p>
+  </div>
+</div>
+
+<div class="container page-body" style="max-width:920px">
+
+  <div class="tp-tabs">
+    <button class="tab-btn active" data-panel="overview">Overview</button>
+    <button class="tab-btn"        data-panel="loadout">Bays &amp; Loadouts</button>
+    <button class="tab-btn"        data-panel="setup">SMS Setup</button>
+    <button class="tab-btn"        data-panel="attack">The Attack Run</button>
+    <button class="tab-btn"        data-panel="numbers">Numbers</button>
+    <button class="tab-btn"        data-panel="errors">Common Errors</button>
+  </div>
+
+  <div class="tab-panel active" id="panel-overview">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">💣</div><div class="card-title">What this qualification covers</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--text2);line-height:1.8;margin:0 0 12px">
+          The B-1B carries the largest internal payload in the inventory across three
+          weapons bays. This guide covers configuring the stores management system,
+          designating a target, meeting release criteria, and flying a safe escape.
+          Surface Attack Certification is graded on time-on-target accuracy — the
+          weapon has to arrive inside a thirty-second window.
+        </p>
+        <ul class="cl">
+          <li><strong>Prerequisite:</strong> Low-Level Navigation Qualification complete</li>
+          <li><strong>Grading standard:</strong> TOT ±30 seconds, safe escape flown</li>
+          <li><strong>Awards:</strong> SAT CERT toward B-1B CMR</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Before anything else:</strong> weapons behaviour differs between B-1B
+      add-ons and between MSFS 2020 and 2024. Confirm which build your squadron is
+      flying before a weapons sortie — half of all "the bombs didn't release" reports
+      trace back to a version mismatch, not a procedure error.
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-loadout">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">📦</div><div class="card-title">The three weapons bays</div></div>
+      <div class="card-body">
+        <div class="bay-grid">
+          <div class="bay">
+            <div class="bay-name">Forward bay</div>
+            <div class="bay-detail">Ahead of the wing box. Often carries the auxiliary fuel tank on long-range profiles instead of stores.</div>
+          </div>
+          <div class="bay">
+            <div class="bay-name">Intermediate bay</div>
+            <div class="bay-detail">Between the forward bay and the wing carry-through. Standard rotary launcher position.</div>
+          </div>
+          <div class="bay">
+            <div class="bay-name">Aft bay</div>
+            <div class="bay-detail">Behind the wing box. Watch the CG effect as this one empties.</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text3);line-height:1.7;margin:14px 0 0">
+          Each bay takes a rotary launcher. Release order matters for centre of gravity —
+          dropping an entire bay in one pass shifts the CG noticeably.
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon blue">🎯</div><div class="card-title">Typical stores</div></div>
+      <div class="card-body">
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Weapon</th><th>Type</th><th>Guidance</th><th>Typical use</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Mk-82</strong></td><td>500 lb GP</td><td>Unguided</td><td>Area targets, sticks</td></tr>
+              <tr><td><strong>Mk-84</strong></td><td>2,000 lb GP</td><td>Unguided</td><td>Hardened point targets</td></tr>
+              <tr><td><strong>GBU-38</strong></td><td>500 lb JDAM</td><td>GPS/INS</td><td>Precision, multiple targets per pass</td></tr>
+              <tr><td><strong>GBU-31</strong></td><td>2,000 lb JDAM</td><td>GPS/INS</td><td>Precision, hardened targets</td></tr>
+              <tr><td><strong>Mk-62</strong></td><td>Quickstrike mine</td><td>Unguided</td><td>Maritime mining</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="font-size:12px;color:var(--text3);line-height:1.7;margin:14px 0 0">
+          Unguided weapons need an accurate release solution from the aircraft. JDAMs need
+          accurate target coordinates loaded before release — after that the weapon flies itself.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-setup">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">⌨️</div><div class="card-title">Stores management setup</div></div>
+      <div class="card-body">
+        <ol class="steps">
+          <li><strong>Confirm the loadout.</strong> Check what's actually in each bay before you plan the attack, not on the run-in.</li>
+          <li><strong>Select the bay.</strong> Choose which bay you're releasing from this pass.</li>
+          <li><strong>Select the station.</strong> Pick individual stations or the full rotary depending on your release plan.</li>
+          <li><strong>Set release mode.</strong> Single, pairs, or ripple. Ripple needs an interval set as well.</li>
+          <li><strong>Set the interval.</strong> For sticks, the spacing between weapons determines your impact pattern length.</li>
+          <li><strong>Load target coordinates.</strong> For JDAMs, enter target lat/long and elevation. An error here puts the weapon exactly where you told it to go, which is the problem.</li>
+          <li><strong>Arm the system.</strong> Master arm on, and confirm you have a ready indication before the IP.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Do this before the initial point, never after.</strong> The run-in from IP to
+      target is not the time to be paging through stores management. Have it configured,
+      armed and checked with several minutes to spare.
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-attack">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon blue">▶</div><div class="card-title">IP to target</div></div>
+      <div class="card-body">
+        <ol class="steps">
+          <li><strong>Cross the initial point on time.</strong> Your TOT is built from this. Cross late and you are already fighting the clock.</li>
+          <li><strong>Check timing.</strong> Compare planned versus actual. Correct with small speed changes now — not with a large one at the end.</li>
+          <li><strong>Confirm the target designation.</strong> Verify the coordinates or the designation one last time.</li>
+          <li><strong>Verify master arm and ready.</strong> Last chance to catch a configuration problem.</li>
+          <li><strong>Open the bay doors.</strong> Doors take time to travel — do this before you need them, not at release.</li>
+          <li><strong>Hold the release parameters.</strong> Wings level, altitude and speed stable through release.</li>
+          <li><strong>Release.</strong> Confirm the weapons actually left — check the stores count, don't assume.</li>
+          <li><strong>Close the doors and fly the safe escape.</strong> Immediately.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">⏱</div><div class="card-title">Time on target</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--text2);line-height:1.8;margin:0 0 10px">
+          TOT is the graded element. Check your timing at every route point, not just at
+          the IP. A five-second drift caught early is a two-knot correction; the same
+          drift caught at the IP is a scramble you probably lose.
+        </p>
+        <ul class="cl">
+          <li><strong>Early:</strong> reduce speed, or extend with a small dogleg if you have room</li>
+          <li><strong>Late:</strong> increase speed within limits — check you have the fuel for it</li>
+          <li><strong>Badly late:</strong> call it. A missed TOT briefed honestly beats a rushed unsafe run.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout danger">
+      <strong>Safe escape:</strong> after release, turn away from the target and accelerate.
+      Fragmentation from your own weapons is a real hazard at low level. Brief the escape
+      heading and the turn direction before the flight — the run-in is not the time to
+      decide which way you're going.
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-numbers">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon green">📊</div><div class="card-title">Reference numbers</div></div>
+      <div class="card-body">
+        <table class="kv">
+          <tr><td>TOT window (Grade 3)</td><td>±30 sec</td></tr>
+          <tr><td>TOT window (unqualified)</td><td>&gt; ±60 sec</td></tr>
+          <tr><td>Low-level run-in altitude</td><td>500 ft AGL ±100</td></tr>
+          <tr><td>Low-level altitude floor</td><td>400 ft AGL</td></tr>
+          <tr><td>Typical run-in speed</td><td>480–540 KTAS</td></tr>
+          <tr><td>Weapons bays</td><td>3 internal</td></tr>
+          <tr><td>Wing sweep — low level</td><td>55–67.5°</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon">📋</div><div class="card-title">Grade 3 standards</div></div>
+      <div class="card-body">
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Event</th><th>Grade 3 standard (Q)</th><th>Unqualified</th></tr></thead>
+            <tbody>
+              <tr><td><strong>SMS configuration</strong></td><td>Complete and verified before the IP</td><td>Configured during the run-in</td></tr>
+              <tr><td><strong>IP crossing</strong></td><td>On planned time ±15 sec</td><td>Beyond ±30 sec with no correction attempted</td></tr>
+              <tr><td><strong>Run-in altitude</strong></td><td>500 ft AGL ±100 ft</td><td>Below 400 ft, or above 700 ft sustained</td></tr>
+              <tr><td><strong>Release parameters</strong></td><td>Wings level, stable altitude and speed</td><td>Released in a turn or unstable</td></tr>
+              <tr><td><strong>TOT accuracy</strong></td><td>±30 seconds</td><td>Greater than ±60 seconds</td></tr>
+              <tr><td><strong>Safe escape</strong></td><td>Correct turn and acceleration immediately after release</td><td>Not flown, or flown toward the target</td></tr>
+              <tr><td><strong>Bay doors</strong></td><td>Opened before release, closed after</td><td>Left open through the escape</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-errors">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon red">!</div><div class="card-title">Common student errors</div></div>
+      <div class="card-body">
+        <ul class="cl">
+          <li><strong>Configuring stores on the run-in.</strong> Coach: "Set it before the IP or you're not ready to fly this."</li>
+          <li><strong>Late timing correction.</strong> Coach: "Check your time now — at every point, not just the IP."</li>
+          <li><strong>Doors opened at release.</strong> Coach: "Doors take time. Open them early."</li>
+          <li><strong>Assuming release worked.</strong> Coach: "Check your stores count. Did they actually go?"</li>
+          <li><strong>Escape flown toward the target.</strong> Coach: "Which way are you turning? Say it before we launch."</li>
+          <li><strong>Bad JDAM coordinates.</strong> Coach: "Read the target coordinates back to me before the IP."</li>
+          <li><strong>Descending below the floor to fix timing.</strong> Coach: "Speed fixes timing. Altitude is a hard floor."</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon">🎓</div><div class="card-title">IP pre-brief checklist</div></div>
+      <div class="card-body">
+        <ul class="cl">
+          <li>Confirm the add-on and sim version before any weapons event</li>
+          <li>Student reads back target coordinates and elevation before stepping to the aircraft</li>
+          <li>Student states the TOT window and their time-check plan</li>
+          <li>Safe escape heading and turn direction briefed and understood</li>
+          <li>Abort criteria briefed — weather, terrain, unrecoverable timing</li>
+          <li>Student states release mode and interval, and why they chose it</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:34px">
+    <a href="/pages/training/index.html" class="btn btn-outline btn-sm">← Back to Training Center</a>
+  </div>
+
+</div>
+
+<footer class="site-footer">
+  <p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p>
+  <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+function onAuthReady(user, pilot) { }
+
+document.querySelectorAll('.tp-tabs .tab-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.tp-tabs .tab-btn').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    var panel = document.getElementById('panel-' + btn.dataset.panel);
+    if (panel) panel.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+</script>
+</body>
+</html>
