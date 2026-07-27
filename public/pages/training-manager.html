@@ -40,6 +40,20 @@
 .tm-editor h3{font-size:15px;margin:10px 0 5px}
 .tm-editor ul,.tm-editor ol{padding-left:22px;margin:8px 0}
 .tm-editor p{margin:0 0 8px}
+.tm-editor .tv-steps{counter-reset:s;list-style:none;padding:0;margin:10px 0}
+.tm-editor .tv-steps li,.tv-steps li{counter-increment:s;position:relative;padding:8px 0 8px 36px;border-bottom:.5px solid var(--border)}
+.tm-editor .tv-steps li::before,.tv-steps li::before{content:counter(s);position:absolute;left:0;top:8px;width:23px;height:23px;border-radius:50%;background:rgba(200,169,81,.12);border:1px solid rgba(200,169,81,.4);color:var(--gold);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.tm-editor .tv-points{list-style:none;padding:0;margin:10px 0}
+.tm-editor .tv-points li{padding:4px 0 4px 18px;position:relative}
+.tm-editor .tv-points li::before{content:"▸";position:absolute;left:0;color:var(--gold)}
+.tm-editor .tv-callout{border-left:3px solid var(--amber);background:rgba(224,144,48,.07);padding:11px 15px;margin:12px 0}
+.tm-editor .tv-warning{border-left:3px solid var(--red2);background:rgba(208,64,64,.07);padding:11px 15px;margin:12px 0}
+.tm-editor .tv-kv{width:100%;border-collapse:collapse;margin:10px 0}
+.tm-editor .tv-kv td{padding:6px 0;border-bottom:.5px solid var(--border)}
+.tm-editor .tv-kv td:last-child{text-align:right;font-family:var(--mono);color:var(--gold2)}
+.tm-editor table{width:100%;border-collapse:collapse;margin:10px 0}
+.tm-editor th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);border-bottom:1px solid var(--border);padding:6px 8px}
+.tm-editor td{padding:6px 8px;border-bottom:.5px solid var(--border)}
 </style>
 </head>
 <body>
@@ -150,6 +164,19 @@
           <span class="rt-sep"></span>
           <button class="rt-btn" data-cmd="removeFormat" title="Clear formatting">✕fmt</button>
         </div>
+        <!-- BLOCK INSERTS — styled components an instructor can drop in
+             without writing HTML. Each renders on view.html with the
+             same look as the hand-built static guides. -->
+        <div class="rt-toolbar" style="border-radius:0;border-top:none;border-bottom:none">
+          <span style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-right:4px">Insert</span>
+          <button class="rt-btn" data-block="steps"    title="Numbered procedure steps">1. Steps</button>
+          <button class="rt-btn" data-block="bullets"  title="Arrow bullet list">▸ Points</button>
+          <button class="rt-btn" data-block="callout"  title="Amber note box">⚠ Note</button>
+          <button class="rt-btn" data-block="warning"  title="Red warning box">⛔ Warning</button>
+          <button class="rt-btn" data-block="kv"       title="Two-column reference table">≡ Reference</button>
+          <button class="rt-btn" data-block="table"    title="Data table with headings">▦ Table</button>
+          <button class="rt-btn" data-block="section"  title="Section heading + divider">§ Section</button>
+        </div>
         <div class="tm-editor" id="tm-content" contenteditable="true"></div>
         <div class="form-hint">Guides can have multiple internal tabs — like the ILS Approach Guide. Each tab has its own content. The page is auto-created and appears in the Training Center.</div>
       </div>
@@ -238,6 +265,8 @@ const BUILTIN_PAGES = [
   { path:'/pages/training/b1b-glossary.html',   name:'Glossary',                  cat:'7bw'   },
   { path:'/pages/training/b1b-qrc.html',        name:'QRC Checklist',             cat:'7bw'   },
   { path:'/pages/training/b1b-syllabus.html',   name:'Phase 2 & 3 Syllabus',      cat:'7bw'   },
+  { path:'/pages/training/b1b-refueling.html',  name:'Air-to-Air Refueling',      cat:'7bw'   },
+  { path:'/pages/training/b1b-weapons.html',    name:'Weapons Employment',        cat:'7bw'   },
   { path:'/pages/training/b2-cockpit.html',     name:'Cockpit & Ground Ops',      cat:'509bw' },
   { path:'/pages/training/b2-mfd.html',         name:'Multi Function Display',    cat:'509bw' },
   { path:'/pages/training/b2-fms.html',         name:'FMS / CDU',                 cat:'509bw' },
@@ -397,6 +426,10 @@ function renderModules() {
 // ── HTML SANITIZER (same contract as the SOP editor) ────────
 const TM_ALLOWED_TAGS = ['B','STRONG','I','EM','U','S','H1','H2','H3','P','BR','HR','UL','OL','LI','DIV','SPAN','FONT','A','BLOCKQUOTE','TABLE','THEAD','TBODY','TR','TH','TD'];
 const TM_ALLOWED_STYLES = ['font-size','color','text-align','font-weight','font-style','text-decoration'];
+// Only these class VALUES survive sanitizing. Class names can't execute
+// anything, and restricting to a fixed list means a pasted class can't
+// reach into the site's own stylesheet. view.html defines the matching CSS.
+const TM_ALLOWED_CLASSES = ['tv-steps','tv-points','tv-callout','tv-warning','tv-kv','tv-section'];
 function sanitizeTmHtml(html) {
   const doc = new DOMParser().parseFromString('<div id="tm-root">' + String(html || '') + '</div>', 'text/html');
   const root = doc.getElementById('tm-root');
@@ -427,6 +460,10 @@ function sanitizeTmHtml(html) {
             child.setAttribute('target', '_blank');
             child.setAttribute('rel', 'noopener');
           } else if (child.tagName === 'A' && (n === 'target' || n === 'rel')) {
+          } else if (n === 'class') {
+            const keep = String(attr.value).split(/\s+/).filter(function(c){ return TM_ALLOWED_CLASSES.indexOf(c) !== -1; });
+            if (keep.length) child.setAttribute('class', keep.join(' '));
+            else child.removeAttribute('class');
           } else if ((child.tagName === 'TH' || child.tagName === 'TD') && (n === 'colspan' || n === 'rowspan')) {
           } else {
             child.removeAttribute(attr.name);
@@ -455,6 +492,28 @@ function sanitizeTmHtml(html) {
     const sw = e.target.closest('.rt-color');
     if (sw && sw.dataset.color) { document.execCommand('foreColor', false, sw.dataset.color); return; }
   });
+  const BLOCKS = {
+    steps:   '<ol class="tv-steps"><li>First step</li><li>Second step</li><li>Third step</li></ol><p><br></p>',
+    bullets: '<ul class="tv-points"><li>First point</li><li>Second point</li></ul><p><br></p>',
+    callout: '<div class="tv-callout"><strong>Note</strong> — what students need to watch for.</div><p><br></p>',
+    warning: '<div class="tv-warning"><strong>Warning</strong> — the thing that ends the sortie.</div><p><br></p>',
+    kv:      '<table class="tv-kv"><tr><td>Approach speed</td><td>145 KIAS</td></tr><tr><td>Pattern altitude</td><td>2,000 ft</td></tr></table><p><br></p>',
+    table:   '<table><thead><tr><th>Event</th><th>Standard</th><th>Unqualified</th></tr></thead><tbody><tr><td>Item</td><td>Grade 3 standard</td><td>Fails when…</td></tr></tbody></table><p><br></p>',
+    section: '<h2>Section heading</h2><hr><p>Text for this section.</p>',
+  };
+  tb.parentElement.addEventListener('click', function(e) {
+    const b = e.target.closest('[data-block]');
+    if (!b) return;
+    const html = BLOCKS[b.dataset.block];
+    if (!html) return;
+    const ed = document.getElementById('tm-content');
+    ed.focus();
+    // insertHTML drops the block at the cursor; if focus was lost it
+    // falls back to appending, so a click never silently does nothing.
+    if (!document.execCommand('insertHTML', false, html)) ed.innerHTML += html;
+    syncActiveTab();
+  });
+
   document.getElementById('tm-rt-size').addEventListener('change', function() {
     if (this.value) document.execCommand('fontSize', false, this.value);
     this.value = '';
