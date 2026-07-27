@@ -22,6 +22,37 @@
 .tv-tab{padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--text3);font-family:var(--sans);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .12s}
 .tv-tab:hover{color:var(--text)}
 .tv-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+ 
+/* ── INSERTED BLOCKS ──────────────────────────────────────────
+   These match the classes the Training Manager's Insert buttons
+   produce, and are styled to match the hand-built static guides
+   so a browser-authored module is visually indistinguishable. */
+.tv-body .tv-steps{counter-reset:s;list-style:none;padding:0;margin:14px 0}
+.tv-body .tv-steps li{counter-increment:s;position:relative;padding:9px 0 9px 38px;
+  border-bottom:.5px solid var(--border);margin:0}
+.tv-body .tv-steps li:last-child{border-bottom:none}
+.tv-body .tv-steps li::before{content:counter(s);position:absolute;left:0;top:9px;
+  width:24px;height:24px;border-radius:50%;background:rgba(200,169,81,.12);
+  border:1px solid rgba(200,169,81,.4);color:var(--gold);font-size:11px;font-weight:800;
+  display:flex;align-items:center;justify-content:center}
+.tv-body .tv-points{list-style:none;padding:0;margin:14px 0}
+.tv-body .tv-points li{padding:5px 0 5px 20px;position:relative;margin:0}
+.tv-body .tv-points li::before{content:"▸";position:absolute;left:0;color:var(--gold)}
+.tv-body .tv-callout{border-left:3px solid var(--amber);background:rgba(224,144,48,.07);
+  border-radius:0 8px 8px 0;padding:12px 16px;margin:16px 0;line-height:1.7}
+.tv-body .tv-callout strong{color:var(--amber)}
+.tv-body .tv-warning{border-left:3px solid var(--red2);background:rgba(208,64,64,.07);
+  border-radius:0 8px 8px 0;padding:12px 16px;margin:16px 0;line-height:1.7}
+.tv-body .tv-warning strong{color:var(--red2)}
+.tv-body .tv-kv{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+.tv-body .tv-kv td{padding:7px 0;border-bottom:.5px solid var(--border);color:var(--text2)}
+.tv-body .tv-kv td:first-child{color:var(--text3);width:52%}
+.tv-body .tv-kv td:last-child{text-align:right;font-family:var(--mono);color:var(--gold2)}
+.tv-body table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+.tv-body th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);padding:8px 10px}
+.tv-body td{padding:8px 10px;border-bottom:.5px solid var(--border);color:var(--text2)}
+.tv-body tbody tr:last-child td{border-bottom:none}
 </style>
 </head>
 <body>
@@ -68,8 +99,12 @@ const TV_CATS = {
 
 // Same sanitizer contract as the SOP page: formatting only, safe
 // styles, https links — nothing script-like survives.
-const TV_ALLOWED_TAGS = ['B','STRONG','I','EM','U','S','H1','H2','H3','P','BR','HR','UL','OL','LI','DIV','SPAN','FONT','A','BLOCKQUOTE'];
+const TV_ALLOWED_TAGS = ['B','STRONG','I','EM','U','S','H1','H2','H3','P','BR','HR','UL','OL','LI','DIV','SPAN','FONT','A','BLOCKQUOTE','TABLE','THEAD','TBODY','TR','TH','TD'];
 const TV_ALLOWED_STYLES = ['font-size','color','text-align','font-weight','font-style','text-decoration'];
+// Only these class VALUES survive. A class name can't execute anything,
+// and a fixed list means a pasted class can't reach into the site's own
+// stylesheet. Must stay in sync with TM_ALLOWED_CLASSES in the manager.
+const TV_ALLOWED_CLASSES = ['tv-steps','tv-points','tv-callout','tv-warning','tv-kv','tv-section'];
 function sanitizeTrainingHtml(html) {
   const doc = new DOMParser().parseFromString('<div id="tv-root">' + String(html || '') + '</div>', 'text/html');
   const root = doc.getElementById('tv-root');
@@ -96,10 +131,12 @@ function sanitizeTrainingHtml(html) {
             if (keep.length) child.setAttribute('style', keep.join(';'));
             else child.removeAttribute('style');
           } else if (child.tagName === 'FONT' && (n === 'size' || n === 'color' || n === 'face')) {
-          } else if (child.tagName === 'A' && n === 'href' && /^https?:\/\//i.test(attr.value)) {
-            child.setAttribute('target', '_blank');
-            child.setAttribute('rel', 'noopener');
           } else if (child.tagName === 'A' && (n === 'target' || n === 'rel')) {
+          } else if (n === 'class') {
+            const keepC = String(attr.value).split(/\s+/).filter(function(c){ return TV_ALLOWED_CLASSES.indexOf(c) !== -1; });
+            if (keepC.length) child.setAttribute('class', keepC.join(' '));
+            else child.removeAttribute('class');
+          } else if ((child.tagName === 'TH' || child.tagName === 'TD') && (n === 'colspan' || n === 'rowspan')) {
           } else {
             child.removeAttribute(attr.name);
           }
