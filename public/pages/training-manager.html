@@ -211,6 +211,7 @@ function isTrainingModule(m) {
   if (m.pilotUid) return false;
   return !!(m.title || (Array.isArray(m.tabs) && m.tabs.length) || m.contentHtml || m.url);
 }
+ 
 async function loadModules() {
   try {
     // NO orderBy — orderBy('createdAt') silently EXCLUDES documents
