@@ -202,20 +202,40 @@ function onAuthReady(user, pilot) {
   loadModules();
 }
 
+// The `training` collection holds TWO kinds of document: training
+// MODULES (listed here) and legacy per-pilot completion records
+// (read by profile.html and the admin Training Records panel).
+// Completion records carry pilotUid; modules never do.
+function isTrainingModule(m) {
+  if (!m) return false;
+  if (m.pilotUid) return false;
+  return !!(m.title || (Array.isArray(m.tabs) && m.tabs.length) || m.contentHtml || m.url);
+}
 async function loadModules() {
   try {
-    const snap = await db.collection('training').orderBy('createdAt', 'desc').get();
-    modules = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
+    // NO orderBy — orderBy('createdAt') silently EXCLUDES documents
+    // that lack the field, hiding modules with no visible error.
+    // Fetch, then sort client-side.
+    const snap = await db.collection('training').get();
+    // ID applied LAST so a stray `id` field inside a document can
+    // never overwrite the real Firestore document ID. A wrong ID
+    // here produces "This training module no longer exists" on
+    // view.html.
+    modules = snap.docs
+      .map(function(d){ return Object.assign({}, d.data(), { id: d.id }); })
+      .filter(isTrainingModule)
+      .sort(function(a, b) {
+        return (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0);
+      });
   } catch(e) {
-    // Fallback without index/orderBy if needed
-    try {
-      const snap = await db.collection('training').get();
-      modules = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
-    } catch(e2) { modules = []; }
+    console.error('loadModules:', e);
+    document.getElementById('module-list').innerHTML =
+      '<div class="alert alert-error">Could not load the training library: ' + esc(e.message) + '</div>';
+    return;
   }
   renderModules();
 }
-
+  
 function renderModules() {
   const el = document.getElementById('module-list');
   if (!modules.length) {
@@ -228,25 +248,29 @@ function renderModules() {
     if (!items.length) return '';
     return '<div class="cat-banner">'
       + '<div class="cb-line"></div>'
-      + '<div class="cb-label" style="color:' + cat.color + '">' + cat.label + '</div>'
+      + '<div class="cb-label" style="color:' + cat.color + '">' + esc(cat.label) + '</div>'
       + '<div class="cb-line"></div>'
       + '</div>'
       + items.map(function(m) {
-        // Built-in modules link to their auto-created page
+        // Built-in modules link to their auto-created page.
+        // NOTE: this local was previously named `safeUrl`, which
+        // shadowed the global safeUrl() helper — renamed to href.
         const builtIn = (Array.isArray(m.tabs) && m.tabs.length) || m.contentHtml;
-        const safeUrl = builtIn ? ('/pages/training/view.html?id=' + m.id) : (m.url || '#');
-        const external = /^https?:\/\//i.test(safeUrl);
+        const href = builtIn
+          ? ('/pages/training/view.html?id=' + encodeURIComponent(m.id))
+          : (safeUrl(m.url) || '#');
+        const external = /^https?:\/\//i.test(href);
         const typeTag = builtIn
           ? '<span style="font-size:9px;font-weight:800;color:var(--gold);border:1px solid rgba(200,169,81,.4);border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:middle">BUILT-IN PAGE</span>'
           : '';
         return '<div class="module-card" style="border-left:3px solid ' + cat.color + '">'
           + '<div class="module-icon">' + cat.icon + '</div>'
           + '<div class="module-info">'
-          +   '<div class="module-title"><a href="' + safeUrl + '"' + (external ? ' target="_blank" rel="noopener"' : '') + '>' + (m.title || 'Untitled module') + (external ? ' ↗' : '') + '</a>' + typeTag + '</div>'
-          +   (m.description ? '<div class="module-desc">' + m.description + '</div>' : '')
-          +   '<div class="module-meta">Added ' + (m.createdBy || '—') + (m.createdAt && m.createdAt.toDate ? ' · ' + m.createdAt.toDate().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'}) : '') + (m.updatedAt && m.updatedAt.toDate ? ' · edited ' + m.updatedAt.toDate().toLocaleDateString('en-US', {month:'short',day:'numeric'}) : '') + '</div>'
+          +   '<div class="module-title"><a href="' + href + '"' + (external ? ' target="_blank" rel="noopener"' : '') + '>' + esc(m.title || 'Untitled module') + (external ? ' ↗' : '') + '</a>' + typeTag + '</div>'
+          +   (m.description ? '<div class="module-desc">' + esc(m.description) + '</div>' : '')
+          +   '<div class="module-meta">Added ' + esc(m.createdBy || '—') + (m.createdAt && m.createdAt.toDate ? ' · ' + esc(m.createdAt.toDate().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'})) : '') + (m.updatedAt && m.updatedAt.toDate ? ' · edited ' + esc(m.updatedAt.toDate().toLocaleDateString('en-US', {month:'short',day:'numeric'})) : '') + '</div>'
           + '</div>'
-          + (isStaff ? '<div style="display:flex;gap:6px;flex-shrink:0"><button class="btn btn-outline btn-xs" onclick="editModule(\'' + m.id + '\')">✏️ Edit</button><button class="btn btn-danger btn-xs" onclick="removeModule(\'' + m.id + '\')">Remove</button></div>' : '')
+          + (isStaff ? '<div style="display:flex;gap:6px;flex-shrink:0"><button class="btn btn-outline btn-xs" onclick="editModule(\'' + escAttr(m.id) + '\')">✏️ Edit</button><button class="btn btn-danger btn-xs" onclick="removeModule(\'' + escAttr(m.id) + '\')">Remove</button></div>' : '')
           + '</div>';
       }).join('');
   }).join('');
