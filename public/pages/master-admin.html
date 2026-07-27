@@ -473,6 +473,11 @@
             <option value="fleet_aircraft_updated">Aircraft Updated</option>
             <option value="fleet_aircraft_removed">Aircraft Removed</option>
           </optgroup>
+          <optgroup label="Training">
+            <option value="training_added">Module Added</option>
+            <option value="training_updated">Module Edited</option>
+            <option value="training_removed">Module Removed</option>
+          </optgroup>
           <optgroup label="Site">
             <option value="news_posted">News Posted</option>
             <option value="news_deleted">News Deleted</option>
@@ -2341,6 +2346,7 @@ async function adminFetchAuditPage(reset) {
       news_deleted:'var(--red)', event_created:'var(--blue)',
       fleet_aircraft_added:'var(--green)', fleet_aircraft_updated:'var(--gold)',
       fleet_aircraft_removed:'var(--red)', emails_migrated:'var(--amber)',
+      training_added:'var(--green)', training_updated:'var(--gold)', training_removed:'var(--red)',
       application_denied:'var(--red)', training_cert_awarded:'var(--gold)',
     };
 
