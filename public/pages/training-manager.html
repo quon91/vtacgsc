@@ -19,6 +19,12 @@
 .module-desc{font-size:12px;color:var(--text2);margin-top:3px}
 .module-meta{font-size:10px;color:var(--text3);margin-top:5px;font-family:var(--mono)}
 .mgr-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--green2);border:1px solid rgba(61,186,110,.4);background:rgba(61,186,110,.08);border-radius:14px;padding:4px 12px;margin-top:10px}
+.override-tag{font-size:9px;font-weight:800;color:var(--blue2);border:1px solid rgba(74,144,217,.4);background:rgba(74,144,217,.1);border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.builtin-tag{font-size:9px;font-weight:800;color:var(--gold);border:1px solid rgba(200,169,81,.4);border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+/* ── TAKE-OVER PANEL (edit the hardcoded guides) ── */
+.takeover-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--card2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;flex-wrap:wrap}
+.takeover-path{font-family:var(--mono);font-size:11px;color:var(--text3);flex:1;min-width:180px}
+.takeover-name{font-size:13px;font-weight:600;color:var(--text)}
 /* ── RICH TEXT EDITOR (built-in training pages) ── */
 .rt-toolbar{display:flex;gap:4px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--border2);border-radius:10px 10px 0 0;padding:8px 10px;border-bottom:none}
 .rt-btn{min-width:30px;height:28px;padding:0 8px;border-radius:6px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:12px;cursor:pointer;font-family:var(--sans)}
@@ -55,6 +61,27 @@
 
 <div class="container page-body">
 
+  <!-- ── EDIT A BUILT-IN GUIDE ─────────────────────────────────
+       The hardcoded pages in the repo can't be edited from the
+       browser. This panel pulls one into an editable module and
+       marks it as replacing the original, so the Training Center
+       shows your version instead of the hardcoded card. -->
+  <div class="card" id="takeover-card" style="display:none;margin-bottom:24px">
+    <div class="card-header">
+      <div class="card-icon blue">✏️</div>
+      <div class="card-title">Edit one of the built-in guides</div>
+    </div>
+    <div class="card-body">
+      <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px">
+        These guides live in the site's code, so they can't normally be changed here.
+        Click <strong>Take over</strong> to copy one into the editor — once you save it,
+        the Training Center shows your editable version instead of the original.
+        Nothing is deleted; the original file stays as a fallback.
+      </div>
+      <div id="takeover-list"></div>
+    </div>
+  </div>
+
   <!-- ADD / EDIT MODULE — visible to training staff only -->
   <div class="card" id="add-card" style="display:none;margin-bottom:24px">
     <div class="card-header"><div class="card-icon">➕</div><div class="card-title" id="form-title">Add training module</div></div>
@@ -90,26 +117,7 @@
         <label>Import an existing guide <span style="color:var(--text3)">(optional — converts a static page into this editable module)</span></label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
           <input type="text" id="tm-import-path" list="known-pages" placeholder="/pages/training/b1b-ils.html" style="flex:1;min-width:220px;font-family:var(--mono)">
-          <datalist id="known-pages">
-            <option value="/pages/training/b1b-ils.html">
-            <option value="/pages/training/b1b-rnav.html">
-            <option value="/pages/training/b1b-vor.html">
-            <option value="/pages/training/b1b-autopilot.html">
-            <option value="/pages/training/b1b-fms.html">
-            <option value="/pages/training/b1b-glossary.html">
-            <option value="/pages/training/b1b-qrc.html">
-            <option value="/pages/training/b1b-syllabus.html">
-            <option value="/pages/training/b2-cockpit.html">
-            <option value="/pages/training/b2-mfd.html">
-            <option value="/pages/training/b2-fms.html">
-            <option value="/pages/training/b2-autopilot.html">
-            <option value="/pages/training/b2-weapons.html">
-            <option value="/pages/training/b2-qrc.html">
-            <option value="/pages/training/b52h-systems.html">
-            <option value="/pages/training/b52h-syllabus.html">
-            <option value="/pages/training/b52h-qrc.html">
-            <option value="/pages/training/instructors-corner.html">
-          </datalist>
+          <datalist id="known-pages"></datalist>
           <button class="btn btn-outline btn-sm" onclick="importPage()">📥 Import page content</button>
         </div>
         <label>Page tabs &amp; content</label>
@@ -145,6 +153,14 @@
         <div class="tm-editor" id="tm-content" contenteditable="true"></div>
         <div class="form-hint">Guides can have multiple internal tabs — like the ILS Approach Guide. Each tab has its own content. The page is auto-created and appears in the Training Center.</div>
       </div>
+
+      <!-- OVERRIDE: makes this module stand in for a hardcoded page -->
+      <div class="form-group">
+        <label>Replaces built-in page <span style="color:var(--text3)">(optional)</span></label>
+        <input type="text" id="tm-replaces" list="known-pages" placeholder="/pages/training/b1b-ils.html" style="font-family:var(--mono)">
+        <div class="form-hint">Set this and the Training Center hides that hardcoded card, showing this module in its place. Filled in automatically when you use Take over or Import.</div>
+      </div>
+
       <div class="form-group">
         <label>Short description <span style="color:var(--text3)">(optional)</span></label>
         <input type="text" id="tm-desc" placeholder="What does this module cover?" maxlength="140">
@@ -168,12 +184,31 @@
 <script src="/js/firebase-config.js"></script>
 <script src="/js/nav.js"></script>
 <script>
+// ── HTML ESCAPING (local fallback; firebase-config's version wins) ──
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  };
+}
+if (typeof escAttr !== 'function') {
+  window.escAttr = function (s) {
+    return esc(String(s == null ? '' : s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+  };
+}
+if (typeof safeUrl !== 'function') {
+  window.safeUrl = function (u) {
+    var s = String(u == null ? '' : u).trim();
+    return /^(https?:|\/|\.\/|#|mailto:)/i.test(s) ? esc(s) : '';
+  };
+}
+
 // ── ACCESS ───────────────────────────────────────────────────
 // Training staff = Instructors, Squadron Commanders, Wing
 // Commanders, Master Admin, and any custom role holding the
 // "Edit training modules" permission (that's how the GSC
-// Commander role qualifies — the permission is ticked on the
-// role in Roles & Permissions). Mirrors the Firestore rule.
+// Commander role qualifies). Mirrors the Firestore rule.
 function canManageTraining(pilot) {
   if (!pilot) return false;
   if (typeof hasPermission === 'function' && hasPermission(pilot, 'manage_training')) return true;
@@ -189,6 +224,31 @@ const CATEGORIES = {
   '2bw':   { label: 'B-52H Stratofortress — 2nd Bomb Wing', color: '#3dba6e', icon: '🛩' },
 };
 
+// ── THE BUILT-IN (HARDCODED) GUIDES ──────────────────────────
+// These live as real .html files in the repo. Listing them here
+// drives both the "Take over" panel and the import datalist.
+// ADDING A NEW STATIC GUIDE? Add one line here and it becomes
+// takeover-able and importable automatically.
+const BUILTIN_PAGES = [
+  { path:'/pages/training/b1b-ils.html',        name:'ILS Approach',              cat:'7bw'   },
+  { path:'/pages/training/b1b-rnav.html',       name:'RNAV / GPS Approach',       cat:'7bw'   },
+  { path:'/pages/training/b1b-vor.html',        name:'VOR Approach',              cat:'7bw'   },
+  { path:'/pages/training/b1b-autopilot.html',  name:'Autopilot Reference',       cat:'7bw'   },
+  { path:'/pages/training/b1b-fms.html',        name:'FMS Setup Guide',           cat:'7bw'   },
+  { path:'/pages/training/b1b-glossary.html',   name:'Glossary',                  cat:'7bw'   },
+  { path:'/pages/training/b1b-qrc.html',        name:'QRC Checklist',             cat:'7bw'   },
+  { path:'/pages/training/b1b-syllabus.html',   name:'Phase 2 & 3 Syllabus',      cat:'7bw'   },
+  { path:'/pages/training/b2-cockpit.html',     name:'Cockpit & Ground Ops',      cat:'509bw' },
+  { path:'/pages/training/b2-mfd.html',         name:'Multi Function Display',    cat:'509bw' },
+  { path:'/pages/training/b2-fms.html',         name:'FMS / CDU',                 cat:'509bw' },
+  { path:'/pages/training/b2-autopilot.html',   name:'Autopilot',                 cat:'509bw' },
+  { path:'/pages/training/b2-weapons.html',     name:'Weapon Delivery System',    cat:'509bw' },
+  { path:'/pages/training/b2-qrc.html',         name:'QRC Checklist',             cat:'509bw' },
+  { path:'/pages/training/b52h-systems.html',   name:'Systems Reference',         cat:'2bw'   },
+  { path:'/pages/training/b52h-syllabus.html',  name:'Phase Training',            cat:'2bw'   },
+  { path:'/pages/training/b52h-qrc.html',       name:'QRC Checklist',             cat:'2bw'   },
+];
+
 let isStaff = false;
 let modules = [];
 
@@ -197,11 +257,24 @@ function onAuthReady(user, pilot) {
   isStaff = canManageTraining(pilot);
   if (isStaff) {
     document.getElementById('add-card').style.display = 'block';
+    document.getElementById('takeover-card').style.display = 'block';
     document.getElementById('mgr-badge').style.display = 'inline-flex';
   }
+  buildKnownPagesList();
   loadModules();
 }
 
+// Fills the datalist used by both the import box and the
+// "Replaces built-in page" box, from BUILTIN_PAGES above.
+function buildKnownPagesList() {
+  const dl = document.getElementById('known-pages');
+  if (!dl) return;
+  dl.innerHTML = BUILTIN_PAGES.map(function(p) {
+    return '<option value="' + esc(p.path) + '">';
+  }).join('') + '<option value="/pages/training/instructors-corner.html">';
+}
+
+// ── LOAD ─────────────────────────────────────────────────────
 // The `training` collection holds TWO kinds of document: training
 // MODULES (listed here) and legacy per-pilot completion records
 // (read by profile.html and the admin Training Records panel).
@@ -211,17 +284,16 @@ function isTrainingModule(m) {
   if (m.pilotUid) return false;
   return !!(m.title || (Array.isArray(m.tabs) && m.tabs.length) || m.contentHtml || m.url);
 }
- 
+
 async function loadModules() {
   try {
     // NO orderBy — orderBy('createdAt') silently EXCLUDES documents
     // that lack the field, hiding modules with no visible error.
-    // Fetch, then sort client-side.
     const snap = await db.collection('training').get();
     // ID applied LAST so a stray `id` field inside a document can
     // never overwrite the real Firestore document ID. A wrong ID
-    // here produces "This training module no longer exists" on
-    // view.html.
+    // here is what produces "This training module no longer
+    // exists" over on view.html.
     modules = snap.docs
       .map(function(d){ return Object.assign({}, d.data(), { id: d.id }); })
       .filter(isTrainingModule)
@@ -235,8 +307,54 @@ async function loadModules() {
     return;
   }
   renderModules();
+  renderTakeoverList();
 }
-  
+
+// ── TAKE-OVER PANEL ──────────────────────────────────────────
+// One row per hardcoded guide. If a module already replaces it,
+// the row offers Edit instead of Take over.
+function renderTakeoverList() {
+  const el = document.getElementById('takeover-list');
+  if (!el) return;
+  const claimed = {};
+  modules.forEach(function(m) {
+    if (m.replaces) claimed[String(m.replaces).trim()] = m;
+  });
+  el.innerHTML = BUILTIN_PAGES.map(function(p) {
+    const owner = claimed[p.path];
+    const cat = CATEGORIES[p.cat] || CATEGORIES.general;
+    return '<div class="takeover-row">'
+      + '<span style="color:' + cat.color + ';font-size:14px">' + cat.icon + '</span>'
+      + '<div style="flex:1;min-width:180px">'
+      +   '<div class="takeover-name">' + esc(p.name) + '</div>'
+      +   '<div class="takeover-path">' + esc(p.path) + '</div>'
+      + '</div>'
+      + (owner
+          ? '<span class="override-tag">EDITABLE VERSION ACTIVE</span>'
+            + '<button class="btn btn-outline btn-xs" onclick="editModule(\'' + escAttr(owner.id) + '\')">✏️ Edit</button>'
+          : '<button class="btn btn-blue btn-xs" onclick="takeOverPage(\'' + escAttr(p.path) + '\')">📥 Take over</button>')
+      + '</div>';
+  }).join('');
+}
+
+// Pulls a hardcoded page into the editor and pre-sets the override.
+async function takeOverPage(path) {
+  cancelEdit();
+  const meta = BUILTIN_PAGES.find(function(p){ return p.path === path; });
+  document.getElementById('tm-import-path').value = path;
+  document.getElementById('tm-replaces').value = path;
+  if (meta) {
+    document.getElementById('tm-title').value = meta.name;
+    document.getElementById('tm-category').value = meta.cat;
+  }
+  document.getElementById('tm-type').value = 'page';
+  tmTypeChanged();
+  await importPage();
+  document.getElementById('form-title').textContent = 'Taking over — ' + (meta ? meta.name : path);
+  window.scrollTo({ top: document.getElementById('add-card').offsetTop - 20, behavior: 'smooth' });
+}
+
+// ── RENDER LIBRARY ───────────────────────────────────────────
 function renderModules() {
   const el = document.getElementById('module-list');
   if (!modules.length) {
@@ -253,21 +371,20 @@ function renderModules() {
       + '<div class="cb-line"></div>'
       + '</div>'
       + items.map(function(m) {
-        // Built-in modules link to their auto-created page.
-        // NOTE: this local was previously named `safeUrl`, which
-        // shadowed the global safeUrl() helper — renamed to href.
+        // NOTE: this local used to be named `safeUrl`, shadowing the
+        // global helper of the same name. Renamed to href.
         const builtIn = (Array.isArray(m.tabs) && m.tabs.length) || m.contentHtml;
         const href = builtIn
           ? ('/pages/training/view.html?id=' + encodeURIComponent(m.id))
           : (safeUrl(m.url) || '#');
         const external = /^https?:\/\//i.test(href);
-        const typeTag = builtIn
-          ? '<span style="font-size:9px;font-weight:800;color:var(--gold);border:1px solid rgba(200,169,81,.4);border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:middle">BUILT-IN PAGE</span>'
-          : '';
+        const typeTag = builtIn ? '<span class="builtin-tag">BUILT-IN PAGE</span>' : '';
+        const overTag = m.replaces
+          ? '<span class="override-tag">REPLACES ' + esc(m.replaces) + '</span>' : '';
         return '<div class="module-card" style="border-left:3px solid ' + cat.color + '">'
           + '<div class="module-icon">' + cat.icon + '</div>'
           + '<div class="module-info">'
-          +   '<div class="module-title"><a href="' + href + '"' + (external ? ' target="_blank" rel="noopener"' : '') + '>' + esc(m.title || 'Untitled module') + (external ? ' ↗' : '') + '</a>' + typeTag + '</div>'
+          +   '<div class="module-title"><a href="' + href + '"' + (external ? ' target="_blank" rel="noopener"' : '') + '>' + esc(m.title || 'Untitled module') + (external ? ' ↗' : '') + '</a>' + typeTag + overTag + '</div>'
           +   (m.description ? '<div class="module-desc">' + esc(m.description) + '</div>' : '')
           +   '<div class="module-meta">Added ' + esc(m.createdBy || '—') + (m.createdAt && m.createdAt.toDate ? ' · ' + esc(m.createdAt.toDate().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'})) : '') + (m.updatedAt && m.updatedAt.toDate ? ' · edited ' + esc(m.updatedAt.toDate().toLocaleDateString('en-US', {month:'short',day:'numeric'})) : '') + '</div>'
           + '</div>'
@@ -278,7 +395,7 @@ function renderModules() {
 }
 
 // ── HTML SANITIZER (same contract as the SOP editor) ────────
-const TM_ALLOWED_TAGS = ['B','STRONG','I','EM','U','S','H1','H2','H3','P','BR','HR','UL','OL','LI','DIV','SPAN','FONT','A','BLOCKQUOTE'];
+const TM_ALLOWED_TAGS = ['B','STRONG','I','EM','U','S','H1','H2','H3','P','BR','HR','UL','OL','LI','DIV','SPAN','FONT','A','BLOCKQUOTE','TABLE','THEAD','TBODY','TR','TH','TD'];
 const TM_ALLOWED_STYLES = ['font-size','color','text-align','font-weight','font-style','text-decoration'];
 function sanitizeTmHtml(html) {
   const doc = new DOMParser().parseFromString('<div id="tm-root">' + String(html || '') + '</div>', 'text/html');
@@ -310,6 +427,7 @@ function sanitizeTmHtml(html) {
             child.setAttribute('target', '_blank');
             child.setAttribute('rel', 'noopener');
           } else if (child.tagName === 'A' && (n === 'target' || n === 'rel')) {
+          } else if ((child.tagName === 'TH' || child.tagName === 'TD') && (n === 'colspan' || n === 'rowspan')) {
           } else {
             child.removeAttribute(attr.name);
           }
@@ -353,7 +471,7 @@ function tmTypeChanged() {
   document.getElementById('tm-content-wrap').style.display = isLink ? 'none' : 'block';
 }
 
-// ── INTERNAL TABS (like the ILS Approach Guide) ──────────────
+// ── INTERNAL TABS ────────────────────────────────────────────
 // tmTabs holds every tab's label + html; the single contenteditable
 // is bound to the ACTIVE tab and synced on every switch/save.
 let tmTabs = [{ label: 'Guide', html: '' }];
@@ -366,7 +484,7 @@ function renderTmTabs() {
   const bar = document.getElementById('tmtab-bar');
   bar.innerHTML = tmTabs.map(function(t, i) {
     const active = i === tmActiveTab;
-    return '<button type="button" class="btn btn-xs ' + (active ? 'btn-primary' : 'btn-outline') + '" onclick="switchTmTab(' + i + ')">' + (t.label || 'Tab ' + (i+1)) + '</button>';
+    return '<button type="button" class="btn btn-xs ' + (active ? 'btn-primary' : 'btn-outline') + '" onclick="switchTmTab(' + i + ')">' + esc(t.label || ('Tab ' + (i+1))) + '</button>';
   }).join('');
   document.getElementById('tmtab-label').value = tmTabs[tmActiveTab] ? (tmTabs[tmActiveTab].label || '') : '';
   document.getElementById('tm-content').innerHTML = tmTabs[tmActiveTab] ? (tmTabs[tmActiveTab].html || '') : '';
@@ -406,9 +524,8 @@ function resetTmTabs() {
 
 // ── IMPORT AN EXISTING STATIC GUIDE ──────────────────────────
 // Fetches one of the site's existing training pages (same-origin),
-// strips nav/footer/scripts, and drops the content into the editor —
-// converting a hand-built page into an editable module. If the page
-// uses internal tab panels, each panel becomes its own tab here.
+// strips nav/footer/scripts, and drops the content into the editor.
+// If the page uses .tab-panel sections, each becomes its own tab.
 async function importPage() {
   const path = document.getElementById('tm-import-path').value.trim();
   if (!path || !path.startsWith('/')) { toast('Enter a site page path starting with /', 'error'); return; }
@@ -420,8 +537,6 @@ async function importPage() {
     ['script','style','link','nav','footer','header'].forEach(function(sel) {
       doc.querySelectorAll(sel).forEach(function(n){ n.remove(); });
     });
-    // Prefer internal tab panels if the page has them; otherwise
-    // take the main container (or body) as one tab.
     let importedTabs = [];
     const panels = doc.querySelectorAll('.tab-panel, .tab-content, [data-tab-panel]');
     if (panels.length > 1) {
@@ -438,6 +553,10 @@ async function importPage() {
     tmTabs = importedTabs;
     tmActiveTab = 0;
     renderTmTabs();
+    // Importing a site page implies you intend to replace it —
+    // pre-fill the override unless it's already set.
+    const repl = document.getElementById('tm-replaces');
+    if (!repl.value.trim()) repl.value = path;
     // Autofill title from the page if the form is empty
     if (!document.getElementById('tm-title').value.trim()) {
       const h1 = doc.querySelector('h1');
@@ -458,7 +577,8 @@ function editModule(id) {
   document.getElementById('tm-title').value = m.title || '';
   document.getElementById('tm-category').value = m.category || 'general';
   document.getElementById('tm-desc').value = m.description || '';
-  document.getElementById('tm-type').value = (m.tabs || m.contentHtml) ? 'page' : 'link';
+  document.getElementById('tm-replaces').value = m.replaces || '';
+  document.getElementById('tm-type').value = ((Array.isArray(m.tabs) && m.tabs.length) || m.contentHtml) ? 'page' : 'link';
   tmTypeChanged();
   document.getElementById('tm-url').value = m.url || '';
   if (Array.isArray(m.tabs) && m.tabs.length) {
@@ -480,6 +600,7 @@ function cancelEdit() {
   document.getElementById('tm-url').value = '';
   document.getElementById('tm-desc').value = '';
   document.getElementById('tm-import-path').value = '';
+  document.getElementById('tm-replaces').value = '';
   document.getElementById('tm-type').value = 'page';
   tmTypeChanged();
   resetTmTabs();
@@ -494,8 +615,10 @@ async function saveModule() {
   const cat   = document.getElementById('tm-category').value;
   const type  = document.getElementById('tm-type').value;
   const url   = document.getElementById('tm-url').value.trim();
+  const repl  = document.getElementById('tm-replaces').value.trim();
   if (!title) { toast('Enter a module title', 'error'); return; }
   if (type === 'link' && !url) { toast('Enter a link for the module', 'error'); return; }
+  if (repl && !repl.startsWith('/')) { toast('"Replaces" must be a site path starting with /', 'error'); return; }
   let tabs = [];
   if (type === 'page') {
     syncActiveTab();
@@ -513,36 +636,26 @@ async function saveModule() {
     category: cat,
     url: type === 'link' ? url : '',
     tabs: type === 'page' ? tabs : [],
-    contentHtml: '',   // legacy single-content field superseded by tabs
+    replaces: repl,     // '' when this module doesn't override anything
+    contentHtml: '',    // legacy single-content field superseded by tabs
   };
   try {
     if (editingModuleId) {
       data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
       data.updatedBy = currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '';
       await db.collection('training').doc(editingModuleId).update(data);
-      try {
-        await db.collection('auditLog').add({
-          eventType: 'training_updated',
-          actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
-          details: { notes: 'Training module edited: ' + title },
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch(e) {}
+      logTrainingAudit('training_updated', 'Training module edited: ' + title);
       toast('Module updated ✓');
     } else {
       data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
       data.createdBy = currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '';
       data.createdByUid = currentUser ? currentUser.uid : null;
       await db.collection('training').add(data);
-      try {
-        await db.collection('auditLog').add({
-          eventType: 'training_added',
-          actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
-          details: { notes: 'Training module added: ' + title + (tabs.length ? ' (built-in page, ' + tabs.length + ' tabs)' : '') },
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch(e) {}
-      toast(type === 'page' ? 'Module added — page auto-created ✓' : 'Training module added!');
+      logTrainingAudit('training_added', 'Training module added: ' + title
+        + (tabs.length ? ' (built-in page, ' + tabs.length + ' tabs)' : '')
+        + (repl ? ' — replaces ' + repl : ''));
+      toast(repl ? 'Saved — this now replaces ' + repl + ' ✓'
+                 : (type === 'page' ? 'Module added — page auto-created ✓' : 'Training module added!'));
     }
     cancelEdit();
     loadModules();
@@ -551,20 +664,30 @@ async function saveModule() {
 
 async function removeModule(id) {
   const mod = modules.find(function(m){ return m.id === id; });
-  if (!confirm('Remove "' + (mod ? mod.title : 'this module') + '" from the training library?')) return;
+  const warn = mod && mod.replaces
+    ? '\n\nThe built-in page ' + mod.replaces + ' will reappear in the Training Center.'
+    : '';
+  if (!confirm('Remove "' + (mod ? mod.title : 'this module') + '" from the training library?' + warn)) return;
   try {
     await db.collection('training').doc(id).delete();
-    try {
-      await db.collection('auditLog').add({
-        eventType: 'training_removed',
-        actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
-        details: { notes: 'Training module removed: ' + (mod ? mod.title : id) },
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-      });
-    } catch(e) {}
+    logTrainingAudit('training_removed', 'Training module removed: ' + (mod ? mod.title : id));
     toast('Module removed');
     loadModules();
   } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// Event type strings must match the Audit Log filter in
+// master-admin.html, or the entry is written but unfindable.
+async function logTrainingAudit(eventType, notes) {
+  try {
+    await db.collection('auditLog').add({
+      eventType: eventType,
+      actor: { uid: currentUser ? currentUser.uid : null,
+               callsign: (currentPilot && (currentPilot.displayName || currentPilot.callsign)) || '—' },
+      details: { notes: notes },
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch(e) { console.warn('audit skipped:', e.message); }
 }
 
 // Initialize the tab editor UI once everything above exists —
