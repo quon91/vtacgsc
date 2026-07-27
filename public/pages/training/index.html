@@ -14,7 +14,7 @@
   padding: 18px; text-decoration: none; color: inherit; display: flex; gap: 12px;
   align-items: flex-start; transition: border-color .15s, transform .15s;
 }
-.tc-module-card:hover { transform: translateY(-2px); 
+.tc-module-card:hover { transform: translateY(-2px); }
 .tc-module-icon { font-size: 22px; flex-shrink: 0; line-height: 1; }
 .tc-module-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
 .tc-module-desc { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
@@ -111,7 +111,15 @@
       </a>
       <a href="/pages/training/b1b-syllabus.html" class="tc-module-card" style="border-top:2px solid var(--gold)">
         <div class="tc-module-icon">🎓</div>
-        <div><div class="tc-module-title">Phase 1 2 3 &amp; BMC Training</div><div class="tc-module-arrow" style="color:var(--gold)">Open syllabus →</div></div>
+        <div><div class="tc-module-title">Phase 2 &amp; 3 Syllabus</div><div class="tc-module-arrow" style="color:var(--gold)">Open syllabus →</div></div>
+      </a>
+      <a href="/pages/training/b1b-refueling.html" class="tc-module-card" style="border-top:2px solid var(--gold)">
+        <div class="tc-module-icon">⛽</div>
+        <div><div class="tc-module-title">Air-to-Air Refueling</div><div class="tc-module-arrow" style="color:var(--gold)">Open guide →</div></div>
+      </a>
+      <a href="/pages/training/b1b-weapons.html" class="tc-module-card" style="border-top:2px solid var(--gold)">
+        <div class="tc-module-icon">💣</div>
+        <div><div class="tc-module-title">Weapons Employment</div><div class="tc-module-arrow" style="color:var(--gold)">Open guide →</div></div>
       </a>
     </div>
   </div>
@@ -298,6 +306,22 @@ async function loadDynamicModules() {
     return (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0);
   });
   if (!mods.length) return;
+
+  // ── OVERRIDES ──────────────────────────────────────────────
+  // A module can declare replaces:'/pages/training/b1b-ils.html'.
+  // When it does, the hardcoded card pointing at that path is
+  // removed so you don't see the old one and the new one side by
+  // side. The static file itself is untouched and still reachable
+  // by direct URL — deleting the module brings its card back.
+  // This runs BEFORE the new cards are appended.
+  const overridden = new Set(
+    mods.map(function(m){ return String(m.replaces || '').trim(); }).filter(Boolean)
+  );
+  if (overridden.size) {
+    document.querySelectorAll('.tc-module-card').forEach(function(a) {
+      if (overridden.has(a.getAttribute('href'))) a.remove();
+    });
+  }
 
   let hasGeneral = false;
   mods.forEach(function(m) {
