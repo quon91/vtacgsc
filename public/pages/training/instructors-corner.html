@@ -80,15 +80,7 @@
       <div class="nav-emblem">GSC</div>
       <div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div>
     </a>
-    <div class="nav-links" id="nav-links">
-      <a href="/index.html">Home</a>
-      <a href="/pages/roster.html">Roster</a>
-      <a href="/pages/history.html">History</a>
-      <a href="/pages/bases.html">Bases</a>
-      <a href="/pages/training/index.html" class="active">Training</a>
-      <a href="/pages/flights.html">Flight Log</a>
-      <a href="/pages/flight-plan.html">Flight Planner</a>
-    </div>
+    <div class="nav-links" id="nav-links"></div>
     <div class="nav-right">
       <div id="nav-user-area" style="display:none">
         <div class="nav-pilot-info">
@@ -408,7 +400,30 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
 <script>
+// ── HTML ESCAPING (local fallback; firebase-config's version wins) ──
+// Pilot callsigns, avatar URLs and the awardedBy name are written by
+// other people and rendered here into innerHTML inside an instructor's
+// session. Unescaped, a stored <img src=x onerror="..."> executes.
+if (typeof esc !== 'function') {
+  window.esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  };
+}
+if (typeof escAttr !== 'function') {
+  window.escAttr = function (s) {
+    return esc(String(s == null ? '' : s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+  };
+}
+if (typeof safeUrl !== 'function') {
+  window.safeUrl = function (u) {
+    var s = String(u == null ? '' : u).trim();
+    return /^(https?:|\/|\.\/|#|mailto:)/i.test(s) ? esc(s) : '';
+  };
+}
 
 // ── TRAINING CERTS DATA (inline so page is self-contained) ──────
 const QUAL_STATUS = [
@@ -457,6 +472,7 @@ let selectedAircraft = null;
 let allPilots       = [];
 let pilotCerts      = {};  // certId → {awardedAt, awardedBy}
 let pilotQuals      = {};  // aircraft → qualId
+let recordPilots    = [];  // last loaded set, kept so filterRecords() can re-filter
 
 // ── NAV ─────────────────────────────────────────────────────
 function toggleMobileNav(){ document.getElementById('nav-links').classList.toggle('open'); }
@@ -486,7 +502,7 @@ function onAuthReady(user, pilot) {
   document.getElementById('nav-user-area').style.display = 'flex';
   document.getElementById('nav-pilot-name').textContent = pilot.callsign || pilot.displayName || '';
   document.getElementById('nav-rank-badge').textContent = getRankAbbr(pilot.rank || 'ab');
-  if (pilot.avatarUrl) document.getElementById('nav-avatar').src = pilot.avatarUrl;
+  if (safeUrl(pilot.avatarUrl)) document.getElementById('nav-avatar').src = pilot.avatarUrl;
 
   document.getElementById('main-content').style.display = 'block';
   loadAllPilots();
@@ -501,7 +517,7 @@ async function loadAllPilots() {
     const snap = await db.collection('pilots').where('status','==','active').get();
     allPilots = [];
     snap.forEach(doc => allPilots.push({ uid: doc.id, ...doc.data() }));
-  } catch(e) { console.error(e); }
+  } catch(e) { console.error('loadAllPilots:', e); }
 }
 
 // ── PILOT SEARCH ─────────────────────────────────────────────
@@ -519,13 +535,13 @@ function searchPilots(q) {
     return;
   }
   container.innerHTML = matches.map(p => `
-    <div class="pilot-result" onclick="selectPilot('${p.uid}')">
+    <div class="pilot-result" onclick="selectPilot('${escAttr(p.uid)}')">
       <div class="pilot-avatar-sm">
-        ${p.avatarUrl ? `<img src="${p.avatarUrl}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : '👤'}
+        ${safeUrl(p.avatarUrl) ? `<img src="${safeUrl(p.avatarUrl)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : '👤'}
       </div>
       <div>
-        <div style="font-size:14px;font-weight:700;color:var(--text)">${p.callsign || p.displayName || 'Unknown'}</div>
-        <div style="font-size:12px;color:var(--text3)">${getRankAbbr(p.rank||'ab')} · ${getWingName(p.wing||'')||'Unassigned'}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${esc(p.callsign || p.displayName || 'Unknown')}</div>
+        <div style="font-size:12px;color:var(--text3)">${esc(getRankAbbr(p.rank||'ab'))} · ${esc(getWingName(p.wing||'')||'Unassigned')}</div>
       </div>
     </div>`
   ).join('');
@@ -546,7 +562,7 @@ async function selectPilot(uid) {
   document.getElementById('pilot-search').value = selectedPilot.callsign || selectedPilot.displayName || '';
 
   const card = document.getElementById('selected-pilot-card');
-  document.getElementById('sel-avatar').src = selectedPilot.avatarUrl || '/assets/img/default-avatar.png';
+  document.getElementById('sel-avatar').src = safeUrl(selectedPilot.avatarUrl) ? selectedPilot.avatarUrl : '/assets/img/default-avatar.png';
   document.getElementById('sel-name').textContent = selectedPilot.callsign || selectedPilot.displayName || 'Unknown';
   document.getElementById('sel-rank').textContent = getRankName(selectedPilot.rank || 'ab');
   document.getElementById('sel-wing').textContent = getWingName(selectedPilot.wing || '') || 'Unassigned';
@@ -591,18 +607,18 @@ function renderCertList(aircraft) {
     const awarded = pilotCerts[c.id];
     return `
       <div class="cert-card" style="border-left-color:${c.color}">
-        <div class="cert-phase">${c.phase}</div>
-        <div class="cert-abbr" style="color:${c.color}">${c.abbr}</div>
-        <div class="cert-name">${c.name}</div>
-        <div class="cert-desc">${c.desc}</div>
-        ${c.awardsQual ? `<div class="cert-awards">⭐ Also sets qualification status: <strong>${QUAL_STATUS.find(q=>q.id===c.awardsQual)?.abbr||c.awardsQual}</strong></div>` : ''}
+        <div class="cert-phase">${esc(c.phase)}</div>
+        <div class="cert-abbr" style="color:${c.color}">${esc(c.abbr)}</div>
+        <div class="cert-name">${esc(c.name)}</div>
+        <div class="cert-desc">${esc(c.desc)}</div>
+        ${c.awardsQual ? `<div class="cert-awards">⭐ Also sets qualification status: <strong>${esc(QUAL_STATUS.find(q=>q.id===c.awardsQual)?.abbr||c.awardsQual)}</strong></div>` : ''}
         ${awarded
           ? `<div class="alert alert-ok" style="padding:6px 10px;font-size:12px;margin:0">
-               ✓ Awarded ${formatDate(awarded.awardedAt?.toDate ? awarded.awardedAt.toDate() : awarded.awardedAt)}
-               <button onclick="revokeCert('${c.id}')" class="revoke-btn">Revoke</button>
+               ✓ Awarded ${esc(formatDate(awarded.awardedAt?.toDate ? awarded.awardedAt.toDate() : awarded.awardedAt))}
+               <button onclick="revokeCert('${escAttr(c.id)}')" class="revoke-btn">Revoke</button>
              </div>`
-          : `<button onclick="awardCert('${c.id}')" class="btn btn-primary btn-sm" style="background:${c.color};border-color:${c.color};color:#000">
-               Award ${c.abbr}
+          : `<button onclick="awardCert('${escAttr(c.id)}')" class="btn btn-primary btn-sm" style="background:${c.color};border-color:${c.color};color:#000">
+               Award ${esc(c.abbr)}
              </button>`
         }
       </div>`;
@@ -616,9 +632,9 @@ function renderQualList(aircraft) {
   container.innerHTML = QUAL_STATUS.map(q => `
     <div class="qual-opt ${current===q.id?'selected':''}"
          style="${current===q.id?`border-color:${q.color};background:${q.color}15`:''}"
-         onclick="setQualStatus('${aircraft}','${q.id}')">
-      <div class="qual-abbr" style="color:${q.color}">${q.abbr}</div>
-      <div class="qual-name-sm">${q.name}</div>
+         onclick="setQualStatus('${escAttr(aircraft)}','${escAttr(q.id)}')">
+      <div class="qual-abbr" style="color:${q.color}">${esc(q.abbr)}</div>
+      <div class="qual-name-sm">${esc(q.name)}</div>
     </div>`
   ).join('');
 }
@@ -641,12 +657,12 @@ function renderAwarded() {
     return `
       <div class="awarded-card" style="border-left:3px solid ${cert.color}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div class="cert-abbr" style="color:${cert.color};font-size:13px">${cert.abbr}</div>
-          <button onclick="revokeCert('${id}')" class="revoke-btn">Revoke</button>
+          <div class="cert-abbr" style="color:${cert.color};font-size:13px">${esc(cert.abbr)}</div>
+          <button onclick="revokeCert('${escAttr(id)}')" class="revoke-btn">Revoke</button>
         </div>
-        <div style="font-size:12px;font-weight:700;color:var(--text);margin:2px 0">${cert.name}</div>
-        <div class="awarded-date">Awarded: ${formatDate(data.awardedAt?.toDate ? data.awardedAt.toDate() : data.awardedAt)}</div>
-        <div class="awarded-by">By: ${data.awardedBy || 'IP'}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin:2px 0">${esc(cert.name)}</div>
+        <div class="awarded-date">Awarded: ${esc(formatDate(data.awardedAt?.toDate ? data.awardedAt.toDate() : data.awardedAt))}</div>
+        <div class="awarded-by">By: ${esc(data.awardedBy || 'IP')}</div>
       </div>`;
   }).join('');
 }
@@ -663,7 +679,11 @@ async function awardCert(certId) {
       [`trainingCerts.${certId}`]: {
         awardedAt: firebase.firestore.FieldValue.serverTimestamp(),
         awardedBy: currentPilot.callsign || currentPilot.displayName || 'IP',
-        awardedByUid: currentPilot.uid,
+        // currentPilot is the pilot DOCUMENT — it has no uid field.
+        // This used to read currentPilot.uid, which resolved to
+        // undefined, and Firestore rejects undefined values outright,
+        // so the whole write threw and no cert was ever awarded.
+        awardedByUid: currentUser ? currentUser.uid : null,
       }
     };
     // If this cert also awards a qual status, update that too
@@ -676,13 +696,14 @@ async function awardCert(certId) {
       awardedAt: new Date(),
       awardedBy: currentPilot.callsign || currentPilot.displayName || 'IP',
     };
+    logCertAudit('cert_awarded', (cert.abbr || certId) + ' awarded to ' + (selectedPilot.callsign || selectedPilot.displayName || selectedPilot.uid), cert.name);
     toast(`✓ ${cert.abbr} awarded to ${selectedPilot.callsign || selectedPilot.displayName}`, 'success');
     renderCertList(selectedAircraft);
     renderQualList(selectedAircraft);
     renderAwarded();
   } catch(e) {
-    console.error(e);
-    toast('Error awarding certification — check console', 'error');
+    console.error('awardCert:', e);
+    toast('Error awarding certification: ' + e.message, 'error');
   }
 }
 
@@ -696,11 +717,13 @@ async function revokeCert(certId) {
       [`trainingCerts.${certId}`]: firebase.firestore.FieldValue.delete()
     });
     delete pilotCerts[certId];
+    logCertAudit('cert_revoked', (cert?.abbr || certId) + ' revoked from ' + (selectedPilot.callsign || selectedPilot.displayName || selectedPilot.uid), cert?.name);
     toast(`${cert?.abbr || certId} revoked`, 'warn');
     renderCertList(selectedAircraft);
     renderAwarded();
   } catch(e) {
-    toast('Error revoking — check console', 'error');
+    console.error('revokeCert:', e);
+    toast('Error revoking: ' + e.message, 'error');
   }
 }
 
@@ -718,8 +741,23 @@ async function setQualStatus(aircraft, qualId) {
     toast(`Qualification status updated: ${qual?.abbr || qualId}`, 'success');
     renderQualList(aircraft);
   } catch(e) {
-    toast('Error updating qualification — check console', 'error');
+    console.error('setQualStatus:', e);
+    toast('Error updating qualification: ' + e.message, 'error');
   }
+}
+
+// Event type strings must match the Audit Log filter in
+// master-admin.html, or the entry is written but unfindable.
+async function logCertAudit(eventType, notes, certName) {
+  try {
+    await db.collection('auditLog').add({
+      eventType: eventType,
+      actor: { uid: currentUser ? currentUser.uid : null,
+               callsign: (currentPilot && (currentPilot.displayName || currentPilot.callsign)) || '—' },
+      details: { notes: notes, certName: certName || '' },
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch(e) { console.warn('audit skipped:', e.message); }
 }
 
 // ── PILOT RECORDS ─────────────────────────────────────────────
@@ -732,10 +770,25 @@ async function loadRecordsForWing(wingId) {
     const snap = await query.get();
     const pilots = [];
     snap.forEach(doc => pilots.push({ uid: doc.id, ...doc.data() }));
-    renderRecords(pilots);
+    recordPilots = pilots;
+    filterRecords();
   } catch(e) {
-    container.innerHTML = '<div class="empty-state"><p>Error loading records.</p></div>';
+    console.error('loadRecordsForWing:', e);
+    container.innerHTML = '<div class="alert alert-error">Error loading records: ' + esc(e.message) + '</div>';
   }
+}
+
+// The qual dropdown was wired to filterRecords() but the function
+// never existed — picking a status threw and did nothing. It now
+// filters the last loaded set on any aircraft's qual status.
+function filterRecords() {
+  const sel = document.getElementById('records-qual-filter');
+  const want = sel ? sel.value : '';
+  if (!want) { renderRecords(recordPilots); return; }
+  renderRecords(recordPilots.filter(function(p) {
+    const q = p.trainingQuals || {};
+    return Object.keys(q).some(function(ac){ return q[ac] === want; });
+  }));
 }
 
 function renderRecords(pilots) {
@@ -756,14 +809,15 @@ function renderRecords(pilots) {
             const qid = quals[aircraft];
             if (!qid) return '<span style="color:var(--text3);font-size:11px">—</span>';
             const q = QUAL_STATUS.find(x => x.id === qid);
-            return `<span style="display:inline-block;padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;background:${q?.color||'#888'}22;color:${q?.color||'#888'};border:1px solid ${q?.color||'#888'}55">${q?.abbr||qid}</span>`;
+            const col = q?.color || '#888';
+            return `<span style="display:inline-block;padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;background:${col}22;color:${col};border:1px solid ${col}55">${esc(q?.abbr||qid)}</span>`;
           };
           return `<tr>
             <td>
-              <strong>${p.callsign || p.displayName || 'Unknown'}</strong>
-              <div style="font-size:11px;color:var(--text3)">${getRankAbbr(p.rank||'ab')}</div>
+              <strong>${esc(p.callsign || p.displayName || 'Unknown')}</strong>
+              <div style="font-size:11px;color:var(--text3)">${esc(getRankAbbr(p.rank||'ab'))}</div>
             </td>
-            <td style="font-size:12px;color:var(--text2)">${getWingName(p.wing||'')||'—'}</td>
+            <td style="font-size:12px;color:var(--text2)">${esc(getWingName(p.wing||'')||'—')}</td>
             <td>${qBadge('B-1B')}</td>
             <td>${qBadge('B-2')}</td>
             <td>${qBadge('B-52H')}</td>
@@ -776,16 +830,17 @@ function renderRecords(pilots) {
 
 // ── TAB SWITCHING ─────────────────────────────────────────────
 function icTab(id, btn) {
-  document.querySelectorAll('.ic-panel').forEach(p => {
-    if (p.closest('.ic-panels-root') === null) p.classList.remove('active');
-  });
-  // only top-level panels
+  // Only the three TOP-LEVEL panels are toggled here.
+  // The old version cleared .active from every .ic-panel on the page —
+  // but std-b1b / std-b2 / std-b52h are also .ic-panel, so switching to
+  // Grading Standards stripped the active class off its own content and
+  // the tab rendered with an inner tab bar and nothing beneath it.
   ['tab-award','tab-records','tab-standards'].forEach(tid => {
     const el = document.getElementById(tid);
     if (el) el.classList.toggle('active', tid === 'tab-'+id);
   });
-  document.querySelectorAll('.ic-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  document.querySelectorAll('.ic-tabs > .ic-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
 }
 function awardSubTab(id, btn) {
   ['sub-certs','sub-qual'].forEach(tid => {
