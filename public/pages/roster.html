@@ -48,6 +48,16 @@
 .command-avatar{width:68px;height:68px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);flex-shrink:0;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 18px rgba(200,169,81,.25)}
 .command-name{font-size:19px;font-weight:800;color:var(--text)}
 .majcom-badge{font-size:9px;font-weight:800;letter-spacing:.06em;border-radius:9px;padding:2px 8px;text-transform:uppercase}
+/* ── SES (vTAC FOUNDERS) — the tier above GSC Command ──
+   Deliberately platinum rather than gold so it reads as a separate
+   authority from Global Strike Command, not a senior version of it. */
+.ses-banner .cb-label{color:#dfe4ef}
+.ses-banner .cb-line{background:linear-gradient(90deg,transparent,rgba(223,228,239,.5))}
+.ses-banner .cb-line.r{background:linear-gradient(90deg,rgba(223,228,239,.5),transparent)}
+.ses-card{background:linear-gradient(135deg,rgba(223,228,239,.10),var(--card));border:1px solid rgba(223,228,239,.45);border-radius:14px;padding:22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;box-shadow:0 0 30px rgba(223,228,239,.10);margin-bottom:10px}
+.ses-avatar{width:68px;height:68px;border-radius:50%;object-fit:cover;border:2px solid #dfe4ef;flex-shrink:0;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 18px rgba(223,228,239,.25)}
+.ses-name{font-size:19px;font-weight:800;color:var(--text)}
+.ses-tag{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#0a0c14;background:#dfe4ef;border-radius:9px;padding:2px 9px;margin-left:8px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -76,6 +86,17 @@
 </div>
 
 <div class="container page-body">
+
+  <!-- SES / vTAC FOUNDERS — the authority GSC reports to.
+       Rendered by JS, hidden entirely when nobody holds the tier. -->
+  <div class="command-section" id="ses-section" style="display:none">
+    <div class="command-banner ses-banner">
+      <div class="cb-line"></div>
+      <div class="cb-label">◆ SES · vTAC Founders ◆</div>
+      <div class="cb-line r"></div>
+    </div>
+    <div id="ses-list"></div>
+  </div>
 
   <!-- GSC COMMAND spotlight — rendered by JS, hidden if empty -->
   <div class="command-section" id="command-section" style="display:none">
@@ -187,6 +208,21 @@ function isCommandStaff(p) {
   });
 }
 
+// SES — the vTAC Founders. Sits ABOVE GSC Command because Global
+// Strike reports to them. Matched the same way as the GSC tier: by
+// role NAME, so a role created in Roles & Permissions works whatever
+// ID it was generated with. A pilot doc can also carry ses:true.
+// Master admin never counts on its own — holding the admin role does
+// not make someone a founder.
+function isSES(p) {
+  if (p.ses === true) return true;
+  return getPilotRoleIds(p).some(function(rid) {
+    const role = ROLES[rid];
+    if (!role || role.isMasterAdmin) return false;
+    return /\bSES\b/i.test(role.name || '') || /founder/i.test(role.name || '');
+  });
+}
+
 // Wing / Squadron commander detection — matches the built-in role IDs
 // AND any custom role whose name says so, so renamed or re-created
 // roles keep working. Master admin never counts.
@@ -208,6 +244,7 @@ function isSqCommanderPilot(p) {
 
 // Every pilot lands in exactly ONE tier — their highest.
 function pilotTier(p) {
+  if (isSES(p))                return 'ses';
   if (isCommandStaff(p))       return 'gsc';
   if (isWingCommanderPilot(p)) return 'wing';
   if (isSqCommanderPilot(p))   return 'sq';
@@ -244,6 +281,7 @@ async function loadRoster() {
 
 // ── COMMAND TIER SECTIONS ────────────────────────────────────
 function renderTierSections() {
+  renderTier('ses',  'ses-section',     'ses-list',      true);
   renderTier('gsc',  'command-section', 'command-list',  true);
   renderTier('wing', 'wingcmd-section', 'wingcmd-list',  false);
   renderTier('sq',   'sqcmd-section',   'sqcmd-list',    false);
@@ -287,10 +325,16 @@ function renderTier(tier, sectionId, listId, spotlight) {
       + '</div>';
 
     if (spotlight) {
-      return '<div class="command-card">'
-        + '<div class="command-avatar">' + (p.avatarUrl ? '<img src="'+safeUrl(p.avatarUrl)+'" style="width:68px;height:68px;border-radius:50%;object-fit:cover">' : '★') + '</div>'
+      const ses     = (tier === 'ses');
+      const cardCls = ses ? 'ses-card'   : 'command-card';
+      const avCls   = ses ? 'ses-avatar' : 'command-avatar';
+      const nameCls = ses ? 'ses-name'   : 'command-name';
+      const glyph   = ses ? '◆' : '★';
+      const sesTag  = ses ? '<span class="ses-tag">vTAC Founder</span>' : '';
+      return '<div class="'+cardCls+'">'
+        + '<div class="'+avCls+'">' + (p.avatarUrl ? '<img src="'+safeUrl(p.avatarUrl)+'" style="width:68px;height:68px;border-radius:50%;object-fit:cover">' : glyph) + '</div>'
         + '<div class="roster-info">'
-        +   '<div class="command-name">'+esc(p.displayName||p.callsign)+'</div>'
+        +   '<div class="'+nameCls+'">'+esc(p.displayName||p.callsign)+sesTag+'</div>'
         +   '<div class="roster-meta">'+esc(unitLine)+'</div>'
         +   '<div class="roster-roles">'+badgesHtml+'</div>'
         +   wingsHtml + medalsHtml
