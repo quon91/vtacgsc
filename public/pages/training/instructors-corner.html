@@ -401,6 +401,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
 <script src="/js/nav.js"></script>
+<!-- Shared cert catalog. Master Admin reads the same file, so the two
+     award paths can never define different certs. -->
+<script src="/js/training-catalog.js"></script>
 <script>
 // ── HTML ESCAPING (local fallback; firebase-config's version wins) ──
 // Pilot callsigns, avatar URLs and the awardedBy name are written by
@@ -425,46 +428,28 @@ if (typeof safeUrl !== 'function') {
   };
 }
 
-// ── TRAINING CERTS DATA (inline so page is self-contained) ──────
-const QUAL_STATUS = [
-  { id:'iqt',  name:'Initial Qualification Training', abbr:'IQT',   color:'#9aa0b8' },
-  { id:'bmc',  name:'Basic Mission Capable',          abbr:'BMC',   color:'#4a90d9' },
-  { id:'cmr',  name:'Combat Mission Ready',           abbr:'CMR',   color:'#3dba6e' },
-  { id:'ncmr', name:'Non-Combat Mission Ready',       abbr:'N-CMR', color:'#e09030' },
-  { id:'ip',   name:'Instructor Pilot',               abbr:'IP',    color:'#c8a951' },
-];
+// QUAL_STATUS and TRAINING_CERTS now come from js/training-catalog.js —
+// they used to be duplicated here, which meant a cert added in one
+// place was invisible in the other.
 
-const TRAINING_CERTS = [
-  // B-1B
-  { id:'b1b_module100', aircraft:'B-1B', wing:'7bw',   phase:'Module 100', name:'Local Area Orientation & Aircraft Familiarization', abbr:'LAO/BMC',   color:'#c8a951', awardsQual:'bmc',  desc:'Completion of Module 100. Awards BMC status. Authorizes B-1B operations in local area under IP supervision.' },
-  { id:'b1b_instruments',aircraft:'B-1B',wing:'7bw',   phase:'Phase 1',    name:'Instrument Qualification',                          abbr:'INST QUAL',  color:'#c8a951', awardsQual:null,   desc:'IFR proficiency, instrument departure, holding, precision ILS, and non-precision RNAV/VOR at KDYS.' },
-  { id:'b1b_ils_cert',  aircraft:'B-1B', wing:'7bw',   phase:'Phase 1',    name:'ILS Approach Certification',                        abbr:'ILS CERT',   color:'#c8a951', awardsQual:null,   desc:'Precision ILS at KDYS. FMS setup, APR sequence, ATH management below 2,500 ft AGL, DH procedure.' },
-  { id:'b1b_rnav_cert', aircraft:'B-1B', wing:'7bw',   phase:'Phase 1',    name:'RNAV/GPS Approach Certification',                   abbr:'RNAV CERT',  color:'#c8a951', awardsQual:null,   desc:'GPS/RNAV approach. NAV HOLD, GPS softkey, FPLN load, V/S descent, MDA level-off.' },
-  { id:'b1b_night',     aircraft:'B-1B', wing:'7bw',   phase:'Phase 2',    name:'Night Currency Qualification',                      abbr:'NIGHT QUAL', color:'#c8a951', awardsQual:null,   desc:'Night VFR/IFR departure, pattern, instrument approach, and full-stop night landing.' },
-  { id:'b1b_ar',        aircraft:'B-1B', wing:'7bw',   phase:'Phase 2',    name:'Air Refueling Qualification',                       abbr:'AR QUAL',    color:'#c8a951', awardsQual:null,   desc:'Tanker rejoin, precontact, contact, simulated onload, and breakaway.' },
-  { id:'b1b_lowlevel',  aircraft:'B-1B', wing:'7bw',   phase:'Phase 2',    name:'Low-Level Navigation Qualification',                abbr:'LL QUAL',    color:'#c8a951', awardsQual:null,   desc:'Low-level route at 500–1,000 ft AGL, terrain clearance, abort criteria.' },
-  { id:'b1b_sat',       aircraft:'B-1B', wing:'7bw',   phase:'Phase 3',    name:'Surface Attack Certification',                      abbr:'SAT CERT',   color:'#c8a951', awardsQual:null,   desc:'Simulated surface attack with TOT ±30 sec, safe escape maneuver. Grade 3 standard.' },
-  { id:'b1b_cmr',       aircraft:'B-1B', wing:'7bw',   phase:'CMR',        name:'Combat Mission Ready — B-1B',                       abbr:'B-1B CMR',   color:'#c8a951', awardsQual:'cmr',  desc:'Full CMR on B-1B. All Phase 1/2/3 complete. Current in instruments, night, AR, LL, SAT.' },
-  { id:'b1b_ip',        aircraft:'B-1B', wing:'7bw',   phase:'IP',         name:'Instructor Pilot — B-1B',                           abbr:'B-1B IP',    color:'#f0cc72', awardsQual:'ip',   desc:'Certified IP on B-1B. Authorized to instruct and evaluate all MQT phases. Sq/CC certified.' },
-  // B-2
-  { id:'b2_iqt',        aircraft:'B-2',  wing:'509bw', phase:'IQT',        name:'B-2 Initial Qualification Training',                abbr:'B-2 IQT',   color:'#4a90d9', awardsQual:'iqt',  desc:'Initial qualification. Cockpit, MFD, FMS, autopilot, stealth mode. Full IP supervision.' },
-  { id:'b2_cockpit',    aircraft:'B-2',  wing:'509bw', phase:'Phase 1',    name:'Cockpit Systems Certification',                     abbr:'SYS CERT',  color:'#4a90d9', awardsQual:null,   desc:'All 8 MFD sub-pages, FMS pages, stealth mode, cargo door/hatch operations.' },
-  { id:'b2_ils_cert',   aircraft:'B-2',  wing:'509bw', phase:'Phase 1',    name:'ILS Approach Certification — B-2',                  abbr:'ILS CERT',  color:'#4a90d9', awardsQual:null,   desc:'Precision ILS on B-2. NAV MODE = NAV required. APP capture, CRS SEL, full sequence.' },
-  { id:'b2_weapons',    aircraft:'B-2',  wing:'509bw', phase:'Phase 2',    name:'Weapon Delivery Certification',                     abbr:'WPN CERT',  color:'#4a90d9', awardsQual:null,   desc:'Release criteria met, STATS READY FOR RELEASE, cargo door sequence, post-release closure.' },
-  { id:'b2_bmc',        aircraft:'B-2',  wing:'509bw', phase:'BMC',        name:'Basic Mission Capable — B-2',                       abbr:'B-2 BMC',   color:'#4a90d9', awardsQual:'bmc',  desc:'BMC on B-2 Spirit. Phase 1 complete. Qualified in basic flight ops and instruments.' },
-  { id:'b2_cmr',        aircraft:'B-2',  wing:'509bw', phase:'CMR',        name:'Combat Mission Ready — B-2',                        abbr:'B-2 CMR',   color:'#7ab8ff', awardsQual:'cmr',  desc:'Full CMR on B-2 Spirit. All phases complete.' },
-  { id:'b2_ip',         aircraft:'B-2',  wing:'509bw', phase:'IP',         name:'Instructor Pilot — B-2',                            abbr:'B-2 IP',    color:'#f0cc72', awardsQual:'ip',   desc:'Certified IP on B-2 Spirit. All phases, Sq/CC certified.' },
-  // B-52H
-  { id:'b52_p1',        aircraft:'B-52H',wing:'2bw',   phase:'Phase 1',    name:'Transition & Aircraft Familiarization',             abbr:'TRANS CERT',color:'#3dba6e', awardsQual:null,   desc:'Ground ops, engine start, taxi, takeoff, pattern, go-around, full-stop landing.' },
-  { id:'b52_inst',      aircraft:'B-52H',wing:'2bw',   phase:'Phase 2',    name:'Instrument Qualification — B-52H',                  abbr:'INST QUAL', color:'#3dba6e', awardsQual:null,   desc:'IFR departure, holding, ILS to DA, missed approach, instrument full-stop landing.' },
-  { id:'b52_ar',        aircraft:'B-52H',wing:'2bw',   phase:'Phase 2',    name:'Air Refueling Qualification — B-52H',               abbr:'AR QUAL',   color:'#3dba6e', awardsQual:null,   desc:'Rejoin 270–290 KIAS, precontact, contact, onload with CG monitoring, breakaway.' },
-  { id:'b52_ll',        aircraft:'B-52H',wing:'2bw',   phase:'Phase 3',    name:'Low-Level Navigation Qualification — B-52H',        abbr:'LL QUAL',   color:'#3dba6e', awardsQual:null,   desc:'Low-level route 500–1,000 ft AGL / 300–360 KCAS, terrain clearance, abort criteria.' },
-  { id:'b52_tot',       aircraft:'B-52H',wing:'2bw',   phase:'Phase 3',    name:'Surface Attack / TOT Certification — B-52H',        abbr:'SAT/TOT',   color:'#3dba6e', awardsQual:null,   desc:'Simulated surface attack with TOT ±30 sec, safe escape maneuver. Grade 3 standard.' },
-  { id:'b52_night',     aircraft:'B-52H',wing:'2bw',   phase:'Phase 3',    name:'Night Currency Qualification — B-52H',              abbr:'NIGHT QUAL',color:'#3dba6e', awardsQual:null,   desc:'Night lighting config, night VFR/IFR departure, night instrument approach and landing.' },
-  { id:'b52_bmc',       aircraft:'B-52H',wing:'2bw',   phase:'BMC',        name:'Basic Mission Capable — B-52H',                     abbr:'B-52 BMC',  color:'#3dba6e', awardsQual:'bmc',  desc:'BMC on B-52H. Phase 1 and 2 complete. Qualified in handling, instruments, AR.' },
-  { id:'b52_cmr',       aircraft:'B-52H',wing:'2bw',   phase:'CMR',        name:'Combat Mission Ready — B-52H',                      abbr:'B-52 CMR',  color:'#6ddea0', awardsQual:'cmr',  desc:'Full CMR on B-52H. All three phases complete.' },
-  { id:'b52_ip',        aircraft:'B-52H',wing:'2bw',   phase:'IP',         name:'Instructor Pilot — B-52H',                          abbr:'B-52 IP',   color:'#f0cc72', awardsQual:'ip',   desc:'Certified IP on B-52H Stratofortress. All phases, Sq/CC certified.' },
-];
+// ── CATALOG DEPENDENCY GUARD ─────────────────────────────────
+// This page needs js/training-catalog.js. If that file wasn't
+// deployed, every award/render path throws deep inside and the page
+// looks broken for no obvious reason. Fail loudly and early instead.
+if (typeof TRAINING_CERTS === 'undefined' || typeof QUAL_STATUS === 'undefined') {
+  window.TRAINING_CERTS = window.TRAINING_CERTS || [];
+  window.QUAL_STATUS    = window.QUAL_STATUS    || [];
+  console.error('[VTAC] js/training-catalog.js did not load — certifications unavailable.');
+  document.addEventListener('DOMContentLoaded', function () {
+    const host = document.querySelector('.container.page-body') || document.body;
+    const box = document.createElement('div');
+    box.className = 'alert alert-error';
+    box.style.cssText = 'margin:16px 0';
+    box.textContent = 'Training catalog failed to load (js/training-catalog.js). '
+      + 'Certifications cannot be listed or awarded until that file is deployed.';
+    host.insertBefore(box, host.firstChild);
+  });
+}
 
 // ── STATE ────────────────────────────────────────────────────
 let selectedPilot   = null;
