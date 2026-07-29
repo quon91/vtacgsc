@@ -197,12 +197,45 @@
         <div class="card-header"><div class="card-icon">🎓</div><div class="card-title">Award a certification</div></div>
         <div class="card-body">
           <div class="form-row">
-            <div class="form-group"><label>Pilot</label><select id="tr-pilot"></select></div>
-            <div class="form-group"><label>Certification / course</label><input type="text" id="tr-name" placeholder="e.g. B-1B MQC Complete — Qualified" maxlength="80"></div>
+            <div class="form-group">
+              <label>Airframe</label>
+              <select id="tr-aircraft" onchange="renderCertPicker()"></select>
+            </div>
+            <div class="form-group">
+              <label>Certification</label>
+              <select id="tr-cert" onchange="onCertPicked()"></select>
+            </div>
+          </div>
+          <div id="tr-cert-info" style="font-size:12px;color:var(--text2);background:var(--card2);border-radius:7px;padding:9px 12px;margin-bottom:12px;display:none"></div>
+          <div class="form-group" id="tr-custom-wrap" style="display:none">
+            <label>Custom certification name</label>
+            <input type="text" id="tr-name" placeholder="e.g. Coalition Exercise — Qualified" maxlength="80">
+            <div class="form-hint">Only for one-offs. Anything you award regularly belongs in <span style="font-family:var(--mono)">js/training-catalog.js</span> so the name stays consistent.</div>
+          </div>
+          <div class="form-group">
+            <label>Award to <span style="color:var(--text3)">(tick one or more)</span></label>
+            <input type="text" id="tr-pilot-search" placeholder="Filter pilots…" oninput="renderAwardPilots()" style="margin-bottom:8px">
+            <div id="tr-pilot-list" style="max-height:210px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px"></div>
+            <div style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
+              <button type="button" class="btn btn-outline btn-xs" onclick="toggleAllAwardPilots(true)">Select all shown</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="toggleAllAwardPilots(false)">Clear</button>
+              <span id="tr-selected-count" style="font-size:11px;color:var(--text3)"></span>
+            </div>
           </div>
           <div class="form-group"><label>Notes <span style="color:var(--text3)">(optional — IP, grade, remarks)</span></label><input type="text" id="tr-notes" maxlength="140" placeholder="e.g. Q1 · IP: Quon"></div>
           <button class="btn btn-primary btn-sm" onclick="addTrainingRecord()">🎓 Award certification</button>
         </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="tr-filter-text" placeholder="Search pilot or certification…" oninput="renderTrainingRecords()" style="flex:1;min-width:200px">
+        <select id="tr-filter-wing" onchange="renderTrainingRecords()" style="width:auto">
+          <option value="">All wings</option>
+          <option value="7bw">7th Bomb Wing</option>
+          <option value="509bw">509th Bomb Wing</option>
+          <option value="2bw">2nd Bomb Wing</option>
+        </select>
+        <span id="tr-record-count" style="font-size:12px;color:var(--text2)"></span>
       </div>
       <div id="training-list"><div class="empty-state"><div class="icon">🎓</div><p>Loading training records…</p></div></div>
     </div>
@@ -640,6 +673,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="/js/firebase-config.js?v=2"></script>
 <script src="/js/nav.js"></script>
+<!-- Shared cert catalog — see js/training-catalog.js to add a cert.
+     Instructor's Corner reads the same file, so they can't drift. -->
+<script src="/js/training-catalog.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════════
 //  HTML ESCAPING — stored-XSS protection
@@ -683,6 +719,25 @@ if (typeof renderWingsBadgeSVG !== 'function') {
     size = size || 32;
     return '<svg width="' + size + '" height="' + (size*0.5) + '" viewBox="0 0 64 32" xmlns="http://www.w3.org/2000/svg" style="display:block;background:#888"></svg>';
   };
+}
+
+// ── CATALOG DEPENDENCY GUARD ─────────────────────────────────
+// This page needs js/training-catalog.js. If that file wasn't
+// deployed, every award/render path throws deep inside and the page
+// looks broken for no obvious reason. Fail loudly and early instead.
+if (typeof TRAINING_CERTS === 'undefined' || typeof QUAL_STATUS === 'undefined') {
+  window.TRAINING_CERTS = window.TRAINING_CERTS || [];
+  window.QUAL_STATUS    = window.QUAL_STATUS    || [];
+  console.error('[VTAC] js/training-catalog.js did not load — certifications unavailable.');
+  document.addEventListener('DOMContentLoaded', function () {
+    const host = document.querySelector('.container.page-body') || document.body;
+    const box = document.createElement('div');
+    box.className = 'alert alert-error';
+    box.style.cssText = 'margin:16px 0';
+    box.textContent = 'Training catalog failed to load (js/training-catalog.js). '
+      + 'Certifications cannot be listed or awarded until that file is deployed.';
+    host.insertBefore(box, host.firstChild);
+  });
 }
 
 function onAuthReady(user, pilot) {
@@ -983,52 +1038,110 @@ function filterPilots() {
 //  the training collection (pilotUid + passed), and cert arrays on
 //  pilot documents. Grouped by pilot.
 // ══════════════════════════════════════════════════════════════
+// Every record from every place certs have ever been stored, loaded
+// once into _trRecords. Rendering is then a pure filter over that, so
+// typing in the search box doesn't re-hit Firestore.
+let _trRecords = [];
+
 async function loadTrainingRecords() {
   const el = document.getElementById('training-list');
   el.innerHTML = '<div class="empty-state"><p>Loading training records…</p></div>';
   if (!allPilots.length) { try { await loadAllPilots(); } catch(e) {} }
-  // Pilot picker for awarding
-  document.getElementById('tr-pilot').innerHTML = allPilots
-    .filter(p => p.status === 'active')
-    .sort((a,b)=>(a.displayName||a.callsign||'').localeCompare(b.displayName||b.callsign||''))
-    .map(p => `<option value="${esc(p.uid)}">${esc(p.displayName||p.callsign||p.uid)}</option>`).join('');
+
+  renderAircraftPicker();
+  renderCertPicker();
+  renderAwardPilots();
+
   let recs = [];
   try {
     const s = await db.collection('trainingRecords').get();
-    recs = s.docs.map(d => ({id: d.id, src: 'rec', ...d.data()}));
-  } catch(e) {}
-  // Legacy: completion docs that live in the training collection
+    recs = s.docs.map(d => Object.assign({ src:'rec' }, d.data(), { id: d.id }));
+  } catch(e) { console.error('trainingRecords:', e); }
   try {
     const s = await db.collection('training').get();
     s.docs.forEach(d => {
       const t = d.data();
       if (t.pilotUid && (t.passed === true || t.completedAt)) {
-        recs.push({id: d.id, src: 'legacy', pilotUid: t.pilotUid, name: t.eventName || t.title || 'Training event', completedAt: t.completedAt || t.createdAt, notes: t.notes || '', pilotCallsign: t.pilotCallsign || t.callsign || ''});
+        recs.push({ id:d.id, src:'legacy', pilotUid:t.pilotUid,
+          name: t.eventName || t.title || 'Training event',
+          completedAt: t.completedAt || t.createdAt, notes: t.notes || '',
+          pilotCallsign: t.pilotCallsign || t.callsign || '' });
       }
     });
-  } catch(e) {}
-  // Certs stored directly on pilot documents
+  } catch(e) { console.error('training legacy:', e); }
   allPilots.forEach(p => {
     (p.certifications || p.certs || []).forEach((c, i) => {
-      recs.push({id: p.uid + '_pc' + i, src: 'pilot', pilotUid: p.uid, name: (c && c.name) || String(c), completedAt: c && (c.awardedAt || c.completedAt) || null, notes: (c && c.notes) || ''});
+      recs.push({ id:p.uid+'_pc'+i, src:'pilot', pilotUid:p.uid,
+        name:(c && c.name) || String(c),
+        completedAt:(c && (c.awardedAt || c.completedAt)) || null,
+        notes:(c && c.notes) || '' });
+    });
+    // trainingCerts is the map Instructor's Corner writes, keyed by
+    // catalog cert id — resolve the id back to its proper name.
+    Object.entries(p.trainingCerts || {}).forEach(([cid, d]) => {
+      const cat = typeof certById === 'function' ? certById(cid) : null;
+      recs.push({ id:p.uid+'_tc_'+cid, src:'ic', pilotUid:p.uid, certId:cid,
+        name:(cat && cat.name) || cid,
+        abbr:(cat && cat.abbr) || '',
+        completedAt:(d && d.awardedAt) || null,
+        awardedBy:(d && d.awardedBy) || '' });
     });
   });
-  if (!recs.length) {
+
+  _trRecords = recs;
+  renderTrainingRecords();
+}
+
+// Pure render — filters _trRecords, never fetches.
+function renderTrainingRecords() {
+  const el = document.getElementById('training-list');
+  const q = (document.getElementById('tr-filter-text')?.value || '').toLowerCase();
+  const wing = document.getElementById('tr-filter-wing')?.value || '';
+
+  const shown = _trRecords.filter(r => {
+    const p = allPilots.find(x => x.uid === r.pilotUid);
+    if (wing && (!p || p.wing !== wing)) return false;
+    if (!q) return true;
+    const nm = (p ? (p.displayName || p.callsign || '') : (r.pilotCallsign || '')).toLowerCase();
+    return nm.includes(q) || String(r.name || '').toLowerCase().includes(q)
+        || String(r.abbr || '').toLowerCase().includes(q);
+  });
+
+  const countEl = document.getElementById('tr-record-count');
+  if (countEl) countEl.textContent = shown.length + ' of ' + _trRecords.length + ' record' + (_trRecords.length===1?'':'s');
+
+  if (!_trRecords.length) {
     el.innerHTML = '<div class="empty-state"><div class="icon">🎓</div><p>No training records found anywhere — award the first one above.</p></div>';
     return;
   }
+  if (!shown.length) {
+    el.innerHTML = '<div class="empty-state"><p>No records match this filter.</p></div>';
+    return;
+  }
+
   const byPilot = {};
-  recs.forEach(r => { (byPilot[r.pilotUid] = byPilot[r.pilotUid] || []).push(r); });
-  el.innerHTML = Object.entries(byPilot).map(([uid, list]) => {
+  shown.forEach(r => { (byPilot[r.pilotUid] = byPilot[r.pilotUid] || []).push(r); });
+
+  const SRC_TAG = {
+    rec:    '',
+    legacy: '<span style="font-size:9px;color:var(--text3);border:1px solid var(--border);border-radius:7px;padding:1px 5px;margin-left:5px">LEGACY</span>',
+    pilot:  '<span style="font-size:9px;color:var(--text3);border:1px solid var(--border);border-radius:7px;padding:1px 5px;margin-left:5px">ON PROFILE</span>',
+    ic:     '<span style="font-size:9px;color:var(--blue2);border:1px solid rgba(74,144,217,.35);border-radius:7px;padding:1px 5px;margin-left:5px">IP AWARDED</span>',
+  };
+
+  el.innerHTML = Object.entries(byPilot).sort(function(a,b) {
+    const an = (allPilots.find(x=>x.uid===a[0])||{}), bn = (allPilots.find(x=>x.uid===b[0])||{});
+    return ((an.displayName||an.callsign||'')).localeCompare(bn.displayName||bn.callsign||'');
+  }).map(([uid, list]) => {
     const p = allPilots.find(x => x.uid === uid);
     const nm = p ? (p.displayName || p.callsign) : (list[0].pilotCallsign || 'Unknown pilot');
-    const wing = p && p.wing ? ` · <span style="color:var(--text3)">${esc(getWingAbbrMA(p.wing))}</span>` : '';
+    const wingTag = p && p.wing ? ` · <span style="color:var(--text3)">${esc(getWingAbbrMA(p.wing))}</span>` : '';
     return `<div class="card" style="margin-bottom:12px"><div class="card-body">
-      <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:8px">${esc(nm)}${wing} <span style="font-size:11px;color:var(--text3);font-weight:400">· ${list.length} record${list.length>1?'s':''}</span></div>
+      <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:8px">${esc(nm)}${wingTag} <span style="font-size:11px;color:var(--text3);font-weight:400">· ${list.length} record${list.length>1?'s':''}</span></div>
       ${list.map(r => `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--border)">
         <span style="font-size:15px">✅</span>
         <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(r.name || 'Certification')}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(r.name || 'Certification')}${SRC_TAG[r.src]||''}</div>
           <div style="font-size:11px;color:var(--text3)">${r.completedAt && r.completedAt.toDate ? esc(r.completedAt.toDate().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})) : ''}${r.awardedBy ? ' · by ' + esc(r.awardedBy) : ''}${r.notes ? ' · ' + esc(r.notes) : ''}</div>
         </div>
         ${r.src === 'rec' ? `<button class="btn btn-danger btn-xs" onclick="deleteTrainingRecord('${escAttr(r.id)}')">Remove</button>` : ''}
@@ -1036,44 +1149,144 @@ async function loadTrainingRecords() {
     </div></div>`;
   }).join('');
 }
+
+// ── AWARD PICKERS ────────────────────────────────────────────
+function renderAircraftPicker() {
+  const sel = document.getElementById('tr-aircraft');
+  if (!sel || typeof certAircraft !== 'function') return;
+  sel.innerHTML = certAircraft().map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('')
+    + '<option value="__custom">Other / one-off…</option>';
+}
+
+function renderCertPicker() {
+  const acSel = document.getElementById('tr-aircraft');
+  const sel = document.getElementById('tr-cert');
+  if (!sel || typeof certsByPhase !== 'function') return;
+  const ac = acSel ? acSel.value : '';
+  if (ac === '__custom') {
+    sel.innerHTML = '<option value="__custom">— custom certification —</option>';
+    onCertPicked();
+    return;
+  }
+  sel.innerHTML = certsByPhase(ac).map(g =>
+    `<optgroup label="${esc(g.phase)}">` + g.certs.map(c =>
+      `<option value="${esc(c.id)}">${esc(c.abbr)} — ${esc(c.name)}</option>`).join('') + '</optgroup>'
+  ).join('') + '<option value="__custom">Other / one-off…</option>';
+  onCertPicked();
+}
+
+// Shows what the selected cert certifies, and warns when it will also
+// change the pilot's overall qualification level — a bigger deal than
+// awarding a cert, so it shouldn't be a surprise.
+function onCertPicked() {
+  const sel = document.getElementById('tr-cert');
+  const info = document.getElementById('tr-cert-info');
+  const customWrap = document.getElementById('tr-custom-wrap');
+  const isCustom = !sel || sel.value === '__custom';
+  if (customWrap) customWrap.style.display = isCustom ? 'block' : 'none';
+  if (!info) return;
+  if (isCustom) { info.style.display = 'none'; return; }
+  const c = certById(sel.value);
+  if (!c) { info.style.display = 'none'; return; }
+  const q = c.awardsQual ? qualById(c.awardsQual) : null;
+  info.style.display = 'block';
+  info.innerHTML = esc(c.desc)
+    + (q ? `<div style="margin-top:6px;color:var(--amber)">⚠ Also sets ${esc(c.aircraft)} qualification to <strong>${esc(q.abbr)}</strong> — ${esc(q.name)}</div>` : '');
+}
+
+function renderAwardPilots() {
+  const el = document.getElementById('tr-pilot-list');
+  if (!el) return;
+  const q = (document.getElementById('tr-pilot-search')?.value || '').toLowerCase();
+  const picked = new Set([...document.querySelectorAll('.tr-pilot-cb:checked')].map(c => c.value));
+  const list = allPilots.filter(p => p.status === 'active')
+    .filter(p => !q || (p.displayName||p.callsign||'').toLowerCase().includes(q) || (getWingName(p.wing)||'').toLowerCase().includes(q))
+    .sort((a,b) => (a.displayName||a.callsign||'').localeCompare(b.displayName||b.callsign||''));
+  if (!list.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3)">No active pilots match.</div>'; return; }
+  el.innerHTML = list.map(p => `
+    <label class="perm-check">
+      <input type="checkbox" value="${esc(p.uid)}" class="tr-pilot-cb" ${picked.has(p.uid)?'checked':''} onchange="updateAwardCount()">
+      <span>${esc(p.displayName||p.callsign||p.uid)} <span style="color:var(--text3);font-size:11px">${esc(getWingAbbrMA(p.wing)||'—')}</span></span>
+    </label>`).join('');
+  updateAwardCount();
+}
+function toggleAllAwardPilots(on) {
+  document.querySelectorAll('.tr-pilot-cb').forEach(c => { c.checked = on; });
+  updateAwardCount();
+}
+function updateAwardCount() {
+  const n = document.querySelectorAll('.tr-pilot-cb:checked').length;
+  const el = document.getElementById('tr-selected-count');
+  if (el) el.textContent = n ? n + ' pilot' + (n===1?'':'s') + ' selected' : '';
+}
+
 function getWingAbbrMA(w){ return {'7bw':'7th BW','509bw':'509th BW','2bw':'2nd BW'}[w] || w || ''; }
 
 async function addTrainingRecord() {
-  const uid  = document.getElementById('tr-pilot').value;
-  const name = document.getElementById('tr-name').value.trim();
+  const uids = [...document.querySelectorAll('.tr-pilot-cb:checked')].map(c => c.value);
+  const certSel = document.getElementById('tr-cert').value;
   const notes = document.getElementById('tr-notes').value.trim();
-  if (!uid)  { toast('Pick a pilot', 'error'); return; }
-  if (!name) { toast('Enter the certification name', 'error'); return; }
-  const p = allPilots.find(x => x.uid === uid);
-  try {
-    await db.collection('trainingRecords').add({
-      pilotUid: uid,
-      pilotCallsign: p ? (p.displayName || p.callsign || '') : '',
-      name: name,
-      notes: notes,
-      passed: true,
-      completedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      awardedBy: currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '',
-    });
+  const isCustom = certSel === '__custom';
+  const cat = isCustom ? null : certById(certSel);
+  const nameEl = document.getElementById('tr-name');
+  const name = isCustom ? (nameEl ? nameEl.value.trim() : '') : (cat ? cat.name : '');
+
+  if (!uids.length) { toast('Tick at least one pilot', 'error'); return; }
+  if (!name)        { toast(isCustom ? 'Enter the certification name' : 'Pick a certification', 'error'); return; }
+  if (uids.length > 1 && !confirm('Award "' + name + '" to ' + uids.length + ' pilots?')) return;
+
+  let ok = 0; const failed = [];
+  for (const uid of uids) {
+    const p = allPilots.find(x => x.uid === uid);
     try {
-      await db.collection('auditLog').add({
-        eventType: 'cert_awarded',
-        actor: { uid: currentUser.uid, callsign: currentPilot?.displayName || currentPilot?.callsign || '—' },
-        details: { notes: 'Cert awarded to ' + (p ? (p.displayName || p.callsign) : uid) + ': ' + name },
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      await db.collection('trainingRecords').add({
+        pilotUid: uid,
+        pilotCallsign: p ? (p.displayName || p.callsign || '') : '',
+        certId: cat ? cat.id : null,
+        name: name,
+        abbr: cat ? cat.abbr : '',
+        aircraft: cat ? cat.aircraft : '',
+        notes: notes,
+        passed: true,
+        completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        awardedBy: currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '',
       });
-    } catch(e) {}
-    document.getElementById('tr-name').value = '';
-    document.getElementById('tr-notes').value = '';
-    toast('Certification awarded ✓');
-    loadTrainingRecords();
-  } catch(e) { toast('Error: ' + e.message, 'error'); }
+      // A catalog cert can carry a qualification level with it. Mirror
+      // it onto the pilot doc exactly as Instructor's Corner does, so
+      // both award paths produce identical data.
+      if (cat && cat.awardsQual) {
+        await db.collection('pilots').doc(uid).update({
+          ['trainingQuals.' + cat.aircraft]: cat.awardsQual,
+          ['trainingQualUpdated.' + cat.aircraft]: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+      ok++;
+    } catch(e) {
+      console.error('award to ' + uid + ':', e);
+      failed.push(p ? (p.displayName || p.callsign || uid) : uid);
+    }
+  }
+
+  if (ok) {
+    logAudit('cert_awarded',
+      name + ' awarded to ' + ok + ' pilot' + (ok===1?'':'s')
+      + (failed.length ? ' (' + failed.length + ' failed)' : ''),
+      { certName: name });
+  }
+  document.getElementById('tr-notes').value = '';
+  if (isCustom && nameEl) nameEl.value = '';
+  toggleAllAwardPilots(false);
+
+  if (failed.length) toast('Awarded to ' + ok + ', failed for: ' + failed.join(', '), 'error');
+  else toast('Awarded to ' + ok + ' pilot' + (ok===1?'':'s') + ' ✓');
+  loadTrainingRecords();
 }
 
 async function deleteTrainingRecord(id) {
   if (!confirm('Remove this training record?')) return;
   try {
     await db.collection('trainingRecords').doc(id).delete();
+    logAudit('cert_revoked', 'Training record removed');
     toast('Record removed');
     loadTrainingRecords();
   } catch(e) { toast('Error: ' + e.message, 'error'); }
