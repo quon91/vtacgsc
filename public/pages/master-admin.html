@@ -199,11 +199,11 @@
           <div class="form-row">
             <div class="form-group">
               <label>Airframe</label>
-              <select id="tr-aircraft" onchange="renderCertPicker()"></select>
+              <select id="tr-aircraft" onchange="onAircraftPicked()"></select>
             </div>
             <div class="form-group">
               <label>Certification</label>
-              <select id="tr-cert" onchange="onCertPicked()"></select>
+              <select id="tr-cert" onchange="onCertPicked();renderAwardPilots()"></select>
             </div>
           </div>
           <div id="tr-cert-info" style="font-size:12px;color:var(--text2);background:var(--card2);border-radius:7px;padding:9px 12px;margin-bottom:12px;display:none"></div>
@@ -1043,14 +1043,17 @@ function filterPilots() {
 // typing in the search box doesn't re-hit Firestore.
 let _trRecords = [];
 
-async function loadTrainingRecords() {
+async function loadTrainingRecords(opts) {
+  const keepForm = !!(opts && opts.keepForm);
   const el = document.getElementById('training-list');
-  el.innerHTML = '<div class="empty-state"><p>Loading training records…</p></div>';
+  if (!keepForm) el.innerHTML = '<div class="empty-state"><p>Loading training records…</p></div>';
   if (!allPilots.length) { try { await loadAllPilots(); } catch(e) {} }
 
-  renderAircraftPicker();
-  renderCertPicker();
-  renderAwardPilots();
+  // On a post-award refresh the form is left exactly as the user had it.
+  if (!keepForm) {
+    renderAircraftPicker();
+    renderCertPicker();
+  }
 
   let recs = [];
   try {
@@ -1089,6 +1092,10 @@ async function loadTrainingRecords() {
   });
 
   _trRecords = recs;
+  // Index who already holds what, then re-mark the pilot list so the
+  // "✓ held" flags reflect the records we just loaded.
+  buildHeldIndex(recs);
+  renderAwardPilots();
   renderTrainingRecords();
 }
 
@@ -1154,8 +1161,22 @@ function renderTrainingRecords() {
 function renderAircraftPicker() {
   const sel = document.getElementById('tr-aircraft');
   if (!sel || typeof certAircraft !== 'function') return;
+  // Remember the choice so a records refresh doesn't dump you back to
+  // the first airframe mid-session, and reopening the panel resumes
+  // where you left off.
+  let keep = sel.value;
+  if (!keep) { try { keep = sessionStorage.getItem('vtac_tr_aircraft') || ''; } catch(e) {} }
   sel.innerHTML = certAircraft().map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('')
     + '<option value="__custom">Other / one-off…</option>';
+  if (keep) sel.value = keep;
+}
+
+// Airframe changed — remember it, rebuild the cert list, re-mark pilots.
+function onAircraftPicked() {
+  const sel = document.getElementById('tr-aircraft');
+  try { sessionStorage.setItem('vtac_tr_aircraft', sel ? sel.value : ''); } catch(e) {}
+  renderCertPicker();
+  renderAwardPilots();
 }
 
 function renderCertPicker() {
@@ -1168,10 +1189,13 @@ function renderCertPicker() {
     onCertPicked();
     return;
   }
+  const keep = sel.value;
   sel.innerHTML = certsByPhase(ac).map(g =>
     `<optgroup label="${esc(g.phase)}">` + g.certs.map(c =>
       `<option value="${esc(c.id)}">${esc(c.abbr)} — ${esc(c.name)}</option>`).join('') + '</optgroup>'
   ).join('') + '<option value="__custom">Other / one-off…</option>';
+  // Restore only if that cert still exists for the chosen airframe.
+  if (keep) { const o = sel.querySelector('option[value="' + String(keep).replace(/["\\]/g,'') + '"]'); if (o) sel.value = keep; }
   onCertPicked();
 }
 
@@ -1194,6 +1218,36 @@ function onCertPicked() {
     + (q ? `<div style="margin-top:6px;color:var(--amber)">⚠ Also sets ${esc(c.aircraft)} qualification to <strong>${esc(q.abbr)}</strong> — ${esc(q.name)}</div>` : '');
 }
 
+// uid -> Set of cert keys that pilot already holds. Rebuilt whenever
+// records load, so the pilot list can show who is already done and the
+// award loop can skip them.
+let trHeldByPilot = {};
+function buildHeldIndex(recs) {
+  trHeldByPilot = {};
+  (recs || []).forEach(function(r) {
+    if (!r.pilotUid) return;
+    const key = r.certId || ('name:' + (r.name || ''));
+    (trHeldByPilot[r.pilotUid] = trHeldByPilot[r.pilotUid] || new Set()).add(key);
+  });
+}
+// Catalog certs key on id; one-offs key on their typed name.
+function certKeyForSelection() {
+  const sel = document.getElementById('tr-cert');
+  if (!sel) return null;
+  if (sel.value === '__custom') {
+    const n = document.getElementById('tr-name');
+    return (n && n.value.trim()) ? 'name:' + n.value.trim() : null;
+  }
+  return sel.value || null;
+}
+function alreadyHolds(uid) {
+  const key = certKeyForSelection();
+  if (!key) return false;
+  return !!(trHeldByPilot[uid] && trHeldByPilot[uid].has(key));
+}
+// Clears the pilot ticks only — the airframe and cert stay chosen.
+function clearAwardPilots() { toggleAllAwardPilots(false); }
+
 function renderAwardPilots() {
   const el = document.getElementById('tr-pilot-list');
   if (!el) return;
@@ -1203,11 +1257,13 @@ function renderAwardPilots() {
     .filter(p => !q || (p.displayName||p.callsign||'').toLowerCase().includes(q) || (getWingName(p.wing)||'').toLowerCase().includes(q))
     .sort((a,b) => (a.displayName||a.callsign||'').localeCompare(b.displayName||b.callsign||''));
   if (!list.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3)">No active pilots match.</div>'; return; }
-  el.innerHTML = list.map(p => `
-    <label class="perm-check">
+  el.innerHTML = list.map(p => {
+    const held = alreadyHolds(p.uid);
+    return `
+    <label class="perm-check" style="${held?'opacity:.5':''}"${held?' title="Already holds the selected certification"':''}>
       <input type="checkbox" value="${esc(p.uid)}" class="tr-pilot-cb" ${picked.has(p.uid)?'checked':''} onchange="updateAwardCount()">
-      <span>${esc(p.displayName||p.callsign||p.uid)} <span style="color:var(--text3);font-size:11px">${esc(getWingAbbrMA(p.wing)||'—')}</span></span>
-    </label>`).join('');
+      <span>${esc(p.displayName||p.callsign||p.uid)} <span style="color:var(--text3);font-size:11px">${esc(getWingAbbrMA(p.wing)||'—')}</span>${held?' <span style="color:var(--green2);font-size:11px">✓ held</span>':''}</span>
+    </label>`; }).join('');
   updateAwardCount();
 }
 function toggleAllAwardPilots(on) {
@@ -1215,9 +1271,13 @@ function toggleAllAwardPilots(on) {
   updateAwardCount();
 }
 function updateAwardCount() {
-  const n = document.querySelectorAll('.tr-pilot-cb:checked').length;
+  const ticked = [...document.querySelectorAll('.tr-pilot-cb:checked')].map(c => c.value);
+  const skip = ticked.filter(alreadyHolds).length;
   const el = document.getElementById('tr-selected-count');
-  if (el) el.textContent = n ? n + ' pilot' + (n===1?'':'s') + ' selected' : '';
+  if (!el) return;
+  if (!ticked.length) { el.textContent = ''; return; }
+  el.textContent = ticked.length + ' selected'
+    + (skip ? ' · ' + skip + ' already hold this, will be skipped' : '');
 }
 
 function getWingAbbrMA(w){ return {'7bw':'7th BW','509bw':'509th BW','2bw':'2nd BW'}[w] || w || ''; }
@@ -1233,10 +1293,17 @@ async function addTrainingRecord() {
 
   if (!uids.length) { toast('Tick at least one pilot', 'error'); return; }
   if (!name)        { toast(isCustom ? 'Enter the certification name' : 'Pick a certification', 'error'); return; }
-  if (uids.length > 1 && !confirm('Award "' + name + '" to ' + uids.length + ' pilots?')) return;
+
+  // Skip anyone who already holds it, so pressing Award twice with the
+  // same selection can't create duplicate records.
+  const skipped = uids.filter(alreadyHolds);
+  const targets = uids.filter(function(u){ return !alreadyHolds(u); });
+  if (!targets.length) { toast('Every selected pilot already holds "' + name + '"', 'warn'); return; }
+  if (targets.length > 1 && !confirm('Award "' + name + '" to ' + targets.length + ' pilots?'
+      + (skipped.length ? '\n\n' + skipped.length + ' already hold it and will be skipped.' : ''))) return;
 
   let ok = 0; const failed = [];
-  for (const uid of uids) {
+  for (const uid of targets) {
     const p = allPilots.find(x => x.uid === uid);
     try {
       await db.collection('trainingRecords').add({
@@ -1273,14 +1340,22 @@ async function addTrainingRecord() {
       + (failed.length ? ' (' + failed.length + ' failed)' : ''),
       { certName: name });
   }
+  // Deliberately KEEP the airframe, the cert and the pilot ticks.
+  // Clearing them was the slow part — you had to re-pick everything for
+  // every award. Awarded pilots now show "✓ held" and are skipped
+  // automatically, so leaving them ticked is harmless: keep the cert
+  // and tick more people, or keep the people and change the cert.
+  // Only notes clear, since they're specific to one award.
   document.getElementById('tr-notes').value = '';
-  if (isCustom && nameEl) nameEl.value = '';
-  toggleAllAwardPilots(false);
 
   if (failed.length) toast('Awarded to ' + ok + ', failed for: ' + failed.join(', '), 'error');
   else toast('Awarded to ' + ok + ' pilot' + (ok===1?'':'s') + ' ✓');
-  loadTrainingRecords();
+  refreshTrainingRecords();
 }
+
+// Reloads records WITHOUT rebuilding the award form, so the current
+// airframe / cert / pilot selection survives.
+async function refreshTrainingRecords() { await loadTrainingRecords({ keepForm: true }); }
 
 async function deleteTrainingRecord(id) {
   if (!confirm('Remove this training record?')) return;
