@@ -58,6 +58,17 @@
 .ses-avatar{width:68px;height:68px;border-radius:50%;object-fit:cover;border:2px solid #dfe4ef;flex-shrink:0;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 18px rgba(223,228,239,.25)}
 .ses-name{font-size:19px;font-weight:800;color:var(--text)}
 .ses-tag{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#0a0c14;background:#dfe4ef;border-radius:9px;padding:2px 9px;margin-left:8px;vertical-align:middle}
+/* ── WING ATTACHMENT + AIRCRAFT RATINGS ──
+   A pilot has ONE active wing and any number of reserve attachments.
+   Reserve chips are outlined rather than filled so the active wing
+   still reads as the primary assignment at a glance. */
+.wing-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;align-items:center}
+.wchip{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:9px;padding:2px 8px}
+.wchip.active{color:#0a0c14}
+.wchip.reserve{background:transparent}
+.rating-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;align-items:center}
+.rating-lbl{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-right:2px}
+.rchip{font-size:9px;font-weight:800;border-radius:8px;padding:2px 7px;font-family:var(--mono)}
 </style>
 </head>
 <body>
@@ -131,7 +142,7 @@
   <!-- MAJCOM filter -->
   <div class="roster-filters" id="majcom-filters"></div>
   <!-- Wing filter — only visible when Global Strike is selected -->
-  <div class="roster-filters" id="wing-filters" style="display:none">
+  <div class="roster-filters" id="wing-filters" style="display:flex">
     <button class="rf-btn active" onclick="filterWing(null,this)">All Wings</button>
     <button class="rf-btn" onclick="filterWing('7bw',this)">7th BW</button>
     <button class="rf-btn" onclick="filterWing('509bw',this)">509th BW</button>
@@ -192,12 +203,78 @@ const MAJCOMS = {
 };
 function pilotMajcom(p) { return p.majcom || 'afgsc'; }
 
+// ── UNIT ATTACHMENT ──────────────────────────────────────────
+// A pilot's HOME is p.wing + p.squadron — for GSC members that's a
+// GSC wing; for partner personnel it's empty, because their home is
+// their own MAJCOM's unit. Either way, p.attachments lists GSC units
+// they're attached to as reservists:
+//     attachments: [{ wing:'7bw', squadron:'9bs' }, { wing:'2bw' }]
+// So a vACC pilot flying reserve with the 9th BS has no GSC wing of
+// their own but still appears on the 7th BW roster marked RES.
+function pilotUnits(p) {
+  const out = [];
+  if (p && p.wing) out.push({ wing: p.wing, squadron: p.squadron || null, active: true });
+  ((p && p.attachments) || []).forEach(function(a) {
+    if (!a || !a.wing) return;
+    // Same wing AND same squadron already listed — skip the duplicate.
+    if (out.some(function(u){ return u.wing === a.wing && u.squadron === (a.squadron||null); })) return;
+    out.push({ wing: a.wing, squadron: a.squadron || null, active: false });
+  });
+  return out;
+}
+function pilotWings(p) {
+  return pilotUnits(p).map(function(u){ return u.wing; })
+    .filter(function(w,i,arr){ return arr.indexOf(w) === i; });
+}
+function isInWing(p, wingId) {
+  return !wingId || pilotWings(p).indexOf(wingId) !== -1;
+}
+// True when a pilot's home is outside GSC but they hold a GSC slot.
+function isAttachedOnly(p) {
+  return !(p && p.wing) && pilotUnits(p).length > 0;
+}
+
+// Aircraft qualification ratings, written by Instructor's Corner into
+// pilot.trainingQuals keyed by airframe. Read-only here.
+const RATING_STYLE = {
+  iqt:  { abbr:'IQT',   color:'#9aa0b8' },
+  bmc:  { abbr:'BMC',   color:'#4a90d9' },
+  cmr:  { abbr:'CMR',   color:'#3dba6e' },
+  ncmr: { abbr:'N-CMR', color:'#e09030' },
+  ip:   { abbr:'IP',    color:'#c8a951' },
+};
+function ratingsHtml(p) {
+  const q = (p && p.trainingQuals) || {};
+  const keys = Object.keys(q).filter(function(k){ return q[k]; });
+  if (!keys.length) return '';
+  return '<div class="rating-row"><span class="rating-lbl">Rated</span>' + keys.map(function(ac) {
+    const r = RATING_STYLE[q[ac]] || { abbr: String(q[ac]).toUpperCase(), color:'#888' };
+    return '<span class="rchip" style="background:' + r.color + '22;color:' + r.color
+         + ';border:1px solid ' + r.color + '55">' + esc(ac) + ' ' + esc(r.abbr) + '</span>';
+  }).join('') + '</div>';
+}
+
+// Home unit filled, attachments outlined. Which one is "home" comes
+// from the active flag, NOT from position — a partner pilot has no
+// home GSC unit, so every chip they get is an attachment.
+function wingChipsHtml(p) {
+  const units = pilotUnits(p);
+  if (!units.length) return '';
+  return '<div class="wing-chips">' + units.map(function(u) {
+    const col = (WINGS[u.wing] && WINGS[u.wing].color) || '#c8a951';
+    const nm  = getWingName(u.wing) || u.wing;
+    const sq  = u.squadron ? (' · ' + (getSqName(u.wing, u.squadron) || u.squadron)) : '';
+    return u.active
+      ? '<span class="wchip active" style="background:' + col + '">' + esc(nm + sq) + '</span>'
+      : '<span class="wchip reserve" style="color:' + col + ';border:1px solid ' + col + '66">' + esc(nm + sq) + ' · RES</span>';
+  }).join('') + '</div>';
+}
+
 // A pilot belongs in the GSC Command spotlight if either:
 //  - they hold a role whose NAME is "GSC Commander" (matches the
 //    custom role created in Roles & Permissions, whatever its
 //    generated ID is — matched case-insensitively), or
-//  - their doc carries gscCommand: true (manual flag settable in
-//    Firestore for additional command staff)
+//  - their doc carries gscCommand: true
 // The master admin is deliberately NOT included — holding
 // master_admin does not make someone the GSC Commander.
 function isCommandStaff(p) {
@@ -209,11 +286,10 @@ function isCommandStaff(p) {
 }
 
 // SES — the vTAC Founders. Sits ABOVE GSC Command because Global
-// Strike reports to them. Matched the same way as the GSC tier: by
-// role NAME, so a role created in Roles & Permissions works whatever
-// ID it was generated with. A pilot doc can also carry ses:true.
-// Master admin never counts on its own — holding the admin role does
-// not make someone a founder.
+// Strike reports to them. Matched by role NAME so a role created in
+// Roles & Permissions works whatever ID it was generated with. A
+// pilot doc can also carry ses:true. Master admin never counts on
+// its own — holding the admin role does not make someone a founder.
 function isSES(p) {
   if (p.ses === true) return true;
   return getPilotRoleIds(p).some(function(rid) {
@@ -309,6 +385,8 @@ function renderTier(tier, sectionId, listId, spotlight) {
     } else if (p.wing) {
       unitLine += ' · ' + (getWingName(p.wing)||'');
     }
+    const tierChips = pilotUnits(p).length > 1 ? wingChipsHtml(p) : '';
+    const tierRatings = ratingsHtml(p);
 
     const badgesHtml = roles.map(function(r){
       return '<span class="badge" style="background:'+esc(r.color)+'22;color:'+esc(r.color)+';border:1px solid '+esc(r.color)+'55">'+esc(r.name)+'</span>';
@@ -336,6 +414,7 @@ function renderTier(tier, sectionId, listId, spotlight) {
         + '<div class="roster-info">'
         +   '<div class="'+nameCls+'">'+esc(p.displayName||p.callsign)+sesTag+'</div>'
         +   '<div class="roster-meta">'+esc(unitLine)+'</div>'
+        +   tierChips + tierRatings
         +   '<div class="roster-roles">'+badgesHtml+'</div>'
         +   wingsHtml + medalsHtml
         + '</div>'
@@ -347,6 +426,7 @@ function renderTier(tier, sectionId, listId, spotlight) {
       + '<div class="roster-info">'
       +   '<div class="roster-name">'+esc(p.displayName||p.callsign)+'</div>'
       +   '<div class="roster-meta">'+esc(unitLine)+'</div>'
+      +   tierChips + tierRatings
       +   '<div class="roster-roles">'+badgesHtml+'</div>'
       +   wingsHtml + medalsHtml
       + '</div>'
@@ -375,7 +455,11 @@ function filterMajcom(majcomId, btn) {
   btn.classList.add('active');
   // Wing filter only makes sense inside Global Strike Command
   const wingRow = document.getElementById('wing-filters');
-  if (majcomId === 'afgsc') {
+  // Available under All Commands too — that's how you see a GSC wing's
+  // full strength including attached partner reservists. Under a
+  // specific partner MAJCOM it's hidden, since their own units aren't
+  // GSC wings.
+  if (majcomId === 'afgsc' || majcomId === null) {
     wingRow.style.display = 'flex';
   } else {
     wingRow.style.display = 'none';
@@ -399,7 +483,7 @@ function renderRosterList() {
   const filtered = rosterPilots.filter(p =>
     pilotTier(p) === 'member' && // commanders live in their own sections above
     (!activeMajcom || pilotMajcom(p) === activeMajcom) &&
-    (!activeWingFilter || p.wing === activeWingFilter) &&
+    isInWing(p, activeWingFilter) &&
     (!q || (p.displayName||p.callsign||'').toLowerCase().includes(q))
   );
   if (!filtered.length) { el.innerHTML = '<div class="empty-state"><div class="icon">👨‍✈️</div><p>No pilots match this filter</p></div>'; return; }
@@ -413,12 +497,20 @@ function renderRosterList() {
     const unitLine = isPartner
       ? `<span class="majcom-badge" style="background:${esc(mj.color)}22;color:${esc(mj.color)};border:1px solid ${esc(mj.color)}55">${esc(mj.abbr)}</span> ${esc(mj.name)}`
       : `${esc(getWingName(p.wing)||'Unassigned')}${p.squadron?' · '+esc(getSqName(p.wing,p.squadron)):''}`;
+    // Show the chip row when it adds something the line above doesn't:
+    // more than one unit, or a partner pilot holding a GSC slot (their
+    // unit line shows their MAJCOM, so the GSC attachment would
+    // otherwise be invisible).
+    const chips = (pilotUnits(p).length > 1 || (isPartner && pilotUnits(p).length))
+      ? wingChipsHtml(p) : '';
     return `
     <div class="roster-card">
       <div class="roster-avatar">${p.avatarUrl?`<img src="${safeUrl(p.avatarUrl)}" style="width:52px;height:52px;border-radius:50%;object-fit:cover">`:'✈'}</div>
       <div class="roster-info">
         <div class="roster-name">${esc(p.displayName||p.callsign)}</div>
         <div class="roster-meta">${esc(getRankName(p.rank||'rec'))} · ${unitLine}</div>
+        ${chips}
+        ${ratingsHtml(p)}
         <div class="roster-roles">
           ${roles.map(r=>`<span class="badge" style="background:${esc(r.color)}22;color:${esc(r.color)};border:1px solid ${esc(r.color)}55">${esc(r.name)}</span>`).join('')}
         </div>
