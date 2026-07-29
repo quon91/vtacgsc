@@ -590,7 +590,7 @@
     </div>
     <div class="form-group">
       <label>Wing</label>
-      <select id="rank-modal-wing" onchange="updateRankSqOptions()">
+      <select id="rank-modal-wing" onchange="onRankWingChanged()">
         <option value="">Unassigned</option>
         <option value="7bw">7th Bomb Wing</option>
         <option value="509bw">509th Bomb Wing</option>
@@ -600,6 +600,12 @@
     <div class="form-group">
       <label>Squadron</label>
       <select id="rank-modal-sq"></select>
+    </div>
+    <div class="form-group">
+      <label>Attached units <span style="color:var(--text3)">(reserve — optional)</span></label>
+      <div id="attach-list" style="margin-top:8px"></div>
+      <button type="button" class="btn btn-outline btn-xs" style="margin-top:6px" onclick="addAttachment()">+ Attach a unit</button>
+      <div class="form-hint">The Wing and Squadron above are this pilot's HOME assignment. Add attachments for units they fly reserve with — they appear on those rosters marked RES. Partner personnel can be left with no home wing and attached only, so their MAJCOM stays their primary identity.</div>
     </div>
     <div class="form-group">
       <label>MAJCOM (command the pilot belongs to)</label>
@@ -1168,6 +1174,8 @@ function openRankModal(uid) {
   document.getElementById('rank-modal-status').value = p.status||'active';
   document.getElementById('rank-modal-majcom').value = p.majcom||'afgsc';
   updateRankSqOptions(p.squadron);
+  attachRows = (p.attachments || []).map(function(a){ return { wing: a.wing || '', squadron: a.squadron || '' }; });
+  renderAttachments();
   document.getElementById('rank-modal').classList.add('open');
 }
 function renderRankModalRoles(selectedRoleIds) {
@@ -1182,6 +1190,66 @@ function renderRankModalRoles(selectedRoleIds) {
       </span>
     </label>`).join('');
 }
+// ── ATTACHED UNITS ───────────────────────────────────────────
+// One row per attachment: wing plus optional squadron. Kept in a JS
+// array rather than read off the DOM, so re-rendering a row's squadron
+// list when its wing changes can't lose the other rows' values.
+let attachRows = [];
+
+function renderAttachments() {
+  const el = document.getElementById('attach-list');
+  if (!el) return;
+  if (!attachRows.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">No attachments — this pilot serves only in their home unit.</div>';
+    return;
+  }
+  const homeWing = document.getElementById('rank-modal-wing').value;
+  el.innerHTML = attachRows.map(function(row, i) {
+    const sqs = (WINGS[row.wing] && WINGS[row.wing].squadrons) || {};
+    const dup = row.wing && row.wing === homeWing;
+    return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">'
+      + '<select onchange="setAttachWing(' + i + ',this.value)" style="flex:1;min-width:150px;font-size:12px">'
+      +   '<option value="">— pick a wing —</option>'
+      +   Object.entries(WINGS).map(function(e) {
+            return '<option value="' + esc(e[0]) + '"' + (e[0]===row.wing?' selected':'') + '>' + esc(e[1].name || e[0]) + '</option>';
+          }).join('')
+      + '</select>'
+      + '<select onchange="setAttachSq(' + i + ',this.value)" style="flex:1;min-width:150px;font-size:12px"' + (row.wing?'':' disabled') + '>'
+      +   '<option value="">Whole wing</option>'
+      +   Object.entries(sqs).map(function(e) {
+            return '<option value="' + esc(e[0]) + '"' + (e[0]===row.squadron?' selected':'') + '>' + esc(e[1].name || e[0]) + '</option>';
+          }).join('')
+      + '</select>'
+      + '<button type="button" class="btn btn-danger btn-xs" onclick="removeAttachment(' + i + ')">✕</button>'
+      + (dup ? '<div style="width:100%;font-size:11px;color:var(--amber)">⚠ Same as the home wing above — this row will be ignored on save.</div>' : '')
+      + '</div>';
+  }).join('');
+}
+function addAttachment() { attachRows.push({ wing:'', squadron:'' }); renderAttachments(); }
+function removeAttachment(i) { attachRows.splice(i,1); renderAttachments(); }
+function setAttachWing(i, v) { attachRows[i].wing = v; attachRows[i].squadron = ''; renderAttachments(); }
+function setAttachSq(i, v) { attachRows[i].squadron = v; }
+
+// Home wing changed — re-render so the duplicate warning updates.
+function onRankWingChanged() {
+  updateRankSqOptions();
+  renderAttachments();
+}
+
+// Rows with no wing, or duplicating the home wing, are dropped.
+function collectAttachments() {
+  const homeWing = document.getElementById('rank-modal-wing').value;
+  const seen = {};
+  return attachRows.filter(function(r) {
+    if (!r.wing) return false;
+    if (r.wing === homeWing) return false;
+    const key = r.wing + '|' + (r.squadron || '');
+    if (seen[key]) return false;
+    seen[key] = 1;
+    return true;
+  }).map(function(r) { return { wing: r.wing, squadron: r.squadron || null }; });
+}
+
 function updateRankSqOptions(selectedSq) {
   const wing = document.getElementById('rank-modal-wing').value;
   const sel  = document.getElementById('rank-modal-sq');
@@ -1192,6 +1260,7 @@ async function saveRankChange() {
   if (!editingPilotUid) return;
   const selectedRoles = [...document.querySelectorAll('.rank-modal-role-cb:checked')].map(c => c.value);
   if (!selectedRoles.length) { toast('Select at least one role','error'); return; }
+  const attachSel = collectAttachments();
   try {
     await db.collection('pilots').doc(editingPilotUid).update({
       rank:     document.getElementById('rank-modal-rank').value,
@@ -1199,13 +1268,16 @@ async function saveRankChange() {
       roles:    selectedRoles,
       wing:     document.getElementById('rank-modal-wing').value||null,
       squadron: document.getElementById('rank-modal-sq').value||null,
+      // Home unit lives in `wing`/`squadron` — never duplicated here.
+      attachments: attachSel,
       majcom:   document.getElementById('rank-modal-majcom').value||'afgsc',
       status:   document.getElementById('rank-modal-status').value,
     });
     const rp = allPilots.find(x=>x.uid===editingPilotUid) || {};
     logAudit('pilot_rank_changed',
       'Updated ' + (rp.displayName || rp.callsign || editingPilotUid) + ' → rank ' +
-      document.getElementById('rank-modal-rank').value + ' · roles: ' + selectedRoles.join(', '),
+      document.getElementById('rank-modal-rank').value + ' · roles: ' + selectedRoles.join(', ') +
+      (attachSel.length ? ' · attached: ' + attachSel.map(function(a){ return a.wing + (a.squadron ? '/' + a.squadron : ''); }).join(', ') : ''),
       {pilotCallsign: rp.displayName || rp.callsign || ''});
     toast('Pilot updated!');
     closeModal('rank-modal');
