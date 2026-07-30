@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.auth-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; background:radial-gradient(ellipse at top,rgba(200,169,81,.06) 0%,transparent 60%),var(--bg); }
+.auth-box  { background:var(--card); border:1px solid var(--border2); border-radius:18px; padding:40px; width:100%; max-width:420px; }
+.auth-logo { text-align:center; margin-bottom:28px; }
+.auth-emblem { width:60px; height:60px; border-radius:50%; background:linear-gradient(135deg,var(--gold),var(--amber)); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; color:#000; margin:0 auto 10px; box-shadow:0 0 24px rgba(200,169,81,.3); }
+.auth-org  { font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); }
+.auth-name { font-size:18px; font-weight:900; color:var(--text); }
+.auth-title { font-size:22px; font-weight:800; color:var(--text); margin-bottom:6px; }
+.auth-sub   { font-size:13px; color:var(--text2); margin-bottom:24px; line-height:1.65; }
+.auth-footer { text-align:center; margin-top:20px; font-size:13px; color:var(--text2); }
+.pw-wrap { position:relative; }
+.pw-toggle { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text3); cursor:pointer; font-size:16px; padding:0; }
+.state-icon { font-size:46px; text-align:center; margin-bottom:12px; }
+.pw-rules { font-size:11px; color:var(--text3); margin-top:6px; line-height:1.7 }
+.pw-rules span.ok { color:var(--green2) }
+</style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-box fade-in">
+    <div class="auth-logo">
+      <div class="auth-emblem">GSC</div>
+      <div class="auth-org">Virtual</div>
+      <div class="auth-name">Global Strike Command</div>
+    </div>
+
+    <!-- WORKING -->
+    <div id="s-loading">
+      <div class="state-icon">⏳</div>
+      <div class="auth-title" style="text-align:center">One moment</div>
+      <div class="auth-sub" style="text-align:center">Checking your link…</div>
+    </div>
+
+    <!-- RESET PASSWORD FORM -->
+    <div id="s-reset" style="display:none">
+      <div class="auth-title">Set a new password</div>
+      <div class="auth-sub">Choose a new password for <strong id="reset-email" style="color:var(--gold)"></strong>.</div>
+      <form id="reset-form" onsubmit="submitNewPassword(event)">
+        <div class="form-group">
+          <label>New password</label>
+          <div class="pw-wrap">
+            <input type="password" id="pw1" placeholder="••••••••" required autocomplete="new-password" oninput="checkRules()">
+            <button type="button" class="pw-toggle" onclick="togglePw('pw1')">👁</button>
+          </div>
+          <div class="pw-rules" id="pw-rules">
+            <span id="r-len">• At least 8 characters</span><br>
+            <span id="r-match">• Both entries match</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Confirm new password</label>
+          <div class="pw-wrap">
+            <input type="password" id="pw2" placeholder="••••••••" required autocomplete="new-password" oninput="checkRules()">
+            <button type="button" class="pw-toggle" onclick="togglePw('pw2')">👁</button>
+          </div>
+        </div>
+        <div id="reset-error" class="alert alert-error" style="display:none"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:6px" id="reset-btn">Save new password</button>
+      </form>
+    </div>
+
+    <!-- DONE -->
+    <div id="s-done" style="display:none">
+      <div class="state-icon">✅</div>
+      <div class="auth-title" style="text-align:center" id="done-title">All set</div>
+      <div class="auth-sub" style="text-align:center" id="done-msg"></div>
+      <a href="/pages/login.html" class="btn btn-primary" style="width:100%;justify-content:center">Sign in</a>
+    </div>
+
+    <!-- BAD LINK -->
+    <div id="s-bad" style="display:none">
+      <div class="state-icon">⚠️</div>
+      <div class="auth-title" style="text-align:center">Link not valid</div>
+      <div class="auth-sub" style="text-align:center" id="bad-msg"></div>
+      <a href="/pages/forgot-password.html" class="btn btn-primary" style="width:100%;justify-content:center">Request a new link</a>
+      <div class="auth-footer"><a href="/pages/login.html">Back to login</a></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  AUTH ACTION HANDLER
+//  Firebase's emails normally point at
+//      https://vtacgsc.firebaseapp.com/__/auth/action
+//  which shows Google's own unbranded page. Point the Action URL in
+//  Console → Authentication → Templates at THIS page instead and the
+//  whole flow stays on vtacgsc.com, in the site's own styling.
+//
+//  Firebase appends these query parameters:
+//      mode      resetPassword | verifyEmail | recoverEmail
+//      oobCode   the one-time code proving the link is genuine
+//  We never trust the email address from the URL — it's read back
+//  from the code itself, which cannot be forged.
+// ═══════════════════════════════════════════════════════════════
+
+const params  = new URLSearchParams(location.search);
+const mode    = params.get('mode') || '';
+const oobCode = params.get('oobCode') || '';
+
+function show(id) {
+  ['s-loading','s-reset','s-done','s-bad'].forEach(function(s) {
+    const el = document.getElementById(s);
+    if (el) el.style.display = (s === id) ? 'block' : 'none';
+  });
+}
+function bad(msg) {
+  document.getElementById('bad-msg').textContent = msg;
+  show('s-bad');
+}
+
+const CODE_MSGS = {
+  'auth/expired-action-code': 'That link has expired. Reset links are only good for a short time — request a fresh one.',
+  'auth/invalid-action-code': 'That link is not valid. It may already have been used, or been cut short by your email app.',
+  'auth/user-disabled':       'This account has been disabled. Contact command staff.',
+  'auth/user-not-found':      'The account for this link no longer exists.',
+  'auth/weak-password':       'That password is too weak. Use at least 8 characters.',
+  'auth/network-request-failed':'Could not reach the server. Check your connection and try again.',
+};
+
+// This page must work for someone who is NOT signed in — that's the
+// entire point — so it does its own thing rather than waiting on the
+// site's auth gate.
+(async function start() {
+  if (!mode || !oobCode) {
+    bad('This page is only reachable from a link in an email we sent you.');
+    return;
+  }
+  try {
+    if (mode === 'resetPassword') {
+      // Confirms the code is real AND tells us whose account it is.
+      const email = await auth.verifyPasswordResetCode(oobCode);
+      document.getElementById('reset-email').textContent = email;
+      show('s-reset');
+      document.getElementById('pw1').focus();
+      return;
+    }
+    if (mode === 'verifyEmail') {
+      await auth.applyActionCode(oobCode);
+      document.getElementById('done-title').textContent = 'Email confirmed';
+      document.getElementById('done-msg').textContent = 'Your email address is verified. You can sign in now.';
+      show('s-done');
+      return;
+    }
+    if (mode === 'recoverEmail') {
+      await auth.applyActionCode(oobCode);
+      document.getElementById('done-title').textContent = 'Email restored';
+      document.getElementById('done-msg').textContent = 'Your account email has been changed back. Reset your password if you did not request the original change.';
+      show('s-done');
+      return;
+    }
+    bad('This link asks for something we do not handle here.');
+  } catch (err) {
+    console.error('action code:', err.code, err.message);
+    bad(CODE_MSGS[err.code] || err.message);
+  }
+})();
+
+function checkRules() {
+  const a = document.getElementById('pw1').value;
+  const b = document.getElementById('pw2').value;
+  document.getElementById('r-len').className   = a.length >= 8 ? 'ok' : '';
+  document.getElementById('r-match').className = (a && a === b) ? 'ok' : '';
+}
+
+async function submitNewPassword(e) {
+  e.preventDefault();
+  const pw1 = document.getElementById('pw1').value;
+  const pw2 = document.getElementById('pw2').value;
+  const btn = document.getElementById('reset-btn');
+  const err = document.getElementById('reset-error');
+  err.style.display = 'none';
+
+  if (pw1.length < 8)  { err.textContent = 'Use at least 8 characters.'; err.style.display = 'block'; return; }
+  if (pw1 !== pw2)     { err.textContent = 'The two passwords do not match.'; err.style.display = 'block'; return; }
+
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  try {
+    await auth.confirmPasswordReset(oobCode, pw1);
+    document.getElementById('done-title').textContent = 'Password changed';
+    document.getElementById('done-msg').textContent = 'Your new password is active. Sign in with it below.';
+    show('s-done');
+  } catch (ex) {
+    console.error('confirmPasswordReset:', ex.code, ex.message);
+    // An expired or reused code can only be recovered by starting over,
+    // so send them to the request page rather than leaving them on a
+    // form that can never succeed.
+    if (ex.code === 'auth/expired-action-code' || ex.code === 'auth/invalid-action-code') {
+      bad(CODE_MSGS[ex.code]);
+      return;
+    }
+    err.textContent = CODE_MSGS[ex.code] || ex.message;
+    err.style.display = 'block';
+  } finally {
+    btn.textContent = 'Save new password'; btn.disabled = false;
+  }
+}
+
+function togglePw(id) {
+  const inp = document.getElementById(id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+</script>
+</body>
+</html>
