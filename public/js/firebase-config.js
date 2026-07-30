@@ -378,7 +378,7 @@ function clearViewAsOverride() {
 // The entire site requires a signed-in account. Only the pages
 // listed here are reachable while logged out; every other page
 // redirects to the login page before showing anything.
-const PUBLIC_PAGES = ['/pages/login.html', '/pages/register.html','/pages/forgot-password.html'];
+const PUBLIC_PAGES = ['/pages/login.html', '/pages/register.html','/pages/forgot-password.html','/pages/auth-action.html'];
 
 function isPublicPage() {
   const p = window.location.pathname;
