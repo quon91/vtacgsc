@@ -17,6 +17,8 @@
 .auth-footer { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text2); }
 .pw-wrap { position: relative; }
 .pw-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px; padding: 0; }
+.reset-inline { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); font-size: 12px; }
+.reset-inline button { background: none; border: none; color: var(--gold); cursor: pointer; font-family: var(--sans); font-size: 12px; text-decoration: underline; padding: 0; }
 </style>
 </head>
 <body>
@@ -46,6 +48,7 @@
         </div>
       </div>
       <div id="login-error" class="alert alert-error" style="display:none"></div>
+      <div id="reset-offer" class="alert alert-info" style="display:none;font-size:12px"></div>
       <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:6px" id="login-btn">
         Sign In
       </button>
@@ -83,20 +86,67 @@ function onAuthReady(user, pilot) {
   }
 }
 
+// ── ERROR MESSAGES ───────────────────────────────────────────
+// Firebase changed behaviour: with email-enumeration protection on,
+// a wrong password AND a non-existent account BOTH return
+// auth/invalid-credential. That's deliberate — it stops attackers
+// discovering which addresses are registered — but it means the old
+// auth/wrong-password and auth/user-not-found codes almost never
+// fire any more, and without an entry for the new code members just
+// saw raw "Firebase: Error (auth/invalid-credential)." text.
+const AUTH_MSGS = {
+  'auth/invalid-credential':        'Email or password is incorrect. If you are sure the password is right, there may be no account for that exact address — check for typos, and whether you signed up with a different email.',
+  'auth/invalid-login-credentials': 'Email or password is incorrect. If you are sure the password is right, there may be no account for that exact address — check for typos, and whether you signed up with a different email.',
+  'auth/wrong-password':            'Incorrect password.',
+  'auth/user-not-found':            'No account found with that email.',
+  'auth/invalid-email':             'That does not look like a valid email address.',
+  'auth/user-disabled':             'This account has been disabled. Contact command staff.',
+  'auth/too-many-requests':         'Too many failed attempts. Wait a few minutes and try again, or reset your password.',
+  'auth/network-request-failed':    'Could not reach the server. Check your connection and try again.',
+};
+// Codes where offering a password reset is the useful next step.
+const RESET_WORTHY = ['auth/invalid-credential','auth/invalid-login-credentials','auth/wrong-password','auth/too-many-requests'];
+
 async function handleLogin(e) {
   e.preventDefault();
   const email = document.getElementById('email').value.trim();
   const pass  = document.getElementById('password').value;
   const btn   = document.getElementById('login-btn');
   const errEl = document.getElementById('login-error');
+  const offer = document.getElementById('reset-offer');
   errEl.style.display = 'none';
+  offer.style.display = 'none';
   btn.textContent = 'Signing in…'; btn.disabled = true;
 
   try {
     const cred = await auth.signInWithEmailAndPassword(email, pass);
-    const doc  = await db.collection('pilots').doc(cred.user.uid).get();
-    if (!doc.exists) throw new Error('Pilot record not found. Contact admin.');
-    const pilot = doc.data();
+
+    // ── PAST THIS POINT THE PASSWORD WAS CORRECT ──────────────
+    // Everything below is post-login housekeeping. It must never be
+    // able to throw the user back to this page with what looks like
+    // a credential error — that's what used to happen when the
+    // lastLogin write failed, and it is indistinguishable from a
+    // wrong password to the member reporting it.
+    let pilot = null;
+    try {
+      const doc = await db.collection('pilots').doc(cred.user.uid).get();
+      pilot = doc.exists ? doc.data() : null;
+    } catch(readErr) {
+      console.error('pilot doc read failed:', readErr);
+      errEl.textContent = 'Signed in, but your pilot record could not be loaded ('
+        + readErr.message + '). Contact command staff.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    if (!pilot) {
+      // Authenticated but no pilot document — half-finished registration.
+      errEl.textContent = 'Your login works, but there is no pilot record attached to it. '
+        + 'Command staff need to finish setting up your account.';
+      errEl.style.display = 'block';
+      return;
+    }
+
     if (pilot.status === 'denied') {
       await auth.signOut();
       errEl.textContent = 'Your application was denied. Contact command staff.';
@@ -104,17 +154,54 @@ async function handleLogin(e) {
       return;
     }
     if (pilot.status === 'pending') { window.location.href = '/pages/pending.html'; return; }
-    // Log last login
-    await db.collection('pilots').doc(cred.user.uid).update({ lastLogin: firebase.firestore.FieldValue.serverTimestamp() });
+
+    // Fire-and-forget. A failure here is not worth blocking a valid
+    // login over, so it is logged and ignored rather than thrown.
+    db.collection('pilots').doc(cred.user.uid)
+      .update({ lastLogin: firebase.firestore.FieldValue.serverTimestamp() })
+      .catch(function(err){ console.warn('lastLogin not recorded:', err.message); });
+
     if (isMasterAdminPilot(pilot)) { window.location.href = '/pages/master-admin.html'; return; }
     window.location.href = '/pages/dashboard.html';
+
   } catch(err) {
-    const msgs = { 'auth/user-not-found':'No account found with that email.', 'auth/wrong-password':'Incorrect password.', 'auth/too-many-requests':'Too many attempts. Please wait before trying again.', 'auth/invalid-email':'Invalid email address.' };
-    errEl.textContent = msgs[err.code] || err.message;
+    console.error('login failed:', err.code, err.message);
+    errEl.textContent = AUTH_MSGS[err.code] || err.message;
     errEl.style.display = 'block';
+    // Offer a reset right here rather than sending them hunting for a link.
+    if (RESET_WORTHY.indexOf(err.code) !== -1 && email) {
+      offer.innerHTML = 'Sure the password is right? '
+        + '<button type="button" onclick="sendReset()">Email me a reset link</button>';
+      offer.style.display = 'block';
+    }
   } finally {
     btn.textContent = 'Sign In'; btn.disabled = false;
   }
+}
+
+// Sends a Firebase reset email. Deliberately reports success even when
+// the address has no account — saying "no account with that email"
+// would let anyone test which addresses are registered.
+async function sendReset() {
+  const email = document.getElementById('email').value.trim();
+  const offer = document.getElementById('reset-offer');
+  if (!email) { offer.textContent = 'Enter your email address above first.'; return; }
+  offer.textContent = 'Sending…';
+  try {
+    await auth.sendPasswordResetEmail(email);
+  } catch(err) {
+    console.warn('reset email:', err.code, err.message);
+    if (err.code === 'auth/invalid-email') {
+      offer.textContent = 'That does not look like a valid email address.';
+      return;
+    }
+    if (err.code === 'auth/too-many-requests') {
+      offer.textContent = 'Too many requests. Wait a few minutes before trying again.';
+      return;
+    }
+  }
+  offer.textContent = 'If an account exists for ' + email
+    + ', a reset link is on its way. Check spam if it does not arrive in a few minutes.';
 }
 
 function togglePw() {
