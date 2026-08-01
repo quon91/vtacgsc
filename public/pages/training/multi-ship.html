@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Multi-ship formation operations for Virtual Global Strike Command — element through large force package, comms, cell procedures, and contingencies.">
+<title>Multi-Ship Operations — VTAC GSC</title>
+<link rel="stylesheet" href="/css/main.css">
+<style>
+.tp-hero{padding:48px 24px 34px;border-bottom:1px solid var(--border);background:linear-gradient(160deg,#050710,var(--bg))}
+.tp-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:22px;overflow-x:auto}
+.tab-btn{padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--text3);font-family:var(--sans);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .12s}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.cl{list-style:none;padding:0;margin:0}
+.cl li{font-size:13px;color:var(--text2);padding:5px 0;display:flex;gap:8px;line-height:1.65}
+.cl li::before{content:"▸";color:var(--gold);flex-shrink:0}
+.cl li strong{color:var(--text)}
+.steps{counter-reset:step;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:step;position:relative;padding:9px 0 9px 38px;font-size:13px;color:var(--text2);line-height:1.7;border-bottom:.5px solid var(--border)}
+.steps li:last-child{border-bottom:none}
+.steps li::before{content:counter(step);position:absolute;left:0;top:9px;width:24px;height:24px;border-radius:50%;background:rgba(200,169,81,.12);border:1px solid rgba(200,169,81,.4);color:var(--gold);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.steps li strong{color:var(--text)}
+.callout{border-left:3px solid var(--amber);background:rgba(224,144,48,.07);border-radius:0 8px 8px 0;padding:12px 16px;margin:14px 0;font-size:13px;color:var(--text2);line-height:1.7}
+.callout strong{color:var(--amber)}
+.callout.danger{border-left-color:var(--red2);background:rgba(208,64,64,.07)}
+.callout.danger strong{color:var(--red2)}
+.callout.info{border-left-color:var(--blue2);background:rgba(74,144,217,.07)}
+.callout.info strong{color:var(--blue2)}
+.kv{width:100%;font-size:13px;border-collapse:collapse}
+.kv td{padding:7px 0;border-bottom:.5px solid var(--border);color:var(--text2)}
+.kv td:first-child{color:var(--text3);width:52%}
+.kv td:last-child{font-family:var(--mono);color:var(--gold2);text-align:right}
+.pos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:4px}
+.pos{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;border-top:2px solid var(--gold)}
+.pos-name{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
+.pos-detail{font-size:12px;color:var(--text2);line-height:1.6}
+/* radio call script */
+.rt{background:#0a0c14;border:1px solid var(--border2);border-radius:8px;padding:12px 14px;margin:12px 0;font-family:var(--mono);font-size:12px;line-height:1.9}
+.rt .who{color:var(--gold2);display:inline-block;min-width:96px}
+.rt .who.atc{color:var(--blue2)}
+.rt .who.wing{color:var(--text3)}
+.rt .note{color:var(--text3);font-style:italic;font-family:var(--sans)}
+.chan{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:8px;padding:1px 7px;vertical-align:middle;margin-right:6px}
+.chan.disc{background:rgba(114,137,218,.15);color:#7289da;border:1px solid rgba(114,137,218,.4)}
+.chan.atc{background:rgba(74,144,217,.15);color:var(--blue2);border:1px solid rgba(74,144,217,.4)}
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/index.html">
+      <div class="nav-emblem">GSC</div>
+      <div class="nav-brand-text"><div class="org">Virtual</div><div class="name">Global Strike Command</div></div>
+    </a>
+    <div class="nav-links" id="nav-links"></div>
+    <div class="nav-right" id="nav-right-area"></div>
+    <button class="nav-mobile-btn" onclick="document.getElementById('nav-links').classList.toggle('open')">☰</button>
+  </div>
+</nav>
+
+<div class="tp-hero">
+  <div class="container" style="max-width:920px">
+    <div class="hero-eyebrow" style="color:var(--gold)">All Wings · Command-Wide Procedure</div>
+    <h1 style="font-size:clamp(26px,5vw,38px);font-weight:900;color:var(--text);margin:6px 0">
+      Multi-Ship <span style="color:var(--gold)">Operations</span>
+    </h1>
+    <p style="font-size:14px;color:var(--text2);max-width:680px;line-height:1.7">
+      Element through large force package. Formation types, comms discipline across
+      Discord and VATSIM, cell procedures, deconfliction, and what to do when it
+      goes wrong. Applies to all three wings.
+    </p>
+  </div>
+</div>
+
+<div class="container page-body" style="max-width:920px">
+
+  <div class="tp-tabs">
+    <button class="tab-btn active" data-panel="overview">Overview</button>
+    <button class="tab-btn"        data-panel="comms">Comms</button>
+    <button class="tab-btn"        data-panel="ground">Ground &amp; Departure</button>
+    <button class="tab-btn"        data-panel="enroute">En Route</button>
+    <button class="tab-btn"        data-panel="tactical">Tactical</button>
+    <button class="tab-btn"        data-panel="recovery">Recovery</button>
+    <button class="tab-btn"        data-panel="contingency">When It Goes Wrong</button>
+    <button class="tab-btn"        data-panel="standards">Standards</button>
+  </div>
+
+  <!-- ─── OVERVIEW ─────────────────────────────────────────── -->
+  <div class="tab-panel active" id="panel-overview">
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">✈</div><div class="card-title">What multi-ship means here</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--text2);line-height:1.8;margin:0 0 12px">
+          Any time two or more GSC aircraft fly a coordinated mission, they are a
+          <strong style="color:var(--text)">flight</strong>. The flight has one lead, one
+          set of comms, one flight plan, and one time on target. Everything in this
+          guide exists to make that work with people in different time zones on a
+          voice server.
+        </p>
+        <p style="font-size:13px;color:var(--text2);line-height:1.8;margin:0">
+          Bombers do not fly fingertip formation on a mission. Real Global Strike
+          multi-ship is almost entirely <strong style="color:var(--text)">cell</strong> —
+          aircraft in trail with lateral and vertical offset, far enough apart to be safe
+          and close enough to arrive together. If you are close enough to read the other
+          aircraft's tail number, you are too close.
+        </p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon blue">▦</div><div class="card-title">Formation types</div></div>
+      <div class="card-body">
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Type</th><th>Spacing</th><th>Used for</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Element</strong></td><td>1–2 NM trail</td><td>2-ship. The standard building block. Everything larger is elements stacked together.</td></tr>
+              <tr><td><strong>Cell</strong></td><td>1–3 NM trail, 500–1,000 ft stack</td><td>3+ aircraft in trail. The default GSC formation for transit and strike.</td></tr>
+              <tr><td><strong>Route</strong></td><td>500–1,500 ft line abreast</td><td>Short repositioning in visual conditions. Not for transit.</td></tr>
+              <tr><td><strong>Spread</strong></td><td>2–5 NM line abreast</td><td>Wide lateral separation for area coverage or threat spread.</td></tr>
+              <tr><td><strong>Package</strong></td><td>Varies by element</td><td>Multiple cells, often mixed airframe, under one mission commander.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout info" style="margin-bottom:0">
+          <strong>Default:</strong> unless the brief says otherwise, GSC flights transit in
+          cell — 2 NM trail, 500 ft stack up per aircraft. It is the easiest formation to
+          hold on a long leg and the most forgiving of a lag on someone's connection.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon">👥</div><div class="card-title">Who does what</div></div>
+      <div class="card-body">
+        <div class="pos-grid">
+          <div class="pos">
+            <div class="pos-name">Flight Lead</div>
+            <div class="pos-detail">Navigates, talks to ATC, owns the timeline. Files the flight plan. Makes the go/no-go calls. Never the newest pilot in the flight.</div>
+          </div>
+          <div class="pos">
+            <div class="pos-name">Wingman (Dash-2+)</div>
+            <div class="pos-detail">Holds position, monitors ATC but does not transmit on it, backs up lead's navigation, speaks up when something is wrong.</div>
+          </div>
+          <div class="pos">
+            <div class="pos-name">Element Lead</div>
+            <div class="pos-detail">In a 4-ship or larger, leads the second element. Becomes flight lead if lead aborts.</div>
+          </div>
+          <div class="pos">
+            <div class="pos-name">Mission Commander</div>
+            <div class="pos-detail">Package-level only. Owns the overall plan and TOT deconfliction across cells. May not be flying lead of any single cell.</div>
+          </div>
+        </div>
+        <div class="callout" style="margin-bottom:0">
+          <strong>Wingman's real job:</strong> not to look pretty in formation — to be a
+          second set of eyes. If lead is heading for the wrong waypoint or about to bust an
+          altitude, saying so is the job, not a challenge to authority.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── COMMS ────────────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-comms">
+
+    <div class="callout info">
+      <strong>The one rule that makes everything else work:</strong>
+      <span class="chan disc">Discord</span> is the flight's internal channel — everything
+      you would say between aircraft. <span class="chan atc">VATSIM</span> is ATC only,
+      and <em>only the flight lead transmits on it</em>. Wingmen listen and never key up.
+      Mixing these is the single most common cause of a formation falling apart.
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">🎙</div><div class="card-title">Channel split</div></div>
+      <div class="card-body">
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Traffic</th><th>Where</th><th>Who talks</th></tr></thead>
+            <tbody>
+              <tr><td>Clearance, taxi, tower, centre, approach</td><td><span class="chan atc">VATSIM</span></td><td>Lead only</td></tr>
+              <tr><td>Check-ins, formation calls, fuel states</td><td><span class="chan disc">Discord</span></td><td>Everyone</td></tr>
+              <tr><td>Position, spacing, rejoin instructions</td><td><span class="chan disc">Discord</span></td><td>Lead directs, wingmen acknowledge</td></tr>
+              <tr><td>Emergencies affecting the whole flight</td><td>Both</td><td>Lead relays to ATC</td></tr>
+              <tr><td>Chat, banter, briefing</td><td><span class="chan disc">Discord</span></td><td>Silent during critical phases</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon blue">📻</div><div class="card-title">Standard calls</div></div>
+      <div class="card-body">
+
+        <p style="font-size:13px;color:var(--text2);line-height:1.7;margin:0 0 4px"><strong style="color:var(--text)">Check-in</strong> — before anything else happens. Wingmen answer by number, in order, nothing else.</p>
+        <div class="rt">
+          <span class="who">BONE 01</span> "BONE flight, check."<br>
+          <span class="who wing">BONE 02</span> "Two."<br>
+          <span class="who wing">BONE 03</span> "Three."<br>
+          <span class="who wing">BONE 04</span> "Four."
+        </div>
+
+        <p style="font-size:13px;color:var(--text2);line-height:1.7;margin:14px 0 4px"><strong style="color:var(--text)">Frequency change</strong> — lead pushes, everyone follows, everyone checks in again.</p>
+        <div class="rt">
+          <span class="who">BONE 01</span> "BONE flight, push 124.35."<br>
+          <span class="who wing">BONE 02</span> "Two."<br>
+          <span class="note">…all aircraft change…</span><br>
+          <span class="who">BONE 01</span> "BONE flight, check."<br>
+          <span class="who wing">BONE 02</span> "Two."
+        </div>
+
+        <p style="font-size:13px;color:var(--text2);line-height:1.7;margin:14px 0 4px"><strong style="color:var(--text)">Talking to ATC as a flight</strong> — lead states the flight size every time. Wingmen say nothing.</p>
+        <div class="rt">
+          <span class="who">BONE 01</span> "Fort Worth Center, BONE 01, flight of four B-1s, flight level two-eight-zero."<br>
+          <span class="who atc">CENTER</span> "BONE 01 flight, Fort Worth Center, radar contact."
+        </div>
+
+        <p style="font-size:13px;color:var(--text2);line-height:1.7;margin:14px 0 4px"><strong style="color:var(--text)">Fuel check</strong> — lead calls, everyone reports in order.</p>
+        <div class="rt">
+          <span class="who">BONE 01</span> "BONE flight, fuel check. One's 82."<br>
+          <span class="who wing">BONE 02</span> "Two's 79."<br>
+          <span class="who wing">BONE 03</span> "Three's 74."<br>
+          <span class="note">Lead now knows Three drives the timeline.</span>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon green">📖</div><div class="card-title">Brevity</div></div>
+      <div class="card-body">
+        <ul class="cl">
+          <li><strong>"Check"</strong> — sound off in order, confirm everyone is up.</li>
+          <li><strong>"Push [freq]"</strong> — whole flight changes frequency now.</li>
+          <li><strong>"Visual"</strong> — I see the aircraft you mean.</li>
+          <li><strong>"Blind"</strong> — I have lost sight of my formation. Say it immediately.</li>
+          <li><strong>"Tally" / "No joy"</strong> — I do / do not see the target or traffic.</li>
+          <li><strong>"Anchored"</strong> — I am holding at the assigned point.</li>
+          <li><strong>"Bingo"</strong> — I am at the fuel state that ends my participation.</li>
+          <li><strong>"Knock it off"</strong> — everyone stop the current manoeuvre. Anyone can call it, no one argues.</li>
+          <li><strong>"Terminate"</strong> — stop this engagement, continue the mission.</li>
+          <li><strong>"Say again"</strong> — repeat. Never "what?" or "huh?"</li>
+        </ul>
+        <div class="callout danger" style="margin-bottom:0">
+          <strong>"Knock it off" is absolute.</strong> Anyone in the flight can call it for
+          any reason — a bad join, a sim problem, someone uncomfortable. Everyone stops,
+          separates, and sorts it out. No one asks why until the aircraft are safe.
+        </div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>VATSIM specifics vary by division.</strong> Some regions want the whole flight
+      on one squawk with wingmen on standby; others want each aircraft squawking. File
+      "FLIGHT OF X" in the remarks either way, and check your local division's formation
+      policy before the mission — not on frequency during it.
+    </div>
+  </div>
+
+  <!-- ─── GROUND & DEPARTURE ───────────────────────────────── -->
+  <div class="tab-panel" id="panel-ground">
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">📋</div><div class="card-title">Before anyone spawns</div></div>
+      <div class="card-body">
+        <ol class="steps">
+          <li><strong>Brief the flight.</strong> Lead covers: formation type, route, altitudes, TOT, comms plan, abort criteria, contingencies. Ten minutes now saves an hour of confusion.</li>
+          <li><strong>Assign callsigns.</strong> From the squadron pool. Lead takes the first, and positions run in order — BONE 01, 02, 03, 04.</li>
+          <li><strong>Agree the sim build.</strong> Same aircraft add-on and same sim version across the flight, or the aircraft will not behave the same. Mismatched builds is the most common cause of a formation nobody can hold.</li>
+          <li><strong>Set weather and time.</strong> Everyone on the same real-weather setting and the same clock, or you are flying different missions.</li>
+          <li><strong>Confirm everyone can hear everyone.</strong> Radio check on Discord before engines.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon blue">▶</div><div class="card-title">Start, taxi, and takeoff</div></div>
+      <div class="card-body">
+        <ol class="steps">
+          <li><strong>Spawn in position order.</strong> Lead at the front of the ramp, wingmen behind in sequence. Avoid spawning on top of each other — stagger by a few seconds.</li>
+          <li><strong>Check in on Discord.</strong> Full flight sound-off before lead requests clearance.</li>
+          <li><strong>Lead gets clearance for the flight.</strong> One clearance, one flight plan, flight size stated.</li>
+          <li><strong>Taxi in order with spacing.</strong> Keep one aircraft length minimum. Do not push into lead's tail on the taxiway.</li>
+          <li><strong>Line up as briefed.</strong> Single file for interval departure. Do not attempt formation takeoff — heavies do not, and the sim handles it badly.</li>
+          <li><strong>Interval takeoff.</strong> 20–30 seconds between aircraft, standard. Lead calls the roll: "BONE 01 rolling." Each wingman calls their own.</li>
+          <li><strong>Climb on runway heading</strong> until the flight is airborne and lead calls the turn. Wingmen do not cut the corner to catch up.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="callout danger">
+      <strong>Never formation takeoff in the sim.</strong> Wake turbulence modelling, ground
+      collision, and network lag combine badly on the runway. Interval departure and a
+      rejoin en route is slower, safer, and how GSC does it.
+    </div>
+  </div>
+
+  <!-- ─── EN ROUTE ─────────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-enroute">
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">🔗</div><div class="card-title">The rejoin</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--text2);line-height:1.8;margin:0 0 12px">
+          After an interval departure the flight is strung out. The rejoin brings it back
+          into cell. Lead sets the conditions and everyone else closes — slowly.
+        </p>
+        <ol class="steps">
+          <li><strong>Lead levels off and sets rejoin speed.</strong> Typically 250–280 KIAS, called on Discord: "BONE flight, rejoin, 260 knots."</li>
+          <li><strong>Wingmen accelerate to close.</strong> No more than 50 knots of overtake, and bleed it early.</li>
+          <li><strong>Each aircraft calls visual</strong> when they can see the aircraft ahead of them — not lead, the one directly ahead.</li>
+          <li><strong>Take position in order.</strong> Two behind lead, Three behind Two, Four behind Three. Nobody leapfrogs.</li>
+          <li><strong>Call in position.</strong> "Two's in." "Three's in." Lead then sets cruise speed.</li>
+          <li><strong>Stabilize before the next event.</strong> Do not start the AR or the target run with the flight still sorting itself out.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon green">📐</div><div class="card-title">Holding cell</div></div>
+      <div class="card-body">
+        <table class="kv">
+          <tr><td>Standard trail spacing</td><td>2 NM</td></tr>
+          <tr><td>Minimum trail spacing</td><td>1 NM</td></tr>
+          <tr><td>Vertical stack per aircraft</td><td>500 ft</td></tr>
+          <tr><td>Cruise speed tolerance</td><td>±10 KIAS</td></tr>
+          <tr><td>Altitude tolerance</td><td>±200 ft</td></tr>
+          <tr><td>Rejoin overtake, maximum</td><td>50 kts</td></tr>
+        </table>
+        <div class="callout info" style="margin-bottom:0">
+          <strong>Why stack vertically:</strong> network lag means the aircraft you see is
+          not exactly where it is. 500 ft of altitude separation per aircraft turns a
+          potential collision into a non-event, and costs nothing.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon">↩</div><div class="card-title">Turns in cell</div></div>
+      <div class="card-body">
+        <ul class="cl">
+          <li><strong>Lead calls the turn before starting it.</strong> "BONE flight, right turn heading zero-nine-zero." Never turn unannounced.</li>
+          <li><strong>Wingmen turn at the same geographic point,</strong> not at the same time. Fly to where lead started the turn, then turn.</li>
+          <li><strong>Keep the bank gentle.</strong> 20–25° maximum in cell. A steep turn opens the formation up badly.</li>
+          <li><strong>Expect the accordion.</strong> Trail spacing compresses on the inside of a turn and stretches on the outside. Adjust with small power changes, not with cutting the corner.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── TACTICAL ─────────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-tactical">
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">⛽</div><div class="card-title">Air refueling as a flight</div></div>
+      <div class="card-body">
+        <ol class="steps">
+          <li><strong>Flight arrives at the anchor in cell.</strong> Lead coordinates with the tanker for the whole flight.</li>
+          <li><strong>One at a time.</strong> Lead takes fuel first while the rest hold in observation or on a racetrack behind the tanker.</li>
+          <li><strong>Each aircraft calls off.</strong> "One's off the boom, clearing right." Next aircraft moves in only after that call.</li>
+          <li><strong>Aircraft that finish rejoin on lead,</strong> not on the tanker.</li>
+          <li><strong>Lead confirms the flight is complete</strong> before departing the track.</li>
+        </ol>
+        <div class="callout" style="margin-bottom:0">
+          <strong>Plan for it to take a while.</strong> A 4-ship AR is four separate
+          refuelings. Build it into the timeline or the TOT slips.
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon red">🎯</div><div class="card-title">The attack</div></div>
+      <div class="card-body">
+        <ol class="steps">
+          <li><strong>Deconflict before the IP,</strong> not on the run-in. Every aircraft must know its own target, its own run-in heading, and its own TOT.</li>
+          <li><strong>Stagger TOTs.</strong> 30–60 seconds between aircraft minimum. Simultaneous release on the same target puts the trailer through the leader's frag pattern.</li>
+          <li><strong>Separate run-in headings where possible.</strong> Different axes are safer than the same axis in trail.</li>
+          <li><strong>Each aircraft calls its own release.</strong> "Two's away." Lead tracks the flight's progress.</li>
+          <li><strong>Egress on the briefed heading,</strong> as a flight where possible. Do not turn back through the target area.</li>
+          <li><strong>Rejoin at the briefed point</strong> once everyone is clear.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="callout danger">
+      <strong>Deconfliction is the mission commander's responsibility and it is not optional.</strong>
+      Two aircraft at 500 ft AGL converging on the same target from different headings at
+      500 knots is the single most dangerous thing a GSC flight can do. Altitude blocks,
+      time separation, or geographic separation — pick one and brief it explicitly.
+    </div>
+  </div>
+
+  <!-- ─── RECOVERY ─────────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-recovery">
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">🛬</div><div class="card-title">Getting everyone down</div></div>
+      <div class="card-body">
+        <ol class="steps">
+          <li><strong>Lead coordinates the recovery</strong> with approach as a flight, and states the intent: in-trail approach, or breakup for individual approaches.</li>
+          <li><strong>Default is breakup.</strong> Unless briefed otherwise, the flight splits before the approach and each aircraft flies its own. Simplest and safest.</li>
+          <li><strong>Lead calls the breakup point.</strong> "BONE flight, breakup, contact approach individually."</li>
+          <li><strong>Wingmen check in with ATC individually</strong> from that point — this is the one time wingmen transmit on VATSIM.</li>
+          <li><strong>Sequence by fuel state.</strong> Lowest fuel lands first, regardless of position in the formation.</li>
+          <li><strong>Minimum 3 NM final spacing,</strong> more for heavies on the same runway. Wake turbulence is modelled and a B-52 behind a B-1 at 2 NM will feel it.</li>
+          <li><strong>Everyone reports down on Discord.</strong> Lead confirms the whole flight is safe before the debrief.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <strong>Overhead break:</strong> looks fantastic and is worth flying on a training
+      sortie, but it needs a VFR field, ATC that expects it, and a briefed interval —
+      typically 5 seconds between aircraft at the break point. Do not improvise it at the
+      end of a long mission with tired pilots.
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon">📝</div><div class="card-title">Debrief</div></div>
+      <div class="card-body">
+        <ul class="cl">
+          <li><strong>Do it while it is fresh.</strong> Five minutes on Discord after landing beats a forum post the next day.</li>
+          <li><strong>Timeline first.</strong> Did we hit the TOT? Where did time get lost?</li>
+          <li><strong>Then formation.</strong> Where did spacing break down, and why?</li>
+          <li><strong>Then comms.</strong> What was unclear? What got stepped on?</li>
+          <li><strong>Everyone speaks, including lead.</strong> Lead's errors are the most instructive ones in the flight.</li>
+          <li><strong>Log the flight</strong> in Flight Ops with the formation position noted.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── CONTINGENCY ──────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-contingency">
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon red">👁</div><div class="card-title">Lost sight — "Blind"</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--text2);line-height:1.8;margin:0 0 12px">
+          The most common formation problem and the one with the clearest fix. Say it
+          immediately — there is nothing embarrassing about going blind and everything
+          dangerous about hiding it.
+        </p>
+        <ol class="steps">
+          <li><strong>Call it.</strong> "Two's blind."</li>
+          <li><strong>Lead responds with a deconfliction plan.</strong> "Two, lead is at flight level two-six-zero, come left heading three-one-zero and climb to two-seven-zero."</li>
+          <li><strong>Take altitude separation first.</strong> Vertical is the fastest way to guarantee no collision.</li>
+          <li><strong>Re-establish visual before rejoining.</strong> Do not close on a contact you cannot see.</li>
+          <li><strong>If you cannot regain it,</strong> lead assigns a holding point or sends you home individually. A safe single aircraft beats an unsafe formation.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">📵</div><div class="card-title">Lost comms</div></div>
+      <div class="card-body">
+        <ul class="cl">
+          <li><strong>Discord drops for one aircraft:</strong> they leave the formation, take 1,000 ft of separation, and reconnect. Rejoin only after re-establishing voice.</li>
+          <li><strong>Discord drops for everyone:</strong> flight breaks up, everyone proceeds individually, regroup in the text channel.</li>
+          <li><strong>VATSIM comms lost for lead:</strong> element lead takes over ATC comms and the flight continues. Brief this beforehand.</li>
+          <li><strong>Total sim disconnect:</strong> the remaining flight continues. Do not orbit waiting — the disconnected pilot cannot rejoin mid-mission safely.</li>
+          <li><strong>Brief a text-channel fallback.</strong> When voice fails, everyone needs to know where to look.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon amber">⚠</div><div class="card-title">Aborts and drop-outs</div></div>
+      <div class="card-body">
+        <ul class="cl">
+          <li><strong>Any aircraft may abort at any time</strong> for any reason — sim problem, real life, discomfort with the situation. No explanation required in the air.</li>
+          <li><strong>Aborting aircraft calls it and separates.</strong> "Three is aborting, descending to two-four-zero, turning south."</li>
+          <li><strong>The flight renumbers only if lead says so.</strong> Do not silently become Three because Three left.</li>
+          <li><strong>If lead aborts,</strong> element lead assumes the flight. Brief this before every mission — it takes ten seconds and prevents a scramble.</li>
+          <li><strong>A cell that drops below two aircraft is no longer a cell.</strong> Continue as a single or terminate.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── STANDARDS ────────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-standards">
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon green">📊</div><div class="card-title">Reference numbers</div></div>
+      <div class="card-body">
+        <table class="kv">
+          <tr><td>Standard cell trail spacing</td><td>2 NM</td></tr>
+          <tr><td>Minimum cell trail spacing</td><td>1 NM</td></tr>
+          <tr><td>Vertical stack per aircraft</td><td>500 ft</td></tr>
+          <tr><td>Interval takeoff spacing</td><td>20–30 sec</td></tr>
+          <tr><td>Rejoin speed</td><td>250–280 KIAS</td></tr>
+          <tr><td>Maximum rejoin overtake</td><td>50 kts</td></tr>
+          <tr><td>Maximum bank in cell</td><td>25°</td></tr>
+          <tr><td>TOT stagger between aircraft</td><td>30–60 sec</td></tr>
+          <tr><td>Minimum final approach spacing</td><td>3 NM</td></tr>
+          <tr><td>Blind — initial vertical separation</td><td>1,000 ft</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon">📋</div><div class="card-title">Grade 3 standards</div></div>
+      <div class="card-body">
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Event</th><th>Grade 3 standard (Q)</th><th>Unqualified</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Brief</strong></td><td>All items covered, every pilot can state their own TOT and abort criteria</td><td>Flight launches with anyone unclear on the plan</td></tr>
+              <tr><td><strong>Check-in</strong></td><td>Correct order, no extra transmissions</td><td>Wingmen transmitting on ATC frequency</td></tr>
+              <tr><td><strong>Departure</strong></td><td>Interval held ±10 sec, runway heading maintained</td><td>Cutting the corner to close, or unsafe spacing</td></tr>
+              <tr><td><strong>Rejoin</strong></td><td>≤50 kts overtake, position taken in order</td><td>Overshoot, or leapfrogging another aircraft</td></tr>
+              <tr><td><strong>Cell discipline</strong></td><td>Spacing ±0.5 NM, altitude ±200 ft</td><td>Sustained drift with no correction called</td></tr>
+              <tr><td><strong>Comms</strong></td><td>Correct channel, standard brevity, no stepping on</td><td>ATC traffic on Discord or flight traffic on ATC</td></tr>
+              <tr><td><strong>Deconfliction</strong></td><td>Every aircraft separated by time, altitude or geography</td><td>Two aircraft converging on one target unbriefed</td></tr>
+              <tr><td><strong>Blind procedure</strong></td><td>Called immediately, separation taken before anything else</td><td>Continuing to manoeuvre while blind</td></tr>
+              <tr><td><strong>Recovery</strong></td><td>Briefed sequence flown, 3 NM final spacing held</td><td>Unbriefed formation approach, or unsafe spacing</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-icon red">!</div><div class="card-title">Common errors</div></div>
+      <div class="card-body">
+        <ul class="cl">
+          <li><strong>Wingman transmits on VATSIM.</strong> Coach: "Lead talks to ATC. You talk to lead."</li>
+          <li><strong>Flying too close.</strong> Coach: "This is a bomber cell, not the Thunderbirds. Give it two miles."</li>
+          <li><strong>Excessive overtake on the rejoin.</strong> Coach: "Check your closure now, not at a quarter mile."</li>
+          <li><strong>Cutting the corner in a turn.</strong> Coach: "Turn where lead turned, not when lead turned."</li>
+          <li><strong>Not calling blind.</strong> Coach: "Blind is a call, not a failure. Make it."</li>
+          <li><strong>Chatter during critical phases.</strong> Coach: "Discord is quiet from the IP to the egress."</li>
+          <li><strong>No abort brief.</strong> Coach: "If lead drops, who has the flight? Say it before we launch."</li>
+          <li><strong>Mismatched sim builds.</strong> Coach: "Same aircraft, same version, checked before spawn."</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon">🎓</div><div class="card-title">Flight lead pre-brief checklist</div></div>
+      <div class="card-body">
+        <ul class="cl">
+          <li>Formation type, spacing and stack stated</li>
+          <li>Route, altitudes and TOT for every aircraft individually</li>
+          <li>Comms plan — which channel carries what, and the text fallback</li>
+          <li>Every pilot states their own target and run-in heading back to lead</li>
+          <li>Deconfliction method named explicitly: time, altitude, or geography</li>
+          <li>Abort criteria and succession — who takes the flight if lead drops</li>
+          <li>Blind and lost-comms procedures confirmed understood</li>
+          <li>Recovery plan: breakup point and landing sequence</li>
+          <li>Sim build and weather settings confirmed matching across the flight</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:34px">
+    <a href="/pages/training/index.html" class="btn btn-outline btn-sm">← Back to Training Center</a>
+  </div>
+
+</div>
+
+<footer class="site-footer">
+  <p>Virtual Global Strike Command · VTAC GSC · vtacgsc.com</p>
+  <p style="margin-top:6px">For simulation use only. Not affiliated with the United States Air Force.</p>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+function onAuthReady(user, pilot) { }
+
+document.querySelectorAll('.tp-tabs .tab-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.tp-tabs .tab-btn').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    var panel = document.getElementById('panel-' + btn.dataset.panel);
+    if (panel) panel.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+</script>
+</body>
+</html>
