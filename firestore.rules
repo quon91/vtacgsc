@@ -97,6 +97,28 @@ service cloud.firestore {
       allow delete: if isMasterAdmin();
     }
 
+    // ── UNREGISTERED ROSTER MEMBERS ──────────────────────────
+    // People on a wing who haven't made a site account yet, added
+    // by hand in Master Admin → Unregistered Members. Shown on the
+    // roster page and in the Discord wing rosters.
+    // Read: same audience as the pilot roster (active members), so
+    //   the roster never shows these without the real pilots.
+    // Write: master admin only, and only the fields the admin page
+    //   writes, with a sane name and a real wing.
+    match /rosterExtras/{extraId} {
+      allow read: if isActive();
+      allow create, update: if isMasterAdmin()
+        && request.resource.data.keys().hasOnly(
+             ['name','rank','wing','squadron','createdAt','updatedAt','addedBy'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.wing in ['7bw','509bw','2bw']
+        && (request.resource.data.get('squadron', null) == null
+            || request.resource.data.squadron is string);
+      allow delete: if isMasterAdmin();
+    }
+
     // ── FLIGHTS ───────────────────────────────────────────────
     match /flights/{flightId} {
       allow read: if isActive();
