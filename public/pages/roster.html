@@ -69,6 +69,13 @@
 .rating-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;align-items:center}
 .rating-lbl{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-right:2px}
 .rchip{font-size:9px;font-weight:800;border-radius:8px;padding:2px 7px;font-family:var(--mono)}
+/* ── NOT YET REGISTERED ──
+   Members an admin added by hand, with no site account behind them.
+   Dashed outline and a muted avatar so they read as provisional next
+   to full pilot cards, without shouting about it. */
+.roster-card.unreg{border-style:dashed;border-color:var(--border2);background:transparent}
+.roster-card.unreg .roster-avatar{opacity:.5;border-style:dashed}
+.unreg-tag{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);border:1px dashed var(--border2);border-radius:9px;padding:2px 8px;margin-left:8px;vertical-align:middle;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -328,6 +335,10 @@ function pilotTier(p) {
 }
 
 let rosterPilots = [], activeWingFilter = null, activeMajcom = null;
+// People added in Master Admin → Unregistered Members. No account, so
+// no avatar, roles, medals, ratings or flight stats — just who they are
+// and where they sit. Always Global Strike Command.
+let rosterExtras = [];
 
 // NOTE: nav.js (updateNavUI) fully owns #nav-right-area — including
 // the My Profile button AND the pilot avatar. This function must NOT
@@ -349,7 +360,20 @@ async function loadRoster() {
       const bRank = RANKS.find(r=>r.id===b.rank)?.level || 0;
       return bRank - aRank;
     });
-  } catch(e) { rosterPilots = []; }
+  } catch(e) { console.error('roster pilots:', e); rosterPilots = []; }
+  // Separate try: if this collection can't be read (e.g. its Firestore
+  // rule isn't published yet) the rest of the roster still renders.
+  try {
+    const xs = await db.collection('rosterExtras').get();
+    rosterExtras = xs.docs.map(d => Object.assign({}, d.data(), { id: d.id }))
+      .filter(x => x.name && x.wing)
+      .sort((a,b) => {
+        const ar = RANKS.find(r=>r.id===a.rank)?.level || 0;
+        const br = RANKS.find(r=>r.id===b.rank)?.level || 0;
+        if (br !== ar) return br - ar;
+        return String(a.name).localeCompare(String(b.name));
+      });
+  } catch(e) { console.warn('rosterExtras unavailable:', e.message); rosterExtras = []; }
   renderMajcomFilters();
   renderTierSections();
   renderRosterList();
@@ -486,7 +510,13 @@ function renderRosterList() {
     isInWing(p, activeWingFilter) &&
     (!q || (p.displayName||p.callsign||'').toLowerCase().includes(q))
   );
-  if (!filtered.length) { el.innerHTML = '<div class="empty-state"><div class="icon">👨‍✈️</div><p>No pilots match this filter</p></div>'; return; }
+  // Unregistered members are Global Strike Command, so they drop out
+  // when a partner MAJCOM is selected.
+  const extras = (activeMajcom && activeMajcom !== 'afgsc') ? [] : rosterExtras.filter(x =>
+    (!activeWingFilter || x.wing === activeWingFilter) &&
+    (!q || String(x.name).toLowerCase().includes(q))
+  );
+  if (!filtered.length && !extras.length) { el.innerHTML = '<div class="empty-state"><div class="icon">👨‍✈️</div><p>No pilots match this filter</p></div>'; return; }
 
   el.innerHTML = filtered.map(p => {
     const roles = getAllDisplayRoles(p);
@@ -530,7 +560,19 @@ function renderRosterList() {
         <div class="rs-item"><div class="rs-val">${Math.round(p.flightHours||0)}h</div><div class="rs-lbl">Hours</div></div>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + extras.map(extraCardHtml).join('');
+}
+
+function extraCardHtml(x) {
+  const unit = (getWingName(x.wing) || x.wing)
+    + (x.squadron ? ' · ' + (getSqName(x.wing, x.squadron) || x.squadron) : '');
+  return '<div class="roster-card unreg">'
+    + '<div class="roster-avatar">✈</div>'
+    + '<div class="roster-info">'
+    +   '<div class="roster-name">' + esc(x.name) + '<span class="unreg-tag">Not yet registered</span></div>'
+    +   '<div class="roster-meta">' + esc(getRankName(x.rank || 'rec')) + ' · ' + esc(unit) + '</div>'
+    + '</div>'
+    + '</div>';
 }
 </script>
 </body>
