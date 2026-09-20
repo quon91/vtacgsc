@@ -1472,7 +1472,7 @@ async function postWingRoster(wing, whChannels, pilots, extras) {
     lines.push('**' + discordEsc(sqName) + '**');
     bySq[sq].sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); }).forEach(function(m) {
       const rank = typeof getRankName === 'function' ? getRankName(m.rank || 'rec') : (m.rank || '');
-      lines.push('• ' + rank + ' **' + discordEsc(m.name) + '**' + (m.unreg ? ' · *not yet registered*' : ''));
+      lines.push('• ' + rank + ' **' + discordEsc(m.name) + '**' + (m.unreg ? : ''));
     });
     lines.push('');
   });
@@ -1483,7 +1483,7 @@ async function postWingRoster(wing, whChannels, pilots, extras) {
     title: '👥 ' + ((W[wing]||{}).name || wing) + ' — Roster',
     description: desc,
     footer: { text: list.length + ' active pilot' + (list.length===1?'':'s')
-      + (ex.length ? ' · ' + ex.length + ' not yet registered' : '')
+      + (ex.length ? ' · ' + ex.length + : '')
       + ' · VTAC Global Strike Command' },
     timestamp: new Date().toISOString(),
   }]};
@@ -1893,7 +1893,7 @@ async function loadRosters(wingId) {
               <tr style="opacity:.85">
                 <td><strong>${esc(x.name)}</strong></td>
                 <td>${esc(getRankName(x.rank||'rec'))}</td>
-                <td><span class="badge badge-gray">Not yet registered</span></td>
+                <td><span class="badge badge-gray"></span></td>
                 <td>—</td>
                 <td>—</td>
                 <td><button class="btn btn-outline btn-xs" onclick="editRosterExtra('${escAttr(x.id)}')">Edit</button></td>
@@ -1901,7 +1901,7 @@ async function loadRosters(wingId) {
     return `
       <div class="wing-banner w-${wingId}" style="margin-bottom:14px">
         <div class="wing-label" style="color:var(--${wingId})">${esc(sq.name)}</div>
-        <div style="font-size:13px;color:var(--text2)">${sqPilots.length} pilots${sqExtras.length ? ' · ' + sqExtras.length + ' not yet registered' : ''}</div>
+        <div style="font-size:13px;color:var(--text2)">${sqPilots.length} pilots${sqExtras.length ? ' · ' + sqExtras.length + : ''}</div>
       </div>
       <div class="card" style="margin-bottom:20px;overflow-x:auto">
         <table class="data-table">
