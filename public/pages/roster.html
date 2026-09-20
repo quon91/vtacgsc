@@ -569,7 +569,7 @@ function extraCardHtml(x) {
   return '<div class="roster-card unreg">'
     + '<div class="roster-avatar">✈</div>'
     + '<div class="roster-info">'
-    +   '<div class="roster-name">' + esc(x.name) + '<span class="unreg-tag">Not yet registered</span></div>'
+    +   '<div class="roster-name">' + esc(x.name) + '<span class="unreg-tag"></span></div>'
     +   '<div class="roster-meta">' + esc(getRankName(x.rank || 'rec')) + ' · ' + esc(unit) + '</div>'
     + '</div>'
     + '</div>';
