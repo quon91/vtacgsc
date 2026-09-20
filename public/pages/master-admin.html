@@ -93,6 +93,7 @@
     <div class="sidebar-label">Personnel</div>
     <div class="sidebar-item" onclick="showSec('pilots')"><span class="si-icon">👨‍✈️</span> All Pilots</div>
     <div class="sidebar-item" onclick="showSec('rosters')"><span class="si-icon">📜</span> Rosters</div>
+    <div class="sidebar-item" onclick="showSec('extras')"><span class="si-icon">📝</span> Unregistered Members</div>
     <div class="sidebar-item" onclick="showSec('ranks')"><span class="si-icon">⭐</span> Ranks & Roles</div>
     <div class="sidebar-label">Operations</div>
     <div class="sidebar-item" onclick="showSec('flights')"><span class="si-icon">✈️</span> Flight Logs</div>
@@ -173,6 +174,45 @@
         <button class="tab-btn" onclick="showRosterTab('2bw',this)">2nd BW</button>
       </div>
       <div id="roster-content"></div>
+    </div>
+
+    <div id="sec-extras" class="sec">
+      <div class="sec-title">Unregistered Members</div>
+      <div class="sec-sub">People who fly with a wing but haven't made a site account yet. They show on the public roster and the Discord wing rosters, tagged as not yet registered. Once someone registers and you approve them, remove them here so they aren't listed twice.</div>
+      <div class="card" style="margin-bottom:16px" id="ex-form-card">
+        <div class="card-header"><div class="card-icon">📝</div><div class="card-title" id="ex-form-title">Add a member</div></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Name or callsign</label>
+              <input type="text" id="ex-name" maxlength="40" placeholder="The name they go by on Discord">
+            </div>
+            <div class="form-group">
+              <label>Rank</label>
+              <select id="ex-rank"></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Wing</label>
+              <select id="ex-wing" onchange="updateExtraSqOptions()">
+                <option value="7bw">7th Bomb Wing</option>
+                <option value="509bw">509th Bomb Wing</option>
+                <option value="2bw">2nd Bomb Wing</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Squadron</label>
+              <select id="ex-sq"></select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" id="ex-save-btn" onclick="saveRosterExtra()">+ Add member</button>
+            <button class="btn btn-outline btn-sm" id="ex-cancel-btn" style="display:none" onclick="resetExtraForm()">Cancel edit</button>
+          </div>
+        </div>
+      </div>
+      <div id="extras-list"><div class="empty-state"><p>Loading…</p></div></div>
     </div>
 
     <div id="sec-ranks" class="sec">
@@ -495,6 +535,9 @@
             <option value="pilot_denied">Pilot Denied</option>
             <option value="pilot_rank_changed">Rank Changed</option>
             <option value="cert_awarded">Cert Awarded</option>
+            <option value="roster_extra_added">Unregistered Member Added</option>
+            <option value="roster_extra_updated">Unregistered Member Edited</option>
+            <option value="roster_extra_removed">Unregistered Member Removed</option>
           </optgroup>
           <optgroup label="Operations">
             <option value="flight_logged">Flight Logged</option>
@@ -765,6 +808,7 @@ function showSec(id) {
   if (id==='pilots')       loadAllPilots();
   if (id==='training')     loadTrainingRecords();
   if (id==='rosters')      loadRosters('7bw');
+  if (id==='extras')       loadRosterExtrasSection();
   if (id==='flights')      loadAllFlights();
   if (id==='slideshow')    loadSlideshow();
   if (id==='news')         loadNews();
@@ -967,8 +1011,11 @@ async function loadPrivateEmails() {
 
 async function loadAllPilots() {
   await loadPrivateEmails();
-  const snap = await db.collection('pilots').orderBy('displayName').get();
-  allPilots = snap.docs.map(d=>({uid:d.id,...d.data()}));
+  // No orderBy: Firestore's orderBy('displayName') silently EXCLUDES
+  // any pilot doc without that field. Sort client-side instead.
+  const snap = await db.collection('pilots').get();
+  allPilots = snap.docs.map(d=>({uid:d.id,...d.data()}))
+    .sort((a,b) => String(a.displayName||a.callsign||'').localeCompare(String(b.displayName||b.callsign||'')));
   allPilots.forEach(function(p){ if (!p.email && privateEmails[p.uid]) p.email = privateEmails[p.uid]; });
   filterPilots();
 }
@@ -1401,21 +1448,31 @@ async function upsertRosterMessage(wing, url, payload) {
   return false;
 }
 
-async function postWingRoster(wing, whChannels) {
+// Discord markdown: stop names like "*Viper*" or "__x__" from
+// turning the whole roster italic/underlined.
+function discordEsc(s) {
+  return String(s == null ? '' : s).replace(/([\\*_~`|>])/g, '\\$1');
+}
+
+async function postWingRoster(wing, whChannels, pilots, extras) {
   const ch = whChannels['roster_' + wing];
   if (!ch || !ch.url) return false;
   const W = {'7bw':{name:'7th Bomb Wing',color:0xc8a951},'509bw':{name:'509th Bomb Wing',color:0x4a90d9},'2bw':{name:'2nd Bomb Wing',color:0x3dba6e}};
-  const list = allPilots.filter(p => p.status === 'active' && p.wing === wing);
+  const list = (pilots || []).filter(p => p.status === 'active' && p.wing === wing)
+    .map(p => ({ name: p.displayName || p.callsign || 'Pilot', rank: p.rank, squadron: p.squadron, unreg: false }));
+  const ex = (extras || []).filter(x => x.wing === wing && x.name)
+    .map(x => ({ name: x.name, rank: x.rank, squadron: x.squadron, unreg: true }));
+  const members = list.concat(ex);
   // Group by squadron; command staff without a squadron listed first
   const bySq = {};
-  list.forEach(p => { (bySq[p.squadron || '_cmd'] = bySq[p.squadron || '_cmd'] || []).push(p); });
+  members.forEach(m => { const k = m.squadron || '_cmd'; (bySq[k] = bySq[k] || []).push(m); });
   const lines = [];
   Object.keys(bySq).sort(function(a,b){ return a === '_cmd' ? -1 : b === '_cmd' ? 1 : a.localeCompare(b); }).forEach(function(sq) {
-    const sqName = sq === '_cmd' ? '⭐ Wing Staff' : (typeof getSqName === 'function' ? getSqName(wing, sq) : sq);
-    lines.push('**' + sqName + '**');
-    bySq[sq].sort(function(a,b){ return (a.displayName||a.callsign||'').localeCompare(b.displayName||b.callsign||''); }).forEach(function(p) {
-      const rank = typeof getRankName === 'function' ? getRankName(p.rank || 'rec') : (p.rank || '');
-      lines.push('• ' + rank + ' **' + (p.displayName || p.callsign || 'Pilot') + '**');
+    const sqName = sq === '_cmd' ? '⭐ Wing Staff' : (typeof getSqName === 'function' ? (getSqName(wing, sq) || sq) : sq);
+    lines.push('**' + discordEsc(sqName) + '**');
+    bySq[sq].sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); }).forEach(function(m) {
+      const rank = typeof getRankName === 'function' ? getRankName(m.rank || 'rec') : (m.rank || '');
+      lines.push('• ' + rank + ' **' + discordEsc(m.name) + '**' + (m.unreg ? ' · *not yet registered*' : ''));
     });
     lines.push('');
   });
@@ -1425,29 +1482,226 @@ async function postWingRoster(wing, whChannels) {
     color: (W[wing]||{}).color || 0xc8a951,
     title: '👥 ' + ((W[wing]||{}).name || wing) + ' — Roster',
     description: desc,
-    footer: { text: list.length + ' active pilot' + (list.length===1?'':'s') + ' · VTAC Global Strike Command' },
+    footer: { text: list.length + ' active pilot' + (list.length===1?'':'s')
+      + (ex.length ? ' · ' + ex.length + ' not yet registered' : '')
+      + ' · VTAC Global Strike Command' },
     timestamp: new Date().toISOString(),
   }]};
   return upsertRosterMessage(wing, ch.url, payload);
 }
 
-// Fires after every roster mutation (approve / edit / deny) and via
-// the manual 📡 button. Silently skips wings without a webhook.
+// Fires after every roster change (approve / edit / deny / unregistered
+// member add-edit-remove) and via the manual 📡 button. Silently skips
+// wings without a webhook.
+//
+// Reads pilots FRESH from Firestore every time instead of using the
+// in-memory allPilots: callers fire this right after a write, before
+// the page's own reload has finished, so allPilots could still hold
+// the pre-change data and post a roster one change behind.
 async function postAllWingRosters(manual) {
   try {
-    if (!allPilots.length) { try { await loadAllPilots(); } catch(e) {} }
+    const ps = await db.collection('pilots').get();
+    const pilots = ps.docs.map(d => Object.assign({}, d.data(), { uid: d.id }));
+    let extras = [];
+    try { extras = await fetchRosterExtras(); }
+    catch(e) { console.error('Discord roster: unregistered members unavailable —', e.message); }
     const s = await db.collection('settings').doc('webhooks').get();
     const whChannels = s.exists ? (s.data().channels || {}) : {};
     let n = 0;
     const wings = ['7bw','509bw','2bw'];
     for (let i = 0; i < wings.length; i++) {
-      if (await postWingRoster(wings[i], whChannels)) n++;
+      if (await postWingRoster(wings[i], whChannels, pilots, extras)) n++;
     }
     if (manual) {
       if (n) toast('Updated ' + n + ' wing roster message' + (n>1?'s':'') + ' on Discord ✓');
       else toast('No roster webhooks set — add them in Discord Webhooks → Wing Rosters', 'warn');
     }
-  } catch(e) { if (manual) toast('Roster post failed: ' + e.message, 'error'); }
+  } catch(e) {
+    console.error('Discord roster post failed:', e);
+    if (manual) toast('Roster post failed: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  UNREGISTERED MEMBERS — people on the wing who have no site
+//  account yet. Stored in the rosterExtras collection:
+//    { name, rank, wing, squadron, createdAt, updatedAt, addedBy }
+//  Shown on the public roster page and in the Discord wing rosters.
+//  Public-read, admin-write (see firestore.rules).
+// ══════════════════════════════════════════════════════════════
+let rosterExtras = [];
+let editingExtraId = null;
+
+async function fetchRosterExtras() {
+  const s = await db.collection('rosterExtras').get();
+  rosterExtras = s.docs.map(d => Object.assign({}, d.data(), { id: d.id }))
+    .sort((a,b) => String(a.name||'').localeCompare(String(b.name||'')));
+  return rosterExtras;
+}
+
+async function loadRosterExtrasSection() {
+  fillExtraRankOptions();
+  if (!document.getElementById('ex-sq').options.length) updateExtraSqOptions();
+  const el = document.getElementById('extras-list');
+  try {
+    await fetchRosterExtras();
+  } catch(e) {
+    console.error('rosterExtras:', e);
+    el.innerHTML = '<div class="alert alert-error">Could not load unregistered members: ' + esc(e.message)
+      + (/permission/i.test(e.message) ? '<br><small>The rosterExtras rule hasn\'t been published to Firestore yet.</small>' : '')
+      + '</div>';
+    return;
+  }
+  renderRosterExtras();
+}
+
+function fillExtraRankOptions(selected) {
+  const sel = document.getElementById('ex-rank');
+  if (!sel) return;
+  const keep = selected || sel.value || 'amn';
+  sel.innerHTML = RANKS.map(r => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
+  sel.value = keep;
+  if (!sel.value && RANKS.length) sel.value = RANKS[0].id;
+}
+
+function updateExtraSqOptions(selectedSq) {
+  const wing = document.getElementById('ex-wing').value;
+  const sel  = document.getElementById('ex-sq');
+  const sqs  = (WINGS[wing] && WINGS[wing].squadrons) || {};
+  sel.innerHTML = '<option value="">None — wing staff</option>'
+    + Object.entries(sqs).map(([id,sq]) => `<option value="${esc(id)}" ${id===selectedSq?'selected':''}>${esc(sq.name)}</option>`).join('');
+}
+
+// Someone on this list who now has an active account with the same name.
+function extraHasAccount(x) {
+  const n = String(x.name || '').trim().toLowerCase();
+  return !!n && allPilots.some(p => p.status === 'active'
+    && String(p.displayName || p.callsign || '').trim().toLowerCase() === n);
+}
+
+function renderRosterExtras() {
+  const el = document.getElementById('extras-list');
+  if (!rosterExtras.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">📝</div><p>No unregistered members. Add anyone who flies with a wing but hasn\'t signed up yet.</p></div>';
+    return;
+  }
+  const wingOrder = ['7bw','509bw','2bw'];
+  const wings = wingOrder.concat([...new Set(rosterExtras.map(x => x.wing))].filter(w => wingOrder.indexOf(w) === -1));
+  el.innerHTML = wings.map(function(w) {
+    const rows = rosterExtras.filter(x => x.wing === w);
+    if (!rows.length) return '';
+    return `<div style="font-size:12px;font-weight:700;color:var(--text);margin:18px 0 8px">${esc(getWingName(w) || w || 'No wing')} <span style="color:var(--text3);font-weight:400">· ${rows.length}</span></div>`
+      + rows.map(x => `
+      <div class="pilot-row">
+        <div class="pilot-row-avatar">📝</div>
+        <div class="pilot-row-info">
+          <div class="pilot-row-name">${esc(x.name)}</div>
+          <div class="pilot-row-meta">${esc(getRankName(x.rank || 'rec'))} · ${x.squadron ? esc(getSqName(x.wing, x.squadron) || x.squadron) : 'Wing staff'}</div>
+          ${extraHasAccount(x) ? '<div style="font-size:11px;color:var(--amber);margin-top:3px">⚠ An active pilot with this name exists — remove this entry so they aren\'t listed twice.</div>' : ''}
+        </div>
+        <div class="pilot-row-actions">
+          <button class="btn btn-outline btn-xs" onclick="editRosterExtra('${escAttr(x.id)}')">Edit</button>
+          <button class="btn btn-danger btn-xs" onclick="removeRosterExtra('${escAttr(x.id)}')">Remove</button>
+        </div>
+      </div>`).join('');
+  }).join('');
+}
+
+function resetExtraForm() {
+  editingExtraId = null;
+  document.getElementById('ex-name').value = '';
+  document.getElementById('ex-form-title').textContent = 'Add a member';
+  document.getElementById('ex-save-btn').textContent = '+ Add member';
+  document.getElementById('ex-cancel-btn').style.display = 'none';
+}
+
+// Opens the Unregistered Members section without relying on the
+// global click event showSec() reads.
+function goToExtrasSection() {
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-extras').classList.add('active');
+  document.querySelector('.sidebar-item[onclick*="extras"]')?.classList.add('active');
+}
+
+async function editRosterExtra(id) {
+  if (!document.getElementById('sec-extras').classList.contains('active')) {
+    goToExtrasSection();
+    await loadRosterExtrasSection();
+  }
+  const x = rosterExtras.find(e => e.id === id);
+  if (!x) { toast('That entry no longer exists', 'error'); return; }
+  editingExtraId = id;
+  document.getElementById('ex-name').value = x.name || '';
+  fillExtraRankOptions(x.rank || 'amn');
+  document.getElementById('ex-wing').value = x.wing || '7bw';
+  updateExtraSqOptions(x.squadron || '');
+  document.getElementById('ex-form-title').textContent = 'Edit ' + (x.name || 'member');
+  document.getElementById('ex-save-btn').textContent = 'Save changes';
+  document.getElementById('ex-cancel-btn').style.display = 'inline-flex';
+  document.getElementById('ex-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('ex-name').focus();
+}
+
+async function saveRosterExtra() {
+  const name = document.getElementById('ex-name').value.trim().replace(/\s+/g, ' ');
+  const rank = document.getElementById('ex-rank').value;
+  const wing = document.getElementById('ex-wing').value;
+  const sq   = document.getElementById('ex-sq').value || null;
+  if (!name) { toast('Enter a name or callsign', 'error'); return; }
+  if (!wing) { toast('Pick a wing', 'error'); return; }
+
+  const lower = name.toLowerCase();
+  const dupExtra = rosterExtras.find(x => x.id !== editingExtraId && String(x.name || '').trim().toLowerCase() === lower);
+  if (dupExtra) { toast('"' + name + '" is already on the unregistered list', 'error'); return; }
+  const dupPilot = allPilots.find(p => p.status === 'active' && String(p.displayName || p.callsign || '').trim().toLowerCase() === lower);
+  if (dupPilot && !confirm('"' + name + '" already has an active account on the site. Add them as unregistered anyway?')) return;
+
+  const btn = document.getElementById('ex-save-btn');
+  btn.disabled = true;
+  const data = { name: name, rank: rank, wing: wing, squadron: sq,
+                 updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+  try {
+    if (editingExtraId) {
+      await db.collection('rosterExtras').doc(editingExtraId).update(data);
+      logAudit('roster_extra_updated', 'Updated unregistered member: ' + name + ' → ' + (getWingName(wing) || wing), { pilotCallsign: name });
+      toast(name + ' updated ✓');
+      resetExtraForm();
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      data.addedBy = currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '';
+      await db.collection('rosterExtras').add(data);
+      logAudit('roster_extra_added', 'Added unregistered member: ' + name + ' → ' + (getWingName(wing) || wing), { pilotCallsign: name });
+      toast(name + ' added ✓');
+      // Keep wing, squadron and rank so several people from the same
+      // squadron can be entered back to back.
+      document.getElementById('ex-name').value = '';
+      document.getElementById('ex-name').focus();
+    }
+    await loadRosterExtrasSection();
+    postAllWingRosters(false);   // keep Discord wing rosters live
+  } catch(e) {
+    console.error('save rosterExtra:', e);
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function removeRosterExtra(id) {
+  const x = rosterExtras.find(e => e.id === id) || {};
+  if (!confirm('Remove ' + (x.name || 'this member') + ' from the unregistered list? They disappear from the site roster and Discord.')) return;
+  try {
+    await db.collection('rosterExtras').doc(id).delete();
+    logAudit('roster_extra_removed', 'Removed unregistered member: ' + (x.name || id), { pilotCallsign: x.name || '' });
+    if (editingExtraId === id) resetExtraForm();
+    toast((x.name || 'Member') + ' removed');
+    await loadRosterExtrasSection();
+    postAllWingRosters(false);   // keep Discord wing rosters live
+  } catch(e) {
+    console.error('remove rosterExtra:', e);
+    toast('Error: ' + e.message, 'error');
+  }
 }
 
 function openRankModal(uid) {
@@ -1595,6 +1849,9 @@ async function loadRosters(wingId) {
   const snap = await db.collection('pilots').where('wing','==',wingId).where('status','==','active').get();
   const pilots = snap.docs.map(d=>({uid:d.id,...d.data()}));
   const el   = document.getElementById('roster-content');
+  let wingExtras = [];
+  try { wingExtras = (await fetchRosterExtras()).filter(x => x.wing === wingId); }
+  catch(e) { console.error('rosterExtras (rosters tab):', e); }
 
   const commander = pilots.find(p => getPilotRoleIds(p).includes('wing_commander'));
   const deputy     = pilots.filter(p => getPilotRoleIds(p).includes('sq_commander'));
@@ -1631,10 +1888,20 @@ async function loadRosters(wingId) {
 
   const squadronsHtml = Object.entries(sqs).map(([sqId,sq]) => {
     const sqPilots = pilots.filter(p=>p.squadron===sqId && p.role !== 'wing_commander');
+    const sqExtras = wingExtras.filter(x => x.squadron === sqId);
+    const extraRows = sqExtras.map(x => `
+              <tr style="opacity:.85">
+                <td><strong>${esc(x.name)}</strong></td>
+                <td>${esc(getRankName(x.rank||'rec'))}</td>
+                <td><span class="badge badge-gray">Not yet registered</span></td>
+                <td>—</td>
+                <td>—</td>
+                <td><button class="btn btn-outline btn-xs" onclick="editRosterExtra('${escAttr(x.id)}')">Edit</button></td>
+              </tr>`).join('');
     return `
       <div class="wing-banner w-${wingId}" style="margin-bottom:14px">
         <div class="wing-label" style="color:var(--${wingId})">${esc(sq.name)}</div>
-        <div style="font-size:13px;color:var(--text2)">${sqPilots.length} pilots</div>
+        <div style="font-size:13px;color:var(--text2)">${sqPilots.length} pilots${sqExtras.length ? ' · ' + sqExtras.length + ' not yet registered' : ''}</div>
       </div>
       <div class="card" style="margin-bottom:20px;overflow-x:auto">
         <table class="data-table">
@@ -1648,8 +1915,8 @@ async function loadRosters(wingId) {
                 <td>${p.totalFlights||0}</td>
                 <td>${Math.round((p.flightHours||0))}h</td>
                 <td><button class="btn btn-outline btn-xs" onclick="openRankModal('${escAttr(p.uid)}')">Edit</button></td>
-              </tr>`).join('')
-            : '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">No pilots assigned to this squadron</td></tr>'}
+              </tr>`).join('') + extraRows
+            : (extraRows || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">No pilots assigned to this squadron</td></tr>')}
           </tbody>
         </table>
       </div>`;
@@ -2433,9 +2700,9 @@ const WH_CHANNELS = {
   tasking_7bw:    { label:'Tasking — 7th BW',            group:'Tasking',      events:'tasking orders for the 7th Bomb Wing' },
   tasking_509bw:  { label:'Tasking — 509th BW',          group:'Tasking',      events:'tasking orders for the 509th Bomb Wing' },
   tasking_2bw:    { label:'Tasking — 2nd BW',            group:'Tasking',      events:'tasking orders for the 2nd Bomb Wing' },
-  roster_7bw:     { label:'Roster — 7th BW',             group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny' },
-  roster_509bw:   { label:'Roster — 509th BW',           group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny' },
-  roster_2bw:     { label:'Roster — 2nd BW',             group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny' },
+  roster_7bw:     { label:'Roster — 7th BW',             group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' },
+  roster_509bw:   { label:'Roster — 509th BW',           group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' },
+  roster_2bw:     { label:'Roster — 2nd BW',             group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' },
   admin_pilots:   { label:'Admin — Pilot Actions',       group:'Admin',        events:'approved, denied, rank/role changes' },
   admin_training: { label:'Admin — Training & Certs',    group:'Admin',        events:'cert_awarded, cert_revoked' },
   admin_site:     { label:'Admin — Site Changes',        group:'Admin',        events:'news, roles, wings, webhooks' },
@@ -2708,6 +2975,7 @@ async function adminFetchAuditPage(reset) {
       fleet_aircraft_removed:'var(--red)', emails_migrated:'var(--amber)',
       training_added:'var(--green)', training_updated:'var(--gold)', training_removed:'var(--red)',
       application_denied:'var(--red)', training_cert_awarded:'var(--gold)',
+      roster_extra_added:'var(--green)', roster_extra_updated:'var(--gold)', roster_extra_removed:'var(--red)',
     };
 
     const html = entries.map(function(e) {
