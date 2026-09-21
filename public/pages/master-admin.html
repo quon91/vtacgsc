@@ -178,7 +178,7 @@
 
     <div id="sec-extras" class="sec">
       <div class="sec-title">Unregistered Members</div>
-      <div class="sec-sub">People who fly with a wing but haven't made a site account yet. They show on the public roster and the Discord wing rosters, tagged as not yet registered. Once someone registers and you approve them, remove them here so they aren't listed twice.</div>
+      <div class="sec-sub">People who fly with a wing but haven't made a site account yet. They show on the public site roster only — they are not posted to the Discord wing rosters. Once someone registers and you approve them, remove them here so they aren't listed twice.</div>
       <div class="card" style="margin-bottom:16px" id="ex-form-card">
         <div class="card-header"><div class="card-icon">📝</div><div class="card-title" id="ex-form-title">Add a member</div></div>
         <div class="card-body">
@@ -1005,7 +1005,7 @@ async function loadPrivateEmails() {
   try {
     const s = await db.collection('pilotsPrivate').get();
     s.docs.forEach(function(d){ privateEmails[d.id] = (d.data().email || ''); });
-  } catch(e) {}
+  } catch(e) { console.warn('pilotsPrivate unavailable:', e.message); }
   return privateEmails;
 }
 
@@ -1094,7 +1094,7 @@ async function loadTrainingRecords(opts) {
   const keepForm = !!(opts && opts.keepForm);
   const el = document.getElementById('training-list');
   if (!keepForm) el.innerHTML = '<div class="empty-state"><p>Loading training records…</p></div>';
-  if (!allPilots.length) { try { await loadAllPilots(); } catch(e) {} }
+  if (!allPilots.length) { try { await loadAllPilots(); } catch(e) { console.error('pilots:', e); } }
 
   // On a post-award refresh the form is left exactly as the user had it.
   if (!keepForm) {
@@ -1419,19 +1419,23 @@ async function deleteTrainingRecord(id) {
 //  edited in place whenever the roster changes (approve, edit,
 //  deny). Same PATCH pattern as the fleet status messages;
 //  message ids live in settings/rosterStatus.
+//
+//  Registered, active pilots ONLY. Unregistered members (the
+//  rosterExtras collection) are deliberately left out — they show
+//  on the public site roster, never on Discord.
 // ══════════════════════════════════════════════════════════════
 async function upsertRosterMessage(wing, url, payload) {
   let ids = {};
   try {
     const s = await db.collection('settings').doc('rosterStatus').get();
     ids = s.exists ? (s.data().messages || {}) : {};
-  } catch(e) {}
+  } catch(e) { console.warn('rosterStatus unavailable:', e.message); }
   const mid = ids[wing];
   if (mid) {
     try {
       const r = await fetch(url + '/messages/' + mid, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (r.ok) return true;
-    } catch(e) {}
+    } catch(e) { console.warn('roster PATCH failed, posting new message:', e.message); }
   }
   try {
     const sep = url.includes('?') ? '&' : '?';
@@ -1440,11 +1444,12 @@ async function upsertRosterMessage(wing, url, payload) {
       const msg = await r.json().catch(function(){ return null; });
       if (msg && msg.id) {
         ids[wing] = msg.id;
-        db.collection('settings').doc('rosterStatus').set({ messages: ids }, { merge: true }).catch(function(){});
+        db.collection('settings').doc('rosterStatus').set({ messages: ids }, { merge: true })
+          .catch(function(e){ console.warn('rosterStatus save failed:', e.message); });
       }
       return true;
     }
-  } catch(e) {}
+  } catch(e) { console.error('roster POST failed:', e); }
   return false;
 }
 
@@ -1454,15 +1459,12 @@ function discordEsc(s) {
   return String(s == null ? '' : s).replace(/([\\*_~`|>])/g, '\\$1');
 }
 
-async function postWingRoster(wing, whChannels, pilots, extras) {
+async function postWingRoster(wing, whChannels, pilots) {
   const ch = whChannels['roster_' + wing];
   if (!ch || !ch.url) return false;
   const W = {'7bw':{name:'7th Bomb Wing',color:0xc8a951},'509bw':{name:'509th Bomb Wing',color:0x4a90d9},'2bw':{name:'2nd Bomb Wing',color:0x3dba6e}};
-  const list = (pilots || []).filter(p => p.status === 'active' && p.wing === wing)
-    .map(p => ({ name: p.displayName || p.callsign || 'Pilot', rank: p.rank, squadron: p.squadron, unreg: false }));
-  const ex = (extras || []).filter(x => x.wing === wing && x.name)
-    .map(x => ({ name: x.name, rank: x.rank, squadron: x.squadron, unreg: true }));
-  const members = list.concat(ex);
+  const members = (pilots || []).filter(p => p.status === 'active' && p.wing === wing)
+    .map(p => ({ name: p.displayName || p.callsign || 'Pilot', rank: p.rank, squadron: p.squadron }));
   // Group by squadron; command staff without a squadron listed first
   const bySq = {};
   members.forEach(m => { const k = m.squadron || '_cmd'; (bySq[k] = bySq[k] || []).push(m); });
@@ -1472,7 +1474,7 @@ async function postWingRoster(wing, whChannels, pilots, extras) {
     lines.push('**' + discordEsc(sqName) + '**');
     bySq[sq].sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); }).forEach(function(m) {
       const rank = typeof getRankName === 'function' ? getRankName(m.rank || 'rec') : (m.rank || '');
-      lines.push('• ' + rank + ' **' + discordEsc(m.name) + '**' + (m.unreg ? : ''));
+      lines.push('• ' + rank + ' **' + discordEsc(m.name) + '**');
     });
     lines.push('');
   });
@@ -1482,17 +1484,15 @@ async function postWingRoster(wing, whChannels, pilots, extras) {
     color: (W[wing]||{}).color || 0xc8a951,
     title: '👥 ' + ((W[wing]||{}).name || wing) + ' — Roster',
     description: desc,
-    footer: { text: list.length + ' active pilot' + (list.length===1?'':'s')
-      + (ex.length ? ' · ' + ex.length + : '')
+    footer: { text: members.length + ' active pilot' + (members.length===1?'':'s')
       + ' · VTAC Global Strike Command' },
     timestamp: new Date().toISOString(),
   }]};
   return upsertRosterMessage(wing, ch.url, payload);
 }
 
-// Fires after every roster change (approve / edit / deny / unregistered
-// member add-edit-remove) and via the manual 📡 button. Silently skips
-// wings without a webhook.
+// Fires after every roster change (approve / edit / deny) and via the
+// manual 📡 button. Silently skips wings without a webhook.
 //
 // Reads pilots FRESH from Firestore every time instead of using the
 // in-memory allPilots: callers fire this right after a write, before
@@ -1502,15 +1502,12 @@ async function postAllWingRosters(manual) {
   try {
     const ps = await db.collection('pilots').get();
     const pilots = ps.docs.map(d => Object.assign({}, d.data(), { uid: d.id }));
-    let extras = [];
-    try { extras = await fetchRosterExtras(); }
-    catch(e) { console.error('Discord roster: unregistered members unavailable —', e.message); }
     const s = await db.collection('settings').doc('webhooks').get();
     const whChannels = s.exists ? (s.data().channels || {}) : {};
     let n = 0;
     const wings = ['7bw','509bw','2bw'];
     for (let i = 0; i < wings.length; i++) {
-      if (await postWingRoster(wings[i], whChannels, pilots, extras)) n++;
+      if (await postWingRoster(wings[i], whChannels, pilots)) n++;
     }
     if (manual) {
       if (n) toast('Updated ' + n + ' wing roster message' + (n>1?'s':'') + ' on Discord ✓');
@@ -1526,7 +1523,8 @@ async function postAllWingRosters(manual) {
 //  UNREGISTERED MEMBERS — people on the wing who have no site
 //  account yet. Stored in the rosterExtras collection:
 //    { name, rank, wing, squadron, createdAt, updatedAt, addedBy }
-//  Shown on the public roster page and in the Discord wing rosters.
+//  Shown on the public roster page and the admin Rosters tab.
+//  NOT posted to Discord.
 //  Public-read, admin-write (see firestore.rules).
 // ══════════════════════════════════════════════════════════════
 let rosterExtras = [];
@@ -1679,7 +1677,6 @@ async function saveRosterExtra() {
       document.getElementById('ex-name').focus();
     }
     await loadRosterExtrasSection();
-    postAllWingRosters(false);   // keep Discord wing rosters live
   } catch(e) {
     console.error('save rosterExtra:', e);
     toast('Error: ' + e.message, 'error');
@@ -1690,14 +1687,13 @@ async function saveRosterExtra() {
 
 async function removeRosterExtra(id) {
   const x = rosterExtras.find(e => e.id === id) || {};
-  if (!confirm('Remove ' + (x.name || 'this member') + ' from the unregistered list? They disappear from the site roster and Discord.')) return;
+  if (!confirm('Remove ' + (x.name || 'this member') + ' from the unregistered list? They disappear from the site roster.')) return;
   try {
     await db.collection('rosterExtras').doc(id).delete();
     logAudit('roster_extra_removed', 'Removed unregistered member: ' + (x.name || id), { pilotCallsign: x.name || '' });
     if (editingExtraId === id) resetExtraForm();
     toast((x.name || 'Member') + ' removed');
     await loadRosterExtrasSection();
-    postAllWingRosters(false);   // keep Discord wing rosters live
   } catch(e) {
     console.error('remove rosterExtra:', e);
     toast('Error: ' + e.message, 'error');
@@ -1893,15 +1889,16 @@ async function loadRosters(wingId) {
               <tr style="opacity:.85">
                 <td><strong>${esc(x.name)}</strong></td>
                 <td>${esc(getRankName(x.rank||'rec'))}</td>
-                <td><span class="badge badge-gray"></span></td>
+                <td style="color:var(--text3)">—</td>
                 <td>—</td>
                 <td>—</td>
                 <td><button class="btn btn-outline btn-xs" onclick="editRosterExtra('${escAttr(x.id)}')">Edit</button></td>
               </tr>`).join('');
+    const headCount = sqPilots.length + sqExtras.length;
     return `
       <div class="wing-banner w-${wingId}" style="margin-bottom:14px">
         <div class="wing-label" style="color:var(--${wingId})">${esc(sq.name)}</div>
-        <div style="font-size:13px;color:var(--text2)">${sqPilots.length} pilots${sqExtras.length ? ' · ' + sqExtras.length + : ''}</div>
+        <div style="font-size:13px;color:var(--text2)">${headCount} pilot${headCount===1?'':'s'}</div>
       </div>
       <div class="card" style="margin-bottom:20px;overflow-x:auto">
         <table class="data-table">
@@ -1941,12 +1938,33 @@ function showRosterTab(wingId, btn) {
   loadRosters(wingId);
 }
 
+// Timestamp → millis for client-side sorting. Missing fields sort last.
+function tsMillis(t) {
+  if (!t) return 0;
+  if (typeof t.toMillis === 'function') return t.toMillis();
+  if (t instanceof Date) return t.getTime();
+  if (typeof t.seconds === 'number') return t.seconds * 1000;
+  return 0;
+}
+
 async function loadAllFlights() {
-  const snap = await db.collection('flights').orderBy('loggedAt','desc').limit(50).get();
+  // No orderBy — it silently drops any flight missing loggedAt.
+  // Sort newest-first client-side and show the latest 50.
   const el = document.getElementById('all-flights-list');
-  if (snap.empty) { el.innerHTML='<div class="empty-state"><div class="icon">✈️</div><p>No flights logged yet</p></div>'; return; }
+  let flights = [];
+  try {
+    const snap = await db.collection('flights').get();
+    flights = snap.docs.map(d => Object.assign({}, d.data(), { id: d.id }))
+      .sort((a,b) => tsMillis(b.loggedAt) - tsMillis(a.loggedAt))
+      .slice(0, 50);
+  } catch(e) {
+    console.error('flights:', e);
+    el.innerHTML = '<div class="alert alert-error">Could not load flights: ' + esc(e.message) + '</div>';
+    return;
+  }
+  if (!flights.length) { el.innerHTML='<div class="empty-state"><div class="icon">✈️</div><p>No flights logged yet</p></div>'; return; }
   el.innerHTML = '<div class="card" style="overflow-x:auto"><table class="data-table"><thead><tr><th>Pilot</th><th>Route</th><th>Aircraft</th><th>Duration</th><th>Date</th><th>Wing</th></tr></thead><tbody>' +
-    snap.docs.map(d=>{const f=d.data();return `<tr><td><strong>${esc(f.pilotCallsign||'—')}</strong></td><td style="font-family:var(--mono)">${esc(f.departure)}→${esc(f.arrival)}</td><td>${esc(f.aircraft||'—')}</td><td>${Math.floor((f.durationMins||0)/60)}h${(f.durationMins||0)%60}m</td><td>${esc(formatDate(f.loggedAt))}</td><td>${esc(getWingName(f.wing)||'—')}</td></tr>`;}).join('') +
+    flights.map(f=>`<tr><td><strong>${esc(f.pilotCallsign||'—')}</strong></td><td style="font-family:var(--mono)">${esc(f.departure)}→${esc(f.arrival)}</td><td>${esc(f.aircraft||'—')}</td><td>${Math.floor((f.durationMins||0)/60)}h${(f.durationMins||0)%60}m</td><td>${esc(formatDate(f.loggedAt))}</td><td>${esc(getWingName(f.wing)||'—')}</td></tr>`).join('') +
     '</tbody></table></div>';
 }
 
@@ -2041,16 +2059,26 @@ async function removeSlide(idx) {
 }
 
 async function loadNews() {
-  const snap = await db.collection('news').orderBy('createdAt','desc').get();
+  // No orderBy — sort newest-first client-side (standing rule).
   const el = document.getElementById('news-list-admin');
-  if (snap.empty) { el.innerHTML='<div class="empty-state"><div class="icon">📢</div><p>No announcements</p></div>'; return; }
-  el.innerHTML = snap.docs.map(d=>{const n=d.data();return `
+  let items = [];
+  try {
+    const snap = await db.collection('news').get();
+    items = snap.docs.map(d => ({ id: d.id, data: d.data() }))
+      .sort((a,b) => tsMillis(b.data.createdAt) - tsMillis(a.data.createdAt));
+  } catch(e) {
+    console.error('news:', e);
+    el.innerHTML = '<div class="alert alert-error">Could not load announcements: ' + esc(e.message) + '</div>';
+    return;
+  }
+  if (!items.length) { el.innerHTML='<div class="empty-state"><div class="icon">📢</div><p>No announcements</p></div>'; return; }
+  el.innerHTML = items.map(item=>{const n=item.data;return `
     <div class="card" style="margin-bottom:10px">
       <div class="card-body">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
           <strong style="font-size:15px">${esc(n.title)}</strong>
           <span style="font-size:11px;color:var(--text3);margin-left:auto">${esc(formatDate(n.createdAt))}</span>
-          <button class="btn btn-danger btn-xs" onclick="deleteNews('${escAttr(d.id)}')">Delete</button>
+          <button class="btn btn-danger btn-xs" onclick="deleteNews('${escAttr(item.id)}')">Delete</button>
         </div>
         <div style="font-size:13px;color:var(--text2)">${esc(n.body)}</div>
       </div>
@@ -2093,7 +2121,7 @@ async function loadCustomizeSettings() {
         document.getElementById('site-logo-remove-btn').style.display = 'inline-flex';
       }
     }
-  } catch(e) {}
+  } catch(e) { console.error('site settings:', e); }
   await buildWingNameEditor();
   renderWingLogoEditor();
 }
@@ -2113,7 +2141,7 @@ async function buildWingNameEditor() {
       });
       liveWingsData[d.id] = {...local, ...remote, squadrons: mergedSqs, id: d.id};
     });
-  } catch(e) {}
+  } catch(e) { console.error('wings:', e); }
 
   const el = document.getElementById('wing-name-editor');
   el.innerHTML = Object.entries(liveWingsData).map(([wingId,wing])=>`
@@ -2642,7 +2670,7 @@ async function pingDiscordAccess(uid) {
                || s.data()?.channels?.admin_all?.url
                || '';
     }
-  } catch(e) {}
+  } catch(e) { console.error('webhooks:', e); }
 
   if (!webhookUrl) {
     toast('No admin Discord webhook configured. Set one in Discord Webhooks tab.', 'warn');
@@ -2700,9 +2728,9 @@ const WH_CHANNELS = {
   tasking_7bw:    { label:'Tasking — 7th BW',            group:'Tasking',      events:'tasking orders for the 7th Bomb Wing' },
   tasking_509bw:  { label:'Tasking — 509th BW',          group:'Tasking',      events:'tasking orders for the 509th Bomb Wing' },
   tasking_2bw:    { label:'Tasking — 2nd BW',            group:'Tasking',      events:'tasking orders for the 2nd Bomb Wing' },
-  roster_7bw:     { label:'Roster — 7th BW',             group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' },
-  roster_509bw:   { label:'Roster — 509th BW',           group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' },
-  roster_2bw:     { label:'Roster — 2nd BW',             group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' },
+  roster_7bw:     { label:'Roster — 7th BW',             group:'Wing Rosters', events:'living roster message of registered pilots — auto-updates on approve/edit/deny' },
+  roster_509bw:   { label:'Roster — 509th BW',           group:'Wing Rosters', events:'living roster message of registered pilots — auto-updates on approve/edit/deny' },
+  roster_2bw:     { label:'Roster — 2nd BW',             group:'Wing Rosters', events:'living roster message of registered pilots — auto-updates on approve/edit/deny' },
   admin_pilots:   { label:'Admin — Pilot Actions',       group:'Admin',        events:'approved, denied, rank/role changes' },
   admin_training: { label:'Admin — Training & Certs',    group:'Admin',        events:'cert_awarded, cert_revoked' },
   admin_site:     { label:'Admin — Site Changes',        group:'Admin',        events:'news, roles, wings, webhooks' },
@@ -2714,7 +2742,7 @@ async function adminLoadWebhooks() {
   try {
     const s = await db.collection('settings').doc('webhooks').get();
     _adminWhConfig = s.exists ? (s.data().channels || {}) : {};
-  } catch(e) { _adminWhConfig = {}; }
+  } catch(e) { console.error('webhooks:', e); _adminWhConfig = {}; }
   renderAdminWebhookCards();
   adminLoadEmbedTpls();
 }
@@ -2776,7 +2804,7 @@ async function adminLoadEmbedTpls() {
   try {
     const s = await db.collection('settings').doc('embedTemplates').get();
     _adminEmbedTpls = s.exists ? (s.data().templates || {}) : {};
-  } catch(e) { _adminEmbedTpls = {}; }
+  } catch(e) { console.error('embedTemplates:', e); _adminEmbedTpls = {}; }
   renderAdminEmbedCards();
 }
 
@@ -2941,7 +2969,9 @@ async function adminFetchAuditPage(reset) {
     // Only orderBy — no where(). Combining eventType + timestamp
     // needs a composite index, and without one the whole log errored
     // out. Sort server-side on the single indexed field, filter the
-    // page client-side.
+    // page client-side. (Kept on purpose: Load more pages with
+    // startAfter, which needs a server-side order. Every audit entry
+    // is written with a timestamp, so none get dropped.)
     let q = db.collection('auditLog').orderBy('timestamp','desc').limit(_ADMIN_AUDIT_PAGE);
     if (!reset && _adminAuditLast) q = q.startAfter(_adminAuditLast);
 
@@ -3001,8 +3031,9 @@ async function adminFetchAuditPage(reset) {
     if (reset) list.innerHTML = html;
     else list.insertAdjacentHTML('beforeend', html);
   } catch(e) {
+    console.error('auditLog:', e);
     const list = document.getElementById('admin-audit-list');
-    if (list) list.innerHTML = '<div class="alert alert-error">Error: ' + esc(e.message) + '<br><small>You may need to create a Firestore index for auditLog (eventType ASC + timestamp DESC).</small></div>';
+    if (list) list.innerHTML = '<div class="alert alert-error">Error: ' + esc(e.message) + '</div>';
   }
 }
 
