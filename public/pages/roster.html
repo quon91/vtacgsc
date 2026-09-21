@@ -69,13 +69,12 @@
 .rating-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;align-items:center}
 .rating-lbl{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-right:2px}
 .rchip{font-size:9px;font-weight:800;border-radius:8px;padding:2px 7px;font-family:var(--mono)}
-/* ── NOT YET REGISTERED ──
+/* ── UNREGISTERED MEMBERS ──
    Members an admin added by hand, with no site account behind them.
    Dashed outline and a muted avatar so they read as provisional next
-   to full pilot cards, without shouting about it. */
+   to full pilot cards, without a text label. */
 .roster-card.unreg{border-style:dashed;border-color:var(--border2);background:transparent}
 .roster-card.unreg .roster-avatar{opacity:.5;border-style:dashed}
-.unreg-tag{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);border:1px dashed var(--border2);border-radius:9px;padding:2px 8px;margin-left:8px;vertical-align:middle;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -569,7 +568,7 @@ function extraCardHtml(x) {
   return '<div class="roster-card unreg">'
     + '<div class="roster-avatar">✈</div>'
     + '<div class="roster-info">'
-    +   '<div class="roster-name">' + esc(x.name) + '<span class="unreg-tag"></span></div>'
+    +   '<div class="roster-name">' + esc(x.name) + '</div>'
     +   '<div class="roster-meta">' + esc(getRankName(x.rank || 'rec')) + ' · ' + esc(unit) + '</div>'
     + '</div>'
     + '</div>';
