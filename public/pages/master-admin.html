@@ -168,6 +168,7 @@
     <div id="sec-rosters" class="sec">
       <div class="sec-title">Squadron Rosters</div>
       <div class="sec-sub">View and manage rosters for all wings and squadrons.</div>
+      <div style="margin-bottom:12px"><button class="btn btn-outline btn-sm" onclick="refreshDiscordEmbeds(this)">🔄 Refresh Discord roster embeds</button></div>
       <div class="tab-nav">
         <button class="tab-btn active" onclick="showRosterTab('7bw',this)">7th BW</button>
         <button class="tab-btn" onclick="showRosterTab('509bw',this)">509th BW</button>
@@ -515,6 +516,15 @@
       <div class="sec-title">Discord Webhooks</div>
       <div class="sec-sub">Configure a Discord webhook URL per event channel. Each fires to a different Discord channel of your choice.</div>
       <div class="alert alert-info" style="margin-bottom:18px;font-size:12px"><strong>How to create a webhook:</strong> Discord → Channel Settings → Integrations → Webhooks → New Webhook → Copy URL → paste below.</div>
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px">
+            <div style="font-size:13px;font-weight:700;color:var(--text)">Refresh Discord embeds</div>
+            <div style="font-size:11px;color:var(--text3)">Re-posts the live wing roster messages with current data. If a message was deleted in Discord, a new one is posted in its place.</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="refreshDiscordEmbeds(this)">🔄 Refresh all wing rosters</button>
+        </div>
+      </div>
       <div id="admin-webhook-cards"></div>
       <button class="btn btn-primary" style="margin-top:12px" onclick="adminSaveWebhooks()">💾 Save All Webhooks</button>
 
@@ -844,6 +854,7 @@ let allPilots = [], pendingApps = [];
 let editingPilotUid = null;
 
 async function loadAll() {
+  await loadSqTypes();
   const snap = await db.collection('pilots').get();
   allPilots = snap.docs.map(d => ({uid:d.id,...d.data()}));
   pendingApps = allPilots.filter(p => p.status === 'pending');
@@ -939,7 +950,7 @@ function updateSqOptions() {
   const sel  = document.getElementById('approve-squadron');
   const sqs  = WINGS[wing]?.squadrons || {};
   sel.innerHTML = '<option value="">None — command staff / unassigned</option>'
-    + Object.entries(sqs).map(([id,sq])=>`<option value="${esc(id)}">${esc(sq.name)}</option>`).join('');
+    + Object.entries(sqs).map(([id,sq])=>`<option value="${esc(id)}">${esc(sqOptLabel(wing, id, sq.name))}</option>`).join('');
 }
 
 async function confirmApprove() {
@@ -1459,6 +1470,59 @@ function discordEsc(s) {
   return String(s == null ? '' : s).replace(/([\\*_~`|>])/g, '\\$1');
 }
 
+// ══════════════════════════════════════════════════════════════
+//  SQUADRON TYPES — what kind of unit each squadron is. Stored on
+//  wings/{wingId}.squadrons.{sqId}.type and set in Customize Site →
+//  Wing & squadron names. No type = active duty.
+// ══════════════════════════════════════════════════════════════
+const SQ_TYPES = {
+  active:  { label: 'Active Duty',                short: '',        color: '#3dba6e', order: 0 },
+  reserve: { label: 'Reserve (AFRC)',             short: 'Reserve', color: '#4a90d9', order: 1 },
+  guard:   { label: 'Air National Guard',         short: 'ANG',     color: '#9b59b6', order: 2 },
+  ftu:     { label: 'Formal Training Unit (FTU)', short: 'FTU',     color: '#e09030', order: 3 },
+};
+let sqTypeMap = {};   // { wingId: { sqId: type } }
+
+// Reads every wing's squadron types. Fresh read each call so Discord
+// posts and the Rosters tab never use a stale type.
+async function loadSqTypes() {
+  try {
+    const snap = await db.collection('wings').get();
+    const m = {};
+    snap.docs.forEach(function(d) {
+      const sqs = (d.data() || {}).squadrons || {};
+      m[d.id] = {};
+      Object.keys(sqs).forEach(function(sqId) { if (sqs[sqId] && sqs[sqId].type) m[d.id][sqId] = sqs[sqId].type; });
+    });
+    sqTypeMap = m;
+  } catch(e) { console.warn('squadron types unavailable:', e.message); }
+  return sqTypeMap;
+}
+function getSqType(wing, sq) {
+  if (!sq) return 'active';
+  const t = (sqTypeMap[wing] && sqTypeMap[wing][sq])
+         || (WINGS[wing] && WINGS[wing].squadrons && WINGS[wing].squadrons[sq] && WINGS[wing].squadrons[sq].type);
+  return SQ_TYPES[t] ? t : 'active';
+}
+// Small coloured tag for admin views. Active duty gets none.
+function sqTypeBadge(wing, sq) {
+  const t = SQ_TYPES[getSqType(wing, sq)];
+  if (!t.short) return '';
+  return '<span class="badge" style="background:' + t.color + '22;color:' + t.color + ';border:1px solid ' + t.color + '55;margin-left:6px">' + esc(t.label) + '</span>';
+}
+// Dropdown text: "11th BS — FTU"
+function sqOptLabel(wing, sqId, name) {
+  const t = SQ_TYPES[getSqType(wing, sqId)];
+  return (name || sqId) + (t.short ? ' — ' + t.short : '');
+}
+// Squadrons in display order: active, reserve, guard, FTU, then by name.
+function sqSortFn(wing) {
+  return function(a, b) {
+    const d = SQ_TYPES[getSqType(wing, a)].order - SQ_TYPES[getSqType(wing, b)].order;
+    return d || String(a).localeCompare(String(b));
+  };
+}
+
 async function postWingRoster(wing, whChannels, pilots) {
   const ch = whChannels['roster_' + wing];
   if (!ch || !ch.url) return false;
@@ -1469,9 +1533,11 @@ async function postWingRoster(wing, whChannels, pilots) {
   const bySq = {};
   members.forEach(m => { const k = m.squadron || '_cmd'; (bySq[k] = bySq[k] || []).push(m); });
   const lines = [];
-  Object.keys(bySq).sort(function(a,b){ return a === '_cmd' ? -1 : b === '_cmd' ? 1 : a.localeCompare(b); }).forEach(function(sq) {
+  const byType = sqSortFn(wing);
+  Object.keys(bySq).sort(function(a,b){ return a === '_cmd' ? -1 : b === '_cmd' ? 1 : byType(a, b); }).forEach(function(sq) {
     const sqName = sq === '_cmd' ? '⭐ Wing Staff' : (typeof getSqName === 'function' ? (getSqName(wing, sq) || sq) : sq);
-    lines.push('**' + discordEsc(sqName) + '**');
+    const t = sq === '_cmd' ? SQ_TYPES.active : SQ_TYPES[getSqType(wing, sq)];
+    lines.push('**' + discordEsc(sqName) + '**' + (t.short ? ' · ' + t.label : ''));
     bySq[sq].sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); }).forEach(function(m) {
       const rank = typeof getRankName === 'function' ? getRankName(m.rank || 'rec') : (m.rank || '');
       lines.push('• ' + rank + ' **' + discordEsc(m.name) + '**');
@@ -1500,6 +1566,7 @@ async function postWingRoster(wing, whChannels, pilots) {
 // the pre-change data and post a roster one change behind.
 async function postAllWingRosters(manual) {
   try {
+    await loadSqTypes();
     const ps = await db.collection('pilots').get();
     const pilots = ps.docs.map(d => Object.assign({}, d.data(), { uid: d.id }));
     const s = await db.collection('settings').doc('webhooks').get();
@@ -1516,6 +1583,45 @@ async function postAllWingRosters(manual) {
   } catch(e) {
     console.error('Discord roster post failed:', e);
     if (manual) toast('Roster post failed: ' + e.message, 'error');
+  }
+}
+
+// ── REFRESH BUTTONS ──────────────────────────────────────────
+// Manual refresh of the living Discord embeds. Uses the webhook URLs
+// SAVED in Firestore, so press Save All Webhooks first if you just
+// pasted a new one. The button locks while it runs so a double-click
+// can't post two copies.
+async function refreshDiscordEmbeds(btn) {
+  const label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Refreshing…'; }
+  try {
+    await postAllWingRosters(true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+  }
+}
+
+async function refreshWingRoster(wing, btn) {
+  const label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Refreshing…'; }
+  try {
+    await loadSqTypes();
+    const ps = await db.collection('pilots').get();
+    const pilots = ps.docs.map(d => Object.assign({}, d.data(), { uid: d.id }));
+    const s = await db.collection('settings').doc('webhooks').get();
+    const whChannels = s.exists ? (s.data().channels || {}) : {};
+    if (!whChannels['roster_' + wing] || !whChannels['roster_' + wing].url) {
+      toast('No saved webhook for this wing — paste it and press Save All Webhooks first', 'warn');
+      return;
+    }
+    const ok = await postWingRoster(wing, whChannels, pilots);
+    if (ok) toast((getWingName(wing) || wing) + ' roster refreshed on Discord ✓');
+    else toast('Discord rejected the ' + (getWingName(wing) || wing) + ' roster — check the webhook URL', 'error');
+  } catch(e) {
+    console.error('refresh roster ' + wing + ':', e);
+    toast('Refresh failed: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
   }
 }
 
@@ -1567,7 +1673,7 @@ function updateExtraSqOptions(selectedSq) {
   const sel  = document.getElementById('ex-sq');
   const sqs  = (WINGS[wing] && WINGS[wing].squadrons) || {};
   sel.innerHTML = '<option value="">None — wing staff</option>'
-    + Object.entries(sqs).map(([id,sq]) => `<option value="${esc(id)}" ${id===selectedSq?'selected':''}>${esc(sq.name)}</option>`).join('');
+    + Object.entries(sqs).map(([id,sq]) => `<option value="${esc(id)}" ${id===selectedSq?'selected':''}>${esc(sqOptLabel(wing, id, sq.name))}</option>`).join('');
 }
 
 // Someone on this list who now has an active account with the same name.
@@ -1594,7 +1700,7 @@ function renderRosterExtras() {
         <div class="pilot-row-avatar">📝</div>
         <div class="pilot-row-info">
           <div class="pilot-row-name">${esc(x.name)}</div>
-          <div class="pilot-row-meta">${esc(getRankName(x.rank || 'rec'))} · ${x.squadron ? esc(getSqName(x.wing, x.squadron) || x.squadron) : 'Wing staff'}</div>
+          <div class="pilot-row-meta">${esc(getRankName(x.rank || 'rec'))} · ${x.squadron ? esc(sqOptLabel(x.wing, x.squadron, getSqName(x.wing, x.squadron) || x.squadron)) : 'Wing staff'}</div>
           ${extraHasAccount(x) ? '<div style="font-size:11px;color:var(--amber);margin-top:3px">⚠ An active pilot with this name exists — remove this entry so they aren\'t listed twice.</div>' : ''}
         </div>
         <div class="pilot-row-actions">
@@ -1755,7 +1861,7 @@ function renderAttachments() {
       + '<select onchange="setAttachSq(' + i + ',this.value)" style="flex:1;min-width:150px;font-size:12px"' + (row.wing?'':' disabled') + '>'
       +   '<option value="">Whole wing</option>'
       +   Object.entries(sqs).map(function(e) {
-            return '<option value="' + esc(e[0]) + '"' + (e[0]===row.squadron?' selected':'') + '>' + esc(e[1].name || e[0]) + '</option>';
+            return '<option value="' + esc(e[0]) + '"' + (e[0]===row.squadron?' selected':'') + '>' + esc(sqOptLabel(row.wing, e[0], e[1].name)) + '</option>';
           }).join('')
       + '</select>'
       + '<button type="button" class="btn btn-danger btn-xs" onclick="removeAttachment(' + i + ')">✕</button>'
@@ -1792,7 +1898,7 @@ function updateRankSqOptions(selectedSq) {
   const wing = document.getElementById('rank-modal-wing').value;
   const sel  = document.getElementById('rank-modal-sq');
   const sqs  = WINGS[wing]?.squadrons||{};
-  sel.innerHTML = '<option value="">Unassigned</option>'+Object.entries(sqs).map(([id,sq])=>`<option value="${esc(id)}" ${id===selectedSq?'selected':''}>${esc(sq.name)}</option>`).join('');
+  sel.innerHTML = '<option value="">Unassigned</option>'+Object.entries(sqs).map(([id,sq])=>`<option value="${esc(id)}" ${id===selectedSq?'selected':''}>${esc(sqOptLabel(wing, id, sq.name))}</option>`).join('');
 }
 async function saveRankChange() {
   if (!editingPilotUid) return;
@@ -1882,7 +1988,9 @@ async function loadRosters(wingId) {
       </div>
     </div>`;
 
-  const squadronsHtml = Object.entries(sqs).map(([sqId,sq]) => {
+  await loadSqTypes();
+  const sqOrder = sqSortFn(wingId);
+  const squadronsHtml = Object.entries(sqs).sort((a,b) => sqOrder(a[0], b[0])).map(([sqId,sq]) => {
     const sqPilots = pilots.filter(p=>p.squadron===sqId && p.role !== 'wing_commander');
     const sqExtras = wingExtras.filter(x => x.squadron === sqId);
     const extraRows = sqExtras.map(x => `
@@ -1897,7 +2005,7 @@ async function loadRosters(wingId) {
     const headCount = sqPilots.length + sqExtras.length;
     return `
       <div class="wing-banner w-${wingId}" style="margin-bottom:14px">
-        <div class="wing-label" style="color:var(--${wingId})">${esc(sq.name)}</div>
+        <div class="wing-label" style="color:var(--${wingId})">${esc(sq.name)}${sqTypeBadge(wingId, sqId)}</div>
         <div style="font-size:13px;color:var(--text2)">${headCount} pilot${headCount===1?'':'s'}</div>
       </div>
       <div class="card" style="margin-bottom:20px;overflow-x:auto">
@@ -2158,6 +2266,12 @@ async function buildWingNameEditor() {
               <label style="font-size:10px">Squadron callsign prefix</label>
               <input type="text" id="sq-call-${esc(sqId)}" value="${esc(sq.callsign||'')}" placeholder="e.g. BONE">
             </div>
+            <div class="form-group" style="margin:0">
+              <label style="font-size:10px">Squadron type</label>
+              <select id="sq-type-${esc(wingId)}-${esc(sqId)}">
+                ${Object.entries(SQ_TYPES).map(([tid,t])=>`<option value="${esc(tid)}" ${tid===(sq.type||'active')?'selected':''}>${esc(t.label)}</option>`).join('')}
+              </select>
+            </div>
           </div>
           <label style="font-size:10px">Flight callsign pool</label>
           <div id="pool-list-${esc(sqId)}" style="margin:6px 0"></div>
@@ -2390,15 +2504,21 @@ async function saveWingSettings() {
     for (const sqId of Object.keys(wing.squadrons||{})) {
       const nameEl = document.getElementById(`sq-name-${sqId}`);
       const callEl = document.getElementById(`sq-call-${sqId}`);
+      const typeEl = document.getElementById(`sq-type-${wingId}-${sqId}`);
+      const type   = typeEl && SQ_TYPES[typeEl.value] ? typeEl.value : (wing.squadrons[sqId].type || 'active');
       sqUpdates[sqId] = {
         name:     nameEl ? nameEl.value : wing.squadrons[sqId].name,
         callsign: callEl ? callEl.value.toUpperCase() : wing.squadrons[sqId].callsign,
         callsignPool: wing.squadrons[sqId].callsignPool || [],
+        type:     type,
       };
+      wing.squadrons[sqId].type = type;
+      (sqTypeMap[wingId] = sqTypeMap[wingId] || {})[sqId] = type;
     }
     await db.collection('wings').doc(wingId).set({ squadrons: sqUpdates }, {merge:true});
   }
   toast('Wing settings saved!');
+  postAllWingRosters(false);   // squadron names/types show on the Discord rosters
 }
 function pickColor(hex, el) {
   document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));
@@ -2910,6 +3030,9 @@ function renderAdminWebhookCards() {
         + '<input id="wh-admin-' + esc(key) + '" type="text" value="' + esc(cfg.url||'') + '" placeholder="https://discord.com/api/webhooks/..." '
         + 'style="flex:1;padding:8px 12px;background:#0a0c14;border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;font-family:var(--mono);outline:none">'
         + '<button onclick="adminTestWebhook(\'' + escAttr(key) + '\')" style="padding:6px 12px;background:rgba(74,144,217,.15);color:var(--blue2);border:1px solid rgba(74,144,217,.3);border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--sans)">Test</button>'
+        + (key.indexOf('roster_') === 0
+            ? '<button onclick="refreshWingRoster(\'' + escAttr(key.slice(7)) + '\',this)" style="padding:6px 12px;background:rgba(200,169,81,.15);color:var(--gold2);border:1px solid rgba(200,169,81,.35);border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--sans);white-space:nowrap">🔄 Refresh</button>'
+            : '')
         + '</div></div>';
     }).join('');
     return groupHtml + cardsHtml;
