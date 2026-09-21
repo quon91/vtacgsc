@@ -75,6 +75,8 @@
    to full pilot cards, without a text label. */
 .roster-card.unreg{border-style:dashed;border-color:var(--border2);background:transparent}
 .roster-card.unreg .roster-avatar{opacity:.5;border-style:dashed}
+/* ── SQUADRON TYPE TAG ── Reserve / ANG / FTU. Active duty gets none. */
+.sqtype{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:middle;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -269,7 +271,8 @@ function wingChipsHtml(p) {
   return '<div class="wing-chips">' + units.map(function(u) {
     const col = (WINGS[u.wing] && WINGS[u.wing].color) || '#c8a951';
     const nm  = getWingName(u.wing) || u.wing;
-    const sq  = u.squadron ? (' · ' + (getSqName(u.wing, u.squadron) || u.squadron)) : '';
+    const st  = u.squadron ? SQ_TYPES[getSqType(u.wing, u.squadron)].short : '';
+    const sq  = u.squadron ? (' · ' + (getSqName(u.wing, u.squadron) || u.squadron) + (st ? ' ' + st : '')) : '';
     return u.active
       ? '<span class="wchip active" style="background:' + col + '">' + esc(nm + sq) + '</span>'
       : '<span class="wchip reserve" style="color:' + col + ';border:1px solid ' + col + '66">' + esc(nm + sq) + ' · RES</span>';
@@ -333,6 +336,39 @@ function pilotTier(p) {
   return 'member';
 }
 
+// ── SQUADRON TYPES ───────────────────────────────────────────
+// Set in Master Admin → Customize Site → Wing & squadron names and
+// stored on wings/{wingId}.squadrons.{sqId}.type. No type = active.
+const SQ_TYPES = {
+  active:  { label: 'Active Duty',                short: '',        color: '#3dba6e' },
+  reserve: { label: 'Reserve (AFRC)',             short: 'Reserve', color: '#4a90d9' },
+  guard:   { label: 'Air National Guard',         short: 'ANG',     color: '#9b59b6' },
+  ftu:     { label: 'Formal Training Unit (FTU)', short: 'FTU',     color: '#e09030' },
+};
+let sqTypeMap = {};
+async function loadSqTypes() {
+  try {
+    const snap = await db.collection('wings').get();
+    snap.docs.forEach(function(d) {
+      const sqs = (d.data() || {}).squadrons || {};
+      sqTypeMap[d.id] = {};
+      Object.keys(sqs).forEach(function(k) { if (sqs[k] && sqs[k].type) sqTypeMap[d.id][k] = sqs[k].type; });
+    });
+  } catch(e) { console.warn('squadron types unavailable:', e.message); }
+}
+function getSqType(wing, sq) {
+  if (!sq) return 'active';
+  const t = (sqTypeMap[wing] && sqTypeMap[wing][sq])
+         || (WINGS[wing] && WINGS[wing].squadrons && WINGS[wing].squadrons[sq] && WINGS[wing].squadrons[sq].type);
+  return SQ_TYPES[t] ? t : 'active';
+}
+// HTML tag placed after a squadron name. Title shows the full name.
+function sqTypeTag(wing, sq) {
+  const t = SQ_TYPES[getSqType(wing, sq)];
+  if (!t.short) return '';
+  return '<span class="sqtype" title="' + esc(t.label) + '" style="background:' + t.color + '22;color:' + t.color + ';border:1px solid ' + t.color + '55">' + esc(t.short) + '</span>';
+}
+
 let rosterPilots = [], activeWingFilter = null, activeMajcom = null;
 // People added in Master Admin → Unregistered Members. No account, so
 // no avatar, roles, medals, ratings or flight stats — just who they are
@@ -347,6 +383,7 @@ function onAuthReady(user, pilot) {
 }
 
 async function loadRoster() {
+  await loadSqTypes();
   try {
     const snap = await db.collection('pilots').where('status','==','active').get();
     rosterPilots = snap.docs.map(d => ({uid:d.id, ...d.data()}));
@@ -403,8 +440,10 @@ function renderTier(tier, sectionId, listId, spotlight) {
     // for wing-level and GSC-level command. Squadron commanders show
     // their squadron when they have one.
     let unitLine = getRankName(p.rank||'rec');
+    let unitTag = '';
     if (tier === 'sq') {
       unitLine += ' · ' + (getWingName(p.wing)||'Unassigned') + (p.squadron ? ' · ' + getSqName(p.wing, p.squadron) : '');
+      unitTag = sqTypeTag(p.wing, p.squadron);
     } else if (p.wing) {
       unitLine += ' · ' + (getWingName(p.wing)||'');
     }
@@ -436,7 +475,7 @@ function renderTier(tier, sectionId, listId, spotlight) {
         + '<div class="'+avCls+'">' + (p.avatarUrl ? '<img src="'+safeUrl(p.avatarUrl)+'" style="width:68px;height:68px;border-radius:50%;object-fit:cover">' : glyph) + '</div>'
         + '<div class="roster-info">'
         +   '<div class="'+nameCls+'">'+esc(p.displayName||p.callsign)+sesTag+'</div>'
-        +   '<div class="roster-meta">'+esc(unitLine)+'</div>'
+        +   '<div class="roster-meta">'+esc(unitLine)+unitTag+'</div>'
         +   tierChips + tierRatings
         +   '<div class="roster-roles">'+badgesHtml+'</div>'
         +   wingsHtml + medalsHtml
@@ -448,7 +487,7 @@ function renderTier(tier, sectionId, listId, spotlight) {
       + '<div class="roster-avatar">' + (p.avatarUrl ? '<img src="'+safeUrl(p.avatarUrl)+'" style="width:52px;height:52px;border-radius:50%;object-fit:cover">' : (tier==='wing'?'⭐':'🎖')) + '</div>'
       + '<div class="roster-info">'
       +   '<div class="roster-name">'+esc(p.displayName||p.callsign)+'</div>'
-      +   '<div class="roster-meta">'+esc(unitLine)+'</div>'
+      +   '<div class="roster-meta">'+esc(unitLine)+unitTag+'</div>'
       +   tierChips + tierRatings
       +   '<div class="roster-roles">'+badgesHtml+'</div>'
       +   wingsHtml + medalsHtml
@@ -525,7 +564,7 @@ function renderRosterList() {
     const isPartner = pilotMajcom(p) !== 'afgsc';
     const unitLine = isPartner
       ? `<span class="majcom-badge" style="background:${esc(mj.color)}22;color:${esc(mj.color)};border:1px solid ${esc(mj.color)}55">${esc(mj.abbr)}</span> ${esc(mj.name)}`
-      : `${esc(getWingName(p.wing)||'Unassigned')}${p.squadron?' · '+esc(getSqName(p.wing,p.squadron)):''}`;
+      : `${esc(getWingName(p.wing)||'Unassigned')}${p.squadron?' · '+esc(getSqName(p.wing,p.squadron))+sqTypeTag(p.wing,p.squadron):''}`;
     // Show the chip row when it adds something the line above doesn't:
     // more than one unit, or a partner pilot holding a GSC slot (their
     // unit line shows their MAJCOM, so the GSC attachment would
@@ -569,7 +608,7 @@ function extraCardHtml(x) {
     + '<div class="roster-avatar">✈</div>'
     + '<div class="roster-info">'
     +   '<div class="roster-name">' + esc(x.name) + '</div>'
-    +   '<div class="roster-meta">' + esc(getRankName(x.rank || 'rec')) + ' · ' + esc(unit) + '</div>'
+    +   '<div class="roster-meta">' + esc(getRankName(x.rank || 'rec')) + ' · ' + esc(unit) + sqTypeTag(x.wing, x.squadron) + '</div>'
     + '</div>'
     + '</div>';
 }
