@@ -179,7 +179,7 @@
 
     <div id="sec-extras" class="sec">
       <div class="sec-title">Unregistered Members</div>
-      <div class="sec-sub">People who fly with a wing but haven't made a site account yet. They show on the public site roster only — they are not posted to the Discord wing rosters. Once someone registers and you approve them, remove them here so they aren't listed twice.</div>
+      <div class="sec-sub">People who fly with a wing but haven't made a site account yet. They show on the public site roster and the Discord wing rosters, listed like everyone else. Once someone registers and you approve them, remove them here so they aren't listed twice.</div>
       <div class="card" style="margin-bottom:16px" id="ex-form-card">
         <div class="card-header"><div class="card-icon">📝</div><div class="card-title" id="ex-form-title">Add a member</div></div>
         <div class="card-body">
@@ -1431,9 +1431,8 @@ async function deleteTrainingRecord(id) {
 //  deny). Same PATCH pattern as the fleet status messages;
 //  message ids live in settings/rosterStatus.
 //
-//  Registered, active pilots ONLY. Unregistered members (the
-//  rosterExtras collection) are deliberately left out — they show
-//  on the public site roster, never on Discord.
+//  Lists active pilots AND unregistered members (rosterExtras),
+//  with nothing marking who is unregistered.
 // ══════════════════════════════════════════════════════════════
 async function upsertRosterMessage(wing, url, payload) {
   let ids = {};
@@ -1523,12 +1522,16 @@ function sqSortFn(wing) {
   };
 }
 
-async function postWingRoster(wing, whChannels, pilots) {
+async function postWingRoster(wing, whChannels, pilots, extras) {
   const ch = whChannels['roster_' + wing];
   if (!ch || !ch.url) return false;
   const W = {'7bw':{name:'7th Bomb Wing',color:0xc8a951},'509bw':{name:'509th Bomb Wing',color:0x4a90d9},'2bw':{name:'2nd Bomb Wing',color:0x3dba6e}};
+  // Registered pilots and unregistered members are listed the same way —
+  // no label beside the name and no separate count in the footer.
   const members = (pilots || []).filter(p => p.status === 'active' && p.wing === wing)
-    .map(p => ({ name: p.displayName || p.callsign || 'Pilot', rank: p.rank, squadron: p.squadron }));
+    .map(p => ({ name: p.displayName || p.callsign || 'Pilot', rank: p.rank, squadron: p.squadron }))
+    .concat((extras || []).filter(x => x.wing === wing && x.name)
+      .map(x => ({ name: x.name, rank: x.rank, squadron: x.squadron })));
   // Group by squadron; command staff without a squadron listed first
   const bySq = {};
   members.forEach(m => { const k = m.squadron || '_cmd'; (bySq[k] = bySq[k] || []).push(m); });
@@ -1573,8 +1576,9 @@ async function postAllWingRosters(manual) {
     const whChannels = s.exists ? (s.data().channels || {}) : {};
     let n = 0;
     const wings = ['7bw','509bw','2bw'];
+    const extras = await fetchExtrasForDiscord();
     for (let i = 0; i < wings.length; i++) {
-      if (await postWingRoster(wings[i], whChannels, pilots)) n++;
+      if (await postWingRoster(wings[i], whChannels, pilots, extras)) n++;
     }
     if (manual) {
       if (n) toast('Updated ' + n + ' wing roster message' + (n>1?'s':'') + ' on Discord ✓');
@@ -1584,6 +1588,13 @@ async function postAllWingRosters(manual) {
     console.error('Discord roster post failed:', e);
     if (manual) toast('Roster post failed: ' + e.message, 'error');
   }
+}
+
+// Unregistered members for the Discord rosters. If the collection
+// can't be read, the roster still posts with registered pilots.
+async function fetchExtrasForDiscord() {
+  try { return await fetchRosterExtras(); }
+  catch(e) { console.error('Discord roster: unregistered members unavailable —', e.message); return []; }
 }
 
 // ── REFRESH BUTTONS ──────────────────────────────────────────
@@ -1614,7 +1625,7 @@ async function refreshWingRoster(wing, btn) {
       toast('No saved webhook for this wing — paste it and press Save All Webhooks first', 'warn');
       return;
     }
-    const ok = await postWingRoster(wing, whChannels, pilots);
+    const ok = await postWingRoster(wing, whChannels, pilots, await fetchExtrasForDiscord());
     if (ok) toast((getWingName(wing) || wing) + ' roster refreshed on Discord ✓');
     else toast('Discord rejected the ' + (getWingName(wing) || wing) + ' roster — check the webhook URL', 'error');
   } catch(e) {
@@ -1629,8 +1640,8 @@ async function refreshWingRoster(wing, btn) {
 //  UNREGISTERED MEMBERS — people on the wing who have no site
 //  account yet. Stored in the rosterExtras collection:
 //    { name, rank, wing, squadron, createdAt, updatedAt, addedBy }
-//  Shown on the public roster page and the admin Rosters tab.
-//  NOT posted to Discord.
+//  Shown on the public roster page, the admin Rosters tab and the
+//  Discord wing rosters (unlabelled).
 //  Public-read, admin-write (see firestore.rules).
 // ══════════════════════════════════════════════════════════════
 let rosterExtras = [];
@@ -1783,6 +1794,7 @@ async function saveRosterExtra() {
       document.getElementById('ex-name').focus();
     }
     await loadRosterExtrasSection();
+    postAllWingRosters(false);   // keep Discord wing rosters live
   } catch(e) {
     console.error('save rosterExtra:', e);
     toast('Error: ' + e.message, 'error');
@@ -1793,13 +1805,14 @@ async function saveRosterExtra() {
 
 async function removeRosterExtra(id) {
   const x = rosterExtras.find(e => e.id === id) || {};
-  if (!confirm('Remove ' + (x.name || 'this member') + ' from the unregistered list? They disappear from the site roster.')) return;
+  if (!confirm('Remove ' + (x.name || 'this member') + ' from the unregistered list? They disappear from the site roster and Discord.')) return;
   try {
     await db.collection('rosterExtras').doc(id).delete();
     logAudit('roster_extra_removed', 'Removed unregistered member: ' + (x.name || id), { pilotCallsign: x.name || '' });
     if (editingExtraId === id) resetExtraForm();
     toast((x.name || 'Member') + ' removed');
     await loadRosterExtrasSection();
+    postAllWingRosters(false);   // keep Discord wing rosters live
   } catch(e) {
     console.error('remove rosterExtra:', e);
     toast('Error: ' + e.message, 'error');
@@ -2848,9 +2861,9 @@ const WH_CHANNELS = {
   tasking_7bw:    { label:'Tasking — 7th BW',            group:'Tasking',      events:'tasking orders for the 7th Bomb Wing' },
   tasking_509bw:  { label:'Tasking — 509th BW',          group:'Tasking',      events:'tasking orders for the 509th Bomb Wing' },
   tasking_2bw:    { label:'Tasking — 2nd BW',            group:'Tasking',      events:'tasking orders for the 2nd Bomb Wing' },
-  roster_7bw:     { label:'Roster — 7th BW',             group:'Wing Rosters', events:'living roster message of registered pilots — auto-updates on approve/edit/deny' },
-  roster_509bw:   { label:'Roster — 509th BW',           group:'Wing Rosters', events:'living roster message of registered pilots — auto-updates on approve/edit/deny' },
-  roster_2bw:     { label:'Roster — 2nd BW',             group:'Wing Rosters', events:'living roster message of registered pilots — auto-updates on approve/edit/deny' },
+  roster_7bw:     { label:'Roster — 7th BW',             group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' },
+  roster_509bw:   { label:'Roster — 509th BW',           group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' },
+  roster_2bw:     { label:'Roster — 2nd BW',             group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' },
   admin_pilots:   { label:'Admin — Pilot Actions',       group:'Admin',        events:'approved, denied, rank/role changes' },
   admin_training: { label:'Admin — Training & Certs',    group:'Admin',        events:'cert_awarded, cert_revoked' },
   admin_site:     { label:'Admin — Site Changes',        group:'Admin',        events:'news, roles, wings, webhooks' },
