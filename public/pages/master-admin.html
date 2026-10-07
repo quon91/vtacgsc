@@ -105,7 +105,7 @@
     <div class="sidebar-item" onclick="showSec('customize')"><span class="si-icon">🎨</span> Customize Site</div>
     <div class="sidebar-item" onclick="showSec('slideshow')"><span class="si-icon">🖼</span> Slideshow</div>
     <div class="sidebar-item" onclick="showSec('news')"><span class="si-icon">📢</span> News / Announcements</div>
-    <div class="sidebar-item" onclick="showSec('wings')"><span class="si-icon">✈</span> Wing Settings</div>
+    <div class="sidebar-item" onclick="showSec('wings')"><span class="si-icon">✈</span> Wing Manager</div>
     <div class="sidebar-item" onclick="showSec('viewas')"><span class="si-icon">👁</span> View As Role</div>
     <div class="sidebar-label">Logs</div>
     <div class="sidebar-item" onclick="showSec('webhooks')"><span class="si-icon">🔗</span> Discord Webhooks</div>
@@ -148,9 +148,6 @@
         <input type="text" id="pilot-search" placeholder="Search callsign, name..." style="flex:1;min-width:180px" oninput="filterPilots()">
         <select id="pilot-filter-wing" onchange="filterPilots()" style="width:auto">
           <option value="">All Wings</option>
-          <option value="7bw">7th Bomb Wing</option>
-          <option value="509bw">509th Bomb Wing</option>
-          <option value="2bw">2nd Bomb Wing</option>
         </select>
         <select id="pilot-filter-status" onchange="filterPilots()" style="width:auto">
           <option value="">All Statuses</option>
@@ -169,11 +166,7 @@
       <div class="sec-title">Squadron Rosters</div>
       <div class="sec-sub">View and manage rosters for all wings and squadrons.</div>
       <div style="margin-bottom:12px"><button class="btn btn-outline btn-sm" onclick="refreshDiscordEmbeds(this)">🔄 Refresh Discord roster embeds</button></div>
-      <div class="tab-nav">
-        <button class="tab-btn active" onclick="showRosterTab('7bw',this)">7th BW</button>
-        <button class="tab-btn" onclick="showRosterTab('509bw',this)">509th BW</button>
-        <button class="tab-btn" onclick="showRosterTab('2bw',this)">2nd BW</button>
-      </div>
+      <div class="tab-nav" id="roster-wing-tabs"></div>
       <div id="roster-content"></div>
     </div>
 
@@ -196,11 +189,7 @@
           <div class="form-row">
             <div class="form-group">
               <label>Wing</label>
-              <select id="ex-wing" onchange="updateExtraSqOptions()">
-                <option value="7bw">7th Bomb Wing</option>
-                <option value="509bw">509th Bomb Wing</option>
-                <option value="2bw">2nd Bomb Wing</option>
-              </select>
+              <select id="ex-wing" onchange="updateExtraSqOptions()"></select>
             </div>
             <div class="form-group">
               <label>Squadron</label>
@@ -272,9 +261,6 @@
         <input type="text" id="tr-filter-text" placeholder="Search pilot or certification…" oninput="renderTrainingRecords()" style="flex:1;min-width:200px">
         <select id="tr-filter-wing" onchange="renderTrainingRecords()" style="width:auto">
           <option value="">All wings</option>
-          <option value="7bw">7th Bomb Wing</option>
-          <option value="509bw">509th Bomb Wing</option>
-          <option value="2bw">2nd Bomb Wing</option>
         </select>
         <span id="tr-record-count" style="font-size:12px;color:var(--text2)"></span>
       </div>
@@ -499,9 +485,12 @@
     </div>
 
     <div id="sec-wings" class="sec">
-      <div class="sec-title">Wing Settings</div>
-      <div class="sec-sub">Configure wing commanders, colors, base info, and aircraft for each wing.</div>
-      <div id="wing-settings-content"></div>
+      <div class="sec-title">Wing Manager</div>
+      <div class="sec-sub">Add, edit, and remove wings, their squadrons, and the aircraft they fly. Changes apply site-wide on the next page load — Flight Ops, rosters, Discord channels, and every wing dropdown. Callsign pools, squadron logos, and wing history stay in Customize Site and on each wing's page.</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="openWingModal(null)">+ Add a wing</button>
+      </div>
+      <div id="wing-settings-content"><div class="empty-state"><p>Loading wings…</p></div></div>
     </div>
 
     <div id="sec-viewas" class="sec">
@@ -565,6 +554,9 @@
             <option value="training_removed">Module Removed</option>
           </optgroup>
           <optgroup label="Site">
+            <option value="wing_added">Wing Added</option>
+            <option value="wing_updated">Wing Edited</option>
+            <option value="wing_removed">Wing Removed</option>
             <option value="news_posted">News Posted</option>
             <option value="news_deleted">News Deleted</option>
             <option value="emails_migrated">Emails Migrated</option>
@@ -591,11 +583,7 @@
     <div id="approve-pilot-name" style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:16px"></div>
     <div class="form-group">
       <label>Assign Wing</label>
-      <select id="approve-wing" onchange="updateSqOptions()">
-        <option value="7bw">7th Bomb Wing</option>
-        <option value="509bw">509th Bomb Wing</option>
-        <option value="2bw">2nd Bomb Wing</option>
-      </select>
+      <select id="approve-wing" onchange="updateSqOptions()"></select>
     </div>
     <div class="form-group">
       <label>Assign Squadron</label>
@@ -620,6 +608,71 @@
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('approve-modal')">Cancel</button>
       <button class="btn btn-green" onclick="confirmApprove()">✓ Approve & Activate</button>
+    </div>
+  </div>
+</div>
+
+<!-- WING MANAGER — add / edit a wing -->
+<div class="modal-overlay" id="wing-modal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-title" id="wm-title">Add a Wing</div>
+    <div class="modal-sub" id="wm-sub">Set the wing up once — it appears everywhere a wing can be picked.</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Wing name</label>
+        <input type="text" id="wm-name" maxlength="60" placeholder="e.g. 5th Bomb Wing" oninput="wmSuggestId()">
+      </div>
+      <div class="form-group">
+        <label>Wing ID</label>
+        <input type="text" id="wm-id" maxlength="12" placeholder="e.g. 5bw" style="font-family:var(--mono);text-transform:lowercase">
+        <div class="form-hint" id="wm-id-hint">Short code used behind the scenes. Lowercase letters and numbers, 2–12 characters. Can't be changed later.</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Short name <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+        <input type="text" id="wm-short" maxlength="20" placeholder="e.g. 5th BW">
+        <div class="form-hint">Used on tabs and badges. Blank = worked out from the name.</div>
+      </div>
+      <div class="form-group">
+        <label>Home base</label>
+        <input type="text" id="wm-base" maxlength="60" placeholder="e.g. Minot AFB (KMOT)">
+        <div class="form-hint">Put the ICAO in brackets — the Sortie Generator uses it as the default departure.</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Wing color</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="color" id="wm-color" value="#c8a951" style="width:44px;height:34px;padding:0;border:none;border-radius:6px;cursor:pointer;background:none">
+          <span style="font-size:11px;color:var(--text3)">Tabs, dots, roster stripes, and Discord embeds</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Display order</label>
+        <input type="number" id="wm-order" min="0" max="99" style="width:90px">
+        <div class="form-hint">Lower numbers are listed first.</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Aircraft flown by this wing</label>
+      <div id="wm-acft-list" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px"></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="wm-acft-new" list="wm-acft-known" maxlength="40" placeholder="e.g. B-21 Raider" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();wmAddAircraft();}">
+        <datalist id="wm-acft-known"></datalist>
+        <button type="button" class="btn btn-outline btn-sm" onclick="wmAddAircraft()">+ Add aircraft</button>
+      </div>
+      <div class="form-hint">The first one is the wing's main type (default for new fleet jets and logged flights). Use exactly the same spelling as other wings for shared types.</div>
+    </div>
+    <div class="form-group">
+      <label>Squadrons</label>
+      <div id="wm-sq-list" style="margin-top:6px"></div>
+      <button type="button" class="btn btn-outline btn-xs" style="margin-top:6px" onclick="wmAddSquadron()">+ Add a squadron</button>
+      <div class="form-hint">Squadron ID is a short code (e.g. 23bs) and can't be changed after saving. A squadron with pilots or unregistered members in it can't be removed until they're moved.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('wing-modal')">Cancel</button>
+      <button class="btn btn-primary" id="wm-save-btn" onclick="saveWingModal()">Save Wing</button>
     </div>
   </div>
 </div>
@@ -678,9 +731,6 @@
       <label>Wing</label>
       <select id="rank-modal-wing" onchange="onRankWingChanged()">
         <option value="">Unassigned</option>
-        <option value="7bw">7th Bomb Wing</option>
-        <option value="509bw">509th Bomb Wing</option>
-        <option value="2bw">2nd Bomb Wing</option>
       </select>
     </div>
     <div class="form-group">
@@ -805,7 +855,33 @@ function onAuthReady(user, pilot) {
   badge.style.background = color + '26';
   badge.style.color = color;
   badge.style.borderColor = color + '4d';
+  refreshWingSelects();
   loadAll();
+}
+
+// ── LIVE WING DROPDOWNS ──────────────────────────────────────
+// Every wing picker on this page is filled from the live WINGS list
+// (firebase-config.js merges the Wing Manager's changes into it).
+// Re-run after any wing is added, edited or removed.
+let rosterActiveWing = null;
+function refreshWingSelects() {
+  const fill = function(id, lead) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prev = el.value;
+    el.innerHTML = (lead || '') + wingOptionsHtml();
+    if (prev && [...el.options].some(o => o.value === prev)) el.value = prev;
+  };
+  fill('pilot-filter-wing', '<option value="">All Wings</option>');
+  fill('tr-filter-wing',    '<option value="">All wings</option>');
+  fill('rank-modal-wing',   '<option value="">Unassigned</option>');
+  fill('approve-wing');
+  fill('ex-wing');
+  const ids = wingIdList();
+  if (!rosterActiveWing || !WINGS[rosterActiveWing]) rosterActiveWing = ids[0] || null;
+  const tabs = document.getElementById('roster-wing-tabs');
+  if (tabs) tabs.innerHTML = ids.map(id =>
+    `<button class="tab-btn${id===rosterActiveWing?' active':''}" onclick="showRosterTab('${escAttr(id)}',this)">${esc(wingShortName(id))}</button>`).join('');
 }
 
 function showSec(id) {
@@ -817,7 +893,7 @@ function showSec(id) {
   if (id==='applications') loadApplications();
   if (id==='pilots')       loadAllPilots();
   if (id==='training')     loadTrainingRecords();
-  if (id==='rosters')      loadRosters('7bw');
+  if (id==='rosters')      { refreshWingSelects(); if (rosterActiveWing) loadRosters(rosterActiveWing); else document.getElementById('roster-content').innerHTML = '<div class="empty-state"><p>No wings set up yet — add one in Wing Manager.</p></div>'; }
   if (id==='extras')       loadRosterExtrasSection();
   if (id==='flights')      loadAllFlights();
   if (id==='slideshow')    loadSlideshow();
@@ -933,7 +1009,10 @@ function openApproveModal(uid) {
   editingPilotUid = uid;
   const pilot = allPilots.find(p=>p.uid===uid) || pendingApps.find(p=>p.uid===uid);
   document.getElementById('approve-pilot-name').textContent = pilot?.displayName || uid;
-  if (pilot?.preferredWing) document.getElementById('approve-wing').value = pilot.preferredWing;
+  refreshWingSelects();
+  const aw = document.getElementById('approve-wing');
+  if (pilot?.preferredWing && WINGS[pilot.preferredWing]) aw.value = pilot.preferredWing;
+  if (!aw.value && aw.options.length) aw.value = aw.options[0].value;
   updateSqOptions();
   document.getElementById('approve-modal').classList.add('open');
 }
@@ -1338,7 +1417,7 @@ function updateAwardCount() {
     + (skip ? ' · ' + skip + ' already hold this, will be skipped' : '');
 }
 
-function getWingAbbrMA(w){ return {'7bw':'7th BW','509bw':'509th BW','2bw':'2nd BW'}[w] || w || ''; }
+function getWingAbbrMA(w){ return w ? wingShortName(w) : ''; }
 
 async function addTrainingRecord() {
   const uids = [...document.querySelectorAll('.tr-pilot-cb:checked')].map(c => c.value);
@@ -1525,7 +1604,6 @@ function sqSortFn(wing) {
 async function postWingRoster(wing, whChannels, pilots, extras) {
   const ch = whChannels['roster_' + wing];
   if (!ch || !ch.url) return false;
-  const W = {'7bw':{name:'7th Bomb Wing',color:0xc8a951},'509bw':{name:'509th Bomb Wing',color:0x4a90d9},'2bw':{name:'2nd Bomb Wing',color:0x3dba6e}};
   // Registered pilots and unregistered members are listed the same way —
   // no label beside the name and no separate count in the footer.
   const members = (pilots || []).filter(p => p.status === 'active' && p.wing === wing)
@@ -1550,8 +1628,8 @@ async function postWingRoster(wing, whChannels, pilots, extras) {
   let desc = lines.join('\n').trim() || '_No active pilots assigned yet._';
   if (desc.length > 3900) desc = desc.slice(0, 3900) + '\n…';
   const payload = { embeds: [{
-    color: (W[wing]||{}).color || 0xc8a951,
-    title: '👥 ' + ((W[wing]||{}).name || wing) + ' — Roster',
+    color: wingColorInt(wing),
+    title: '👥 ' + getWingName(wing) + ' — Roster',
     description: desc,
     footer: { text: members.length + ' active pilot' + (members.length===1?'':'s')
       + ' · VTAC Global Strike Command' },
@@ -1575,7 +1653,7 @@ async function postAllWingRosters(manual) {
     const s = await db.collection('settings').doc('webhooks').get();
     const whChannels = s.exists ? (s.data().channels || {}) : {};
     let n = 0;
-    const wings = ['7bw','509bw','2bw'];
+    const wings = wingIdList();
     const extras = await fetchExtrasForDiscord();
     for (let i = 0; i < wings.length; i++) {
       if (await postWingRoster(wings[i], whChannels, pilots, extras)) n++;
@@ -1700,7 +1778,7 @@ function renderRosterExtras() {
     el.innerHTML = '<div class="empty-state"><div class="icon">📝</div><p>No unregistered members. Add anyone who flies with a wing but hasn\'t signed up yet.</p></div>';
     return;
   }
-  const wingOrder = ['7bw','509bw','2bw'];
+  const wingOrder = wingIdList();
   const wings = wingOrder.concat([...new Set(rosterExtras.map(x => x.wing))].filter(w => wingOrder.indexOf(w) === -1));
   el.innerHTML = wings.map(function(w) {
     const rows = rosterExtras.filter(x => x.wing === w);
@@ -1749,7 +1827,11 @@ async function editRosterExtra(id) {
   editingExtraId = id;
   document.getElementById('ex-name').value = x.name || '';
   fillExtraRankOptions(x.rank || 'amn');
-  document.getElementById('ex-wing').value = x.wing || '7bw';
+  if (x.wing && !WINGS[x.wing]) {   // their wing was removed — show it so the entry can be moved
+    const o = document.createElement('option'); o.value = x.wing; o.textContent = x.wing + ' (removed wing)';
+    document.getElementById('ex-wing').appendChild(o);
+  }
+  document.getElementById('ex-wing').value = x.wing || wingIdList()[0] || '';
   updateExtraSqOptions(x.squadron || '');
   document.getElementById('ex-form-title').textContent = 'Edit ' + (x.name || 'member');
   document.getElementById('ex-save-btn').textContent = 'Save changes';
@@ -1827,7 +1909,12 @@ function openRankModal(uid) {
   const rankSel = document.getElementById('rank-modal-rank');
   rankSel.innerHTML = RANKS.map(r=>`<option value="${esc(r.id)}" ${r.id===p.rank?'selected':''}>${esc(r.name)}</option>`).join('');
   renderRankModalRoles(getPilotRoleIds(p));
-  document.getElementById('rank-modal-wing').value   = p.wing||'';
+  refreshWingSelects();
+  const rmw = document.getElementById('rank-modal-wing');
+  if (p.wing && !WINGS[p.wing]) {   // wing was removed — keep it visible so the pilot can be moved
+    const o = document.createElement('option'); o.value = p.wing; o.textContent = p.wing + ' (removed wing)'; rmw.appendChild(o);
+  }
+  rmw.value = p.wing||'';
   document.getElementById('rank-modal-status').value = p.status||'active';
   document.getElementById('rank-modal-majcom').value = p.majcom||'afgsc';
   updateRankSqOptions(p.squadron);
@@ -1972,9 +2059,9 @@ async function loadRosters(wingId) {
   const deputy     = pilots.filter(p => getPilotRoleIds(p).includes('sq_commander'));
 
   const commanderHtml = `
-    <div class="card" style="margin-bottom:20px;border:1px solid var(--${wingId});background:rgba(200,169,81,.04)">
+    <div class="card" style="margin-bottom:20px;border:1px solid ${esc(wingColor(wingId))};background:rgba(200,169,81,.04)">
       <div class="card-header" style="background:rgba(200,169,81,.08)">
-        <div class="card-icon" style="background:var(--${wingId})">⭐</div>
+        <div class="card-icon" style="background:${esc(wingColor(wingId))}">⭐</div>
         <div class="card-title">Wing Command Staff</div>
         <button class="btn btn-outline btn-xs" style="margin-left:auto" onclick="openAssignCommanderModal('${escAttr(wingId)}')">Assign Commander</button>
       </div>
@@ -2017,8 +2104,8 @@ async function loadRosters(wingId) {
               </tr>`).join('');
     const headCount = sqPilots.length + sqExtras.length;
     return `
-      <div class="wing-banner w-${wingId}" style="margin-bottom:14px">
-        <div class="wing-label" style="color:var(--${wingId})">${esc(sq.name)}${sqTypeBadge(wingId, sqId)}</div>
+      <div class="wing-banner w-${esc(wingId)}" style="margin-bottom:14px;border-color:${esc(wingColor(wingId))}55">
+        <div class="wing-label" style="color:${esc(wingColor(wingId))}">${esc(sq.name)}${sqTypeBadge(wingId, sqId)}</div>
         <div style="font-size:13px;color:var(--text2)">${headCount} pilot${headCount===1?'':'s'}</div>
       </div>
       <div class="card" style="margin-bottom:20px;overflow-x:auto">
@@ -2054,8 +2141,9 @@ function openAssignCommanderModal(wingId) {
   toast(`Search for a pilot, then set their Role to "Wing Commander" and Wing to ${WINGS[wingId]?.name}`, 'info');
 }
 function showRosterTab(wingId, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#roster-wing-tabs .tab-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
+  rosterActiveWing = wingId;
   loadRosters(wingId);
 }
 
@@ -2249,35 +2337,26 @@ async function loadCustomizeSettings() {
 
 let liveWingsData = {};
 async function buildWingNameEditor() {
-  liveWingsData = JSON.parse(JSON.stringify(WINGS));
-  try {
-    const snap = await db.collection('wings').get();
-    snap.forEach(d => {
-      const remote = d.data();
-      const local  = liveWingsData[d.id] || {};
-      // Deep-merge squadrons so remote logoUrl/callsignPool don't wipe local names
-      const mergedSqs = {...(local.squadrons||{})};
-      Object.entries(remote.squadrons||{}).forEach(([sqId, sq]) => {
-        mergedSqs[sqId] = {...(mergedSqs[sqId]||{}), ...sq};
-      });
-      liveWingsData[d.id] = {...local, ...remote, squadrons: mergedSqs, id: d.id};
-    });
-  } catch(e) { console.error('wings:', e); }
+  // WINGS is already the merged live list (built-in + Wing Manager),
+  // with removed wings/squadrons dropped — reload it fresh and copy.
+  await loadWingsFromFirestore();
+  liveWingsData = {};
+  wingIdList().forEach(id => { liveWingsData[id] = JSON.parse(JSON.stringify(WINGS[id])); });
 
   const el = document.getElementById('wing-name-editor');
   el.innerHTML = Object.entries(liveWingsData).map(([wingId,wing])=>`
-    <div style="margin-bottom:16px;padding:14px;background:var(--card2);border-radius:8px;border-left:3px solid var(--${wingId},#c8a951)">
+    <div style="margin-bottom:16px;padding:14px;background:var(--card2);border-radius:8px;border-left:3px solid ${esc(wing.color||'#c8a951')}">
       <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">${esc(wing.name)}</div>
       ${Object.entries(wing.squadrons||{}).map(([sqId,sq])=>`
         <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
           <div class="form-row" style="margin-bottom:8px">
             <div class="form-group" style="margin:0">
               <label style="font-size:10px">Squadron name</label>
-              <input type="text" id="sq-name-${esc(sqId)}" value="${esc(sq.name||'')}" placeholder="${esc(sq.name||'')}">
+              <input type="text" id="sq-name-${esc(wingId)}-${esc(sqId)}" value="${esc(sq.name||'')}" placeholder="${esc(sq.name||'')}">
             </div>
             <div class="form-group" style="margin:0">
               <label style="font-size:10px">Squadron callsign prefix</label>
-              <input type="text" id="sq-call-${esc(sqId)}" value="${esc(sq.callsign||'')}" placeholder="e.g. BONE">
+              <input type="text" id="sq-call-${esc(wingId)}-${esc(sqId)}" value="${esc(sq.callsign||'')}" placeholder="e.g. BONE">
             </div>
             <div class="form-group" style="margin:0">
               <label style="font-size:10px">Squadron type</label>
@@ -2287,9 +2366,9 @@ async function buildWingNameEditor() {
             </div>
           </div>
           <label style="font-size:10px">Flight callsign pool</label>
-          <div id="pool-list-${esc(sqId)}" style="margin:6px 0"></div>
+          <div id="pool-list-${esc(wingId)}-${esc(sqId)}" style="margin:6px 0"></div>
           <div style="display:flex;gap:8px">
-            <input type="text" id="pool-new-${esc(sqId)}" placeholder="e.g. ${esc(sq.callsign||'BONE')} 0${(sq.callsignPool||[]).length+1}" style="flex:1;font-size:13px" maxlength="20">
+            <input type="text" id="pool-new-${esc(wingId)}-${esc(sqId)}" placeholder="e.g. ${esc(sq.callsign||'BONE')} 0${(sq.callsignPool||[]).length+1}" style="flex:1;font-size:13px" maxlength="20">
             <button type="button" class="btn btn-outline btn-sm" onclick="addCallsignToPool('${escAttr(wingId)}','${escAttr(sqId)}')">+ Add</button>
           </div>
         </div>`).join('')}
@@ -2304,7 +2383,7 @@ async function buildWingNameEditor() {
 
 function renderCallsignPool(wingId, sqId) {
   const pool = liveWingsData[wingId]?.squadrons?.[sqId]?.callsignPool || [];
-  const el = document.getElementById(`pool-list-${sqId}`);
+  const el = document.getElementById(`pool-list-${wingId}-${sqId}`);
   if (!el) return;
   if (!pool.length) { el.innerHTML = '<div style="font-size:11px;color:var(--text3)">No flight callsigns yet</div>'; return; }
   el.innerHTML = pool.map((c,i)=>`
@@ -2315,7 +2394,7 @@ function renderCallsignPool(wingId, sqId) {
 }
 
 async function addCallsignToPool(wingId, sqId) {
-  const input = document.getElementById(`pool-new-${sqId}`);
+  const input = document.getElementById(`pool-new-${wingId}-${sqId}`);
   const val = input.value.trim().toUpperCase();
   if (!val) return;
   const pool = liveWingsData[wingId].squadrons[sqId].callsignPool || [];
@@ -2439,7 +2518,7 @@ function renderWingLogoEditor() {
   const el = document.getElementById('wing-logo-editor');
   if (!el) return;
   el.innerHTML = Object.entries(liveWingsData).map(([wingId, wing]) => `
-    <div style="margin-bottom:16px;padding:6px 14px;background:var(--card2);border-radius:8px;border-left:3px solid var(--${wingId},#c8a951)">
+    <div style="margin-bottom:16px;padding:6px 14px;background:var(--card2);border-radius:8px;border-left:3px solid ${esc(wing.color||'#c8a951')}">
       ${logoSlotRow(wingId, null, wing.name, wing.logoUrl, true)}
       ${Object.entries(wing.squadrons||{}).map(([sqId, sq]) =>
         logoSlotRow(wingId, sqId, sq.name, sq.logoUrl, false)
@@ -2515,8 +2594,8 @@ async function saveWingSettings() {
   for (const [wingId,wing] of Object.entries(liveWingsData)) {
     const sqUpdates = {};
     for (const sqId of Object.keys(wing.squadrons||{})) {
-      const nameEl = document.getElementById(`sq-name-${sqId}`);
-      const callEl = document.getElementById(`sq-call-${sqId}`);
+      const nameEl = document.getElementById(`sq-name-${wingId}-${sqId}`);
+      const callEl = document.getElementById(`sq-call-${wingId}-${sqId}`);
       const typeEl = document.getElementById(`sq-type-${wingId}-${sqId}`);
       const type   = typeEl && SQ_TYPES[typeEl.value] ? typeEl.value : (wing.squadrons[sqId].type || 'active');
       sqUpdates[sqId] = {
@@ -2531,6 +2610,8 @@ async function saveWingSettings() {
     await db.collection('wings').doc(wingId).set({ squadrons: sqUpdates }, {merge:true});
   }
   toast('Wing settings saved!');
+  await loadWingsFromFirestore();
+  refreshWingSelects();
   postAllWingRosters(false);   // squadron names/types show on the Discord rosters
 }
 function pickColor(hex, el) {
@@ -2780,18 +2861,312 @@ async function revokeWingsBadge(wingId) {
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
+// ══════════════════════════════════════════════════════════════
+//  WING MANAGER — add / edit / remove wings, squadrons and aircraft
+//  Saved to wings/{wingId}. Built-in wings (7bw, 509bw, 2bw) live in
+//  firebase-config.js as a fallback, so removing a wing writes
+//  deleted:true rather than deleting the doc, and removing a
+//  squadron writes squadrons.{sq}.deleted:true. firebase-config's
+//  loadWingsFromFirestore() hides both on every page.
+//  Callsign pools, logos and history are NOT touched here — the
+//  saves merge, so those survive every edit.
+// ══════════════════════════════════════════════════════════════
+let wmState = null;
+let wmIdTouched = false;
+let wmFleetCache = [];
+
 async function loadWingSettings() {
   const el = document.getElementById('wing-settings-content');
-  el.innerHTML = Object.entries(WINGS).map(([wingId,wing])=>`
-    <div class="wing-banner w-${wingId}" style="margin-bottom:16px">
-      <div class="wing-label" style="color:var(--${wingId})">${esc(wing.name)}</div>
-      <div class="wing-name" style="color:var(--${wingId})">${esc(wing.name)}</div>
-      <div class="wing-base">📍 ${esc(wing.base)}</div>
-      <div style="margin-top:12px;display:flex;gap:10px">
-        <button class="btn btn-outline btn-sm" onclick="showSec('rosters')">View Roster</button>
-        <button class="btn btn-outline btn-sm" onclick="showSec('customize')">Edit Names</button>
+  await loadWingsFromFirestore();
+  refreshWingSelects();
+  try {
+    const ps = await db.collection('pilots').get();
+    allPilots = ps.docs.map(d => Object.assign({}, d.data(), { uid: d.id }));
+  } catch(e) { console.error('pilots (wing manager):', e); }
+  try {
+    const fs = await db.collection('fleet').get();
+    wmFleetCache = fs.docs.map(d => Object.assign({}, d.data(), { id: d.id }));
+  } catch(e) { console.error('fleet (wing manager):', e); wmFleetCache = []; }
+  const ids = wingIdList();
+  if (!ids.length) { el.innerHTML = '<div class="empty-state"><div class="icon">✈</div><p>No wings yet — add the first one above.</p></div>'; return; }
+  el.innerHTML = ids.map(id => {
+    const w = WINGS[id];
+    const col = wingColor(id);
+    const pilots = allPilots.filter(p => p.status === 'active' && p.wing === id).length;
+    const jets = wmFleetCache.filter(a => a.wing === id).length;
+    const sqs = Object.entries(w.squadrons || {}).sort((a,b) => sqSortFn(id)(a[0], b[0]));
+    return `
+    <div class="card" style="margin-bottom:14px;border-left:4px solid ${esc(col)}">
+      <div class="card-body">
+        <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px">
+            <div style="font-size:17px;font-weight:800;color:${esc(col)}">${esc(w.name)} <span style="font-size:11px;color:var(--text3);font-weight:600;font-family:var(--mono)">${esc(id)}</span></div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">📍 ${esc(w.base || 'No base set')} · ${esc(wingShortName(id))} · ${pilots} active pilot${pilots===1?'':'s'} · ${jets} jet${jets===1?'':'s'} in fleet</div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="openWingModal('${escAttr(id)}')">✏ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="removeWing('${escAttr(id)}')">Remove</button>
+        </div>
+        <div style="margin-top:12px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Aircraft</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            ${(w.aircraft || []).length ? w.aircraft.map((a,i) => `<span class="badge" style="background:${esc(col)}22;color:${esc(col)};border:1px solid ${esc(col)}55">${esc(a)}${i===0?' · main':''}</span>`).join('') : '<span style="font-size:12px;color:var(--amber)">⚠ No aircraft set</span>'}
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Squadrons</div>
+          ${sqs.length ? sqs.map(([sqId, sq]) => {
+            const n = allPilots.filter(p => p.status === 'active' && p.wing === id && p.squadron === sqId).length;
+            return `<div style="font-size:13px;color:var(--text2);padding:3px 0">⬥ <strong style="color:var(--text)">${esc(sq.name)}</strong>${sqTypeBadge(id, sqId)} <span style="font-family:var(--mono);font-size:11px;color:var(--text3)">${esc(sqId)}${sq.callsign ? ' · ' + esc(sq.callsign) : ''}</span> <span style="font-size:11px;color:var(--text3)">· ${n} pilot${n===1?'':'s'}</span></div>`;
+          }).join('') : '<div style="font-size:12px;color:var(--text3)">No squadrons yet</div>'}
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-xs" onclick="goRosterTab('${escAttr(id)}')">View roster</button>
+          <a class="btn btn-outline btn-xs" href="/pages/wing.html?id=${encodeURIComponent(id)}" target="_blank" rel="noopener">Open wing page ↗</a>
+        </div>
       </div>
+    </div>`;
+  }).join('');
+}
+
+function goRosterTab(id) {
+  rosterActiveWing = id;
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-rosters').classList.add('active');
+  document.querySelector('.sidebar-item[onclick*="rosters"]')?.classList.add('active');
+  refreshWingSelects();
+  loadRosters(id);
+}
+
+// "5th Bomb Wing" → "5bw", "Royal Air Force" → "raf"
+function wmSuggestId() {
+  if (!wmState || wmState.editing || wmIdTouched) return;
+  const name = document.getElementById('wm-name').value.trim();
+  const m = name.match(/^(\d+)\S*\s+(.*)$/);
+  const words = (m ? m[2] : name).split(/\s+/).filter(Boolean);
+  const id = ((m ? m[1] : '') + words.map(w => w[0]).join('')).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
+  document.getElementById('wm-id').value = id;
+}
+
+function openWingModal(id) {
+  const w = id ? WINGS[id] : null;
+  wmIdTouched = false;
+  wmState = {
+    editing: id || null,
+    aircraft: w ? (w.aircraft || []).slice() : [],
+    squadrons: w ? Object.entries(w.squadrons || {}).sort((a,b) => sqSortFn(id)(a[0], b[0]))
+      .map(([sqId, sq]) => ({ id: sqId, name: sq.name || '', callsign: sq.callsign || '', type: sq.type || 'active', isNew: false })) : [],
+    origSq: w ? Object.keys(w.squadrons || {}) : [],
+  };
+  document.getElementById('wm-title').textContent = w ? 'Edit ' + w.name : 'Add a Wing';
+  document.getElementById('wm-sub').textContent = w
+    ? 'Callsign pools, logos and history are kept — edit those in Customize Site or on the wing page.'
+    : 'Set the wing up once — it appears everywhere a wing can be picked.';
+  document.getElementById('wm-name').value  = w ? (w.name || '') : '';
+  document.getElementById('wm-short').value = w ? (w.shortName || '') : '';
+  document.getElementById('wm-base').value  = w ? (w.base || '') : '';
+  document.getElementById('wm-color').value = w && /^#[0-9a-fA-F]{6}$/.test(w.color || '') ? w.color : '#c8a951';
+  document.getElementById('wm-order').value = w ? (w.order != null ? w.order : wingIdList().indexOf(id)) : wingIdList().length;
+  const idEl = document.getElementById('wm-id');
+  idEl.value = id || '';
+  idEl.disabled = !!id;
+  idEl.oninput = function(){ wmIdTouched = true; };
+  document.getElementById('wm-id-hint').textContent = id
+    ? 'The wing ID can\'t be changed — pilots, flights and fleet are filed under it.'
+    : 'Short code used behind the scenes. Lowercase letters and numbers, 2–12 characters. Can\'t be changed later.';
+  document.getElementById('wm-acft-new').value = '';
+  document.getElementById('wm-acft-known').innerHTML = allAircraftTypes().map(a => `<option value="${esc(a)}"></option>`).join('');
+  renderWmAircraft();
+  renderWmSquadrons();
+  document.getElementById('wing-modal').classList.add('open');
+  document.getElementById('wm-name').focus();
+}
+
+function renderWmAircraft() {
+  const el = document.getElementById('wm-acft-list');
+  if (!wmState.aircraft.length) { el.innerHTML = '<span style="font-size:12px;color:var(--text3)">No aircraft yet — add at least one.</span>'; return; }
+  el.innerHTML = wmState.aircraft.map((a, i) => `
+    <span style="display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid ${i===0?'var(--gold)':'var(--border2)'};border-radius:14px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--text)">
+      ${esc(a)}${i===0 ? ' <span style="font-size:9px;color:var(--gold);font-weight:800">MAIN</span>' : `<button type="button" title="Make main type" onclick="wmMainAircraft(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:0">★</button>`}
+      <button type="button" title="Remove" onclick="wmRemoveAircraft(${i})" style="background:none;border:none;color:var(--red2);cursor:pointer;font-size:14px;padding:0;line-height:1">×</button>
+    </span>`).join('');
+}
+function wmAddAircraft() {
+  const inp = document.getElementById('wm-acft-new');
+  const v = inp.value.trim().replace(/\s+/g, ' ');
+  if (!v) return;
+  // Snap to an existing type's spelling so shared types stay identical
+  const known = allAircraftTypes().find(a => a.toLowerCase() === v.toLowerCase());
+  const val = known || v;
+  if (wmState.aircraft.some(a => a.toLowerCase() === val.toLowerCase())) { toast(val + ' is already on this wing', 'warn'); return; }
+  wmState.aircraft.push(val);
+  inp.value = '';
+  renderWmAircraft();
+  inp.focus();
+}
+function wmRemoveAircraft(i) { wmState.aircraft.splice(i, 1); renderWmAircraft(); }
+function wmMainAircraft(i) { const a = wmState.aircraft.splice(i, 1)[0]; wmState.aircraft.unshift(a); renderWmAircraft(); }
+
+function renderWmSquadrons() {
+  const el = document.getElementById('wm-sq-list');
+  if (!wmState.squadrons.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">No squadrons yet.</div>'; return; }
+  el.innerHTML = wmState.squadrons.map((sq, i) => `
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;background:var(--card2);border-radius:8px;padding:8px">
+      <input type="text" value="${esc(sq.id)}" placeholder="ID e.g. 23bs" maxlength="12" ${sq.isNew ? '' : 'disabled'}
+        oninput="wmState.squadrons[${i}].id=this.value.trim().toLowerCase()" style="width:90px;font-family:var(--mono);font-size:12px;text-transform:lowercase">
+      <input type="text" value="${esc(sq.name)}" placeholder="Squadron name" maxlength="60"
+        oninput="wmState.squadrons[${i}].name=this.value" style="flex:2;min-width:160px;font-size:12px">
+      <input type="text" value="${esc(sq.callsign)}" placeholder="Callsign" maxlength="16"
+        oninput="wmState.squadrons[${i}].callsign=this.value" style="width:100px;font-size:12px;text-transform:uppercase">
+      <select onchange="wmState.squadrons[${i}].type=this.value" style="width:auto;font-size:12px">
+        ${Object.entries(SQ_TYPES).map(([tid,t]) => `<option value="${esc(tid)}" ${tid===sq.type?'selected':''}>${esc(t.label)}</option>`).join('')}
+      </select>
+      <button type="button" class="btn btn-danger btn-xs" onclick="wmRemoveSquadron(${i})">✕</button>
     </div>`).join('');
+}
+function wmAddSquadron() {
+  wmState.squadrons.push({ id: '', name: '', callsign: '', type: 'active', isNew: true });
+  renderWmSquadrons();
+  const rows = document.querySelectorAll('#wm-sq-list > div');
+  const last = rows[rows.length - 1];
+  if (last) last.querySelector('input:not([disabled])')?.focus();
+}
+function wmRemoveSquadron(i) { wmState.squadrons.splice(i, 1); renderWmSquadrons(); }
+
+// Who is still assigned to a wing (or one squadron of it). Reads
+// fresh so a just-moved pilot doesn't block the removal.
+async function wingOccupants(wingId, sqId) {
+  const out = { pilots: [], extras: [], fleet: [] };
+  const ps = await db.collection('pilots').get();
+  ps.docs.forEach(d => {
+    const p = d.data();
+    const home = p.wing === wingId && (!sqId || p.squadron === sqId);
+    const att = (p.attachments || []).some(a => a && a.wing === wingId && (!sqId || a.squadron === sqId));
+    if (home || att) out.pilots.push(p.displayName || p.callsign || d.id);
+  });
+  try {
+    const xs = await db.collection('rosterExtras').get();
+    xs.docs.forEach(d => { const x = d.data(); if (x.wing === wingId && (!sqId || x.squadron === sqId)) out.extras.push(x.name || d.id); });
+  } catch(e) { console.warn('rosterExtras check skipped:', e.message); }
+  if (!sqId) {
+    const fs = await db.collection('fleet').where('wing', '==', wingId).get();
+    fs.docs.forEach(d => out.fleet.push(d.data().tail || d.id));
+  }
+  return out;
+}
+function occupantSummary(o) {
+  const parts = [];
+  if (o.pilots.length) parts.push(o.pilots.length + ' pilot' + (o.pilots.length===1?'':'s') + ' (' + o.pilots.slice(0,5).join(', ') + (o.pilots.length>5?'…':'') + ')');
+  if (o.extras.length) parts.push(o.extras.length + ' unregistered member' + (o.extras.length===1?'':'s') + ' (' + o.extras.slice(0,5).join(', ') + (o.extras.length>5?'…':'') + ')');
+  if (o.fleet.length)  parts.push(o.fleet.length + ' fleet jet' + (o.fleet.length===1?'':'s') + ' (' + o.fleet.slice(0,5).join(', ') + (o.fleet.length>5?'…':'') + ')');
+  return parts.join(', ');
+}
+
+async function saveWingModal() {
+  if (!wmState) return;
+  const editing = wmState.editing;
+  const id = editing || document.getElementById('wm-id').value.trim().toLowerCase();
+  const name = document.getElementById('wm-name').value.trim().replace(/\s+/g, ' ');
+  const shortName = document.getElementById('wm-short').value.trim();
+  const base = document.getElementById('wm-base').value.trim();
+  const color = document.getElementById('wm-color').value;
+  const order = parseInt(document.getElementById('wm-order').value, 10);
+
+  if (!name) { toast('Give the wing a name', 'error'); return; }
+  if (!/^[a-z0-9]{2,12}$/.test(id)) { toast('Wing ID must be 2–12 lowercase letters or numbers', 'error'); return; }
+  if (!editing && WINGS[id]) { toast('A wing with ID "' + id + '" already exists', 'error'); return; }
+  if (!editing && wingIdList().some(w => String(WINGS[w].name).toLowerCase() === name.toLowerCase())) { toast('A wing called "' + name + '" already exists', 'error'); return; }
+  if (!wmState.aircraft.length) { toast('Add at least one aircraft', 'error'); return; }
+  const pending = document.getElementById('wm-acft-new').value.trim();
+  if (pending && !confirm('"' + pending + '" is typed in the aircraft box but not added. Save without it?')) return;
+
+  const seen = {};
+  for (const sq of wmState.squadrons) {
+    if (!/^[a-z0-9]{1,12}$/.test(sq.id || '')) { toast('Each squadron needs an ID of lowercase letters/numbers (e.g. 23bs)', 'error'); return; }
+    if (seen[sq.id]) { toast('Two squadrons share the ID "' + sq.id + '"', 'error'); return; }
+    seen[sq.id] = 1;
+    if (!String(sq.name || '').trim()) { toast('Squadron ' + sq.id + ' needs a name', 'error'); return; }
+  }
+
+  const btn = document.getElementById('wm-save-btn');
+  btn.disabled = true;
+  try {
+    // Squadrons removed in the editor must be empty first.
+    const removedSq = wmState.origSq.filter(sid => !seen[sid]);
+    for (const sid of removedSq) {
+      const occ = await wingOccupants(id, sid);
+      if (occ.pilots.length || occ.extras.length) {
+        toast('Can\'t remove ' + (getSqName(id, sid) || sid) + ' — still has ' + occupantSummary(occ) + '. Move them first.', 'error');
+        btn.disabled = false;
+        return;
+      }
+    }
+
+    const squadrons = {};
+    wmState.squadrons.forEach(sq => {
+      squadrons[sq.id] = {
+        name: String(sq.name).trim(),
+        callsign: String(sq.callsign || '').trim().toUpperCase(),
+        type: SQ_TYPES[sq.type] ? sq.type : 'active',
+        deleted: false,
+      };
+    });
+    removedSq.forEach(sid => { squadrons[sid] = { deleted: true }; });
+
+    const data = {
+      name: name, shortName: shortName, base: base, color: color,
+      aircraft: wmState.aircraft.slice(),
+      order: isNaN(order) ? wingIdList().length : order,
+      squadrons: squadrons,
+      deleted: false,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+    if (editing) {
+      // merge: keeps history, logo, callsign pools and squadron logos
+      await db.collection('wings').doc(id).set(data, { merge: true });
+      logAudit('wing_updated', 'Edited wing ' + name + ' (' + id + ') · aircraft: ' + data.aircraft.join(', ')
+        + ' · squadrons: ' + wmState.squadrons.map(s => s.id).join(', ')
+        + (removedSq.length ? ' · removed: ' + removedSq.join(', ') : ''), { wingId: id });
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      data.custom = true;
+      // No merge on create: a previously removed wing with this ID
+      // starts clean instead of reviving old leftovers.
+      await db.collection('wings').doc(id).set(data);
+      logAudit('wing_added', 'Added wing ' + name + ' (' + id + ') · ' + data.aircraft.join(', '), { wingId: id });
+    }
+    closeModal('wing-modal');
+    wmState = null;
+    toast((editing ? 'Saved ' : 'Added ') + name + ' ✓');
+    await loadWingSettings();
+    postAllWingRosters(false);
+  } catch(e) {
+    console.error('save wing:', e);
+    toast('Error: ' + e.message + (/permission/i.test(e.message) ? ' — publish the new Firestore rules first' : ''), 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function removeWing(id) {
+  const w = WINGS[id];
+  if (!w) return;
+  try {
+    const occ = await wingOccupants(id, null);
+    if (occ.pilots.length || occ.extras.length || occ.fleet.length) {
+      alert('Can\'t remove ' + w.name + ' yet.\n\nStill assigned: ' + occupantSummary(occ)
+        + '.\n\nMove pilots and unregistered members to another wing, and remove or reassign the fleet jets on the Fleet page, then try again.');
+      return;
+    }
+    if (!confirm('Remove ' + w.name + '?\n\nIt disappears from every page, dropdown and Discord roster. Logged flights keep their record. You can add it back later with the same ID.')) return;
+    await db.collection('wings').doc(id).set({ deleted: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    logAudit('wing_removed', 'Removed wing ' + w.name + ' (' + id + ')', { wingId: id });
+    toast(w.name + ' removed');
+    await loadWingSettings();
+  } catch(e) {
+    console.error('remove wing:', e);
+    toast('Error: ' + e.message, 'error');
+  }
 }
 
 async function pingDiscordAccess(uid) {
@@ -2848,30 +3223,30 @@ async function pingDiscordAccess(uid) {
   }
 }
 
-const WH_CHANNELS = {
-  flights_7bw:    { label:'7th BW Flight Log',          group:'Wing Flights', events:'flight_logged, flight_deleted' },
-  flights_509bw:  { label:'509th BW Flight Log',         group:'Wing Flights', events:'flight_logged, flight_deleted' },
-  flights_2bw:    { label:'2nd BW Flight Log',           group:'Wing Flights', events:'flight_logged, flight_deleted' },
-  flight_plans:   { label:'Flight Plans',                group:'Wing Flights', events:'flight_plan_saved' },
-  fleet_7bw:      { label:'7th BW Fleet Status',         group:'Wing Fleet',   events:'aircraft added/removed/moved — auto-posts full fleet + locations' },
-  fleet_509bw:    { label:'509th BW Fleet Status',       group:'Wing Fleet',   events:'aircraft added/removed/moved — auto-posts full fleet + locations' },
-  fleet_2bw:      { label:'2nd BW Fleet Status',         group:'Wing Fleet',   events:'aircraft added/removed/moved — auto-posts full fleet + locations' },
-  events:         { label:'Events Announcements',        group:'Community',    events:'event scheduled (with optional @mention)' },
-  tasking:        { label:'Tasking — All Command',       group:'Tasking',      events:'command-wide tasking orders' },
-  tasking_7bw:    { label:'Tasking — 7th BW',            group:'Tasking',      events:'tasking orders for the 7th Bomb Wing' },
-  tasking_509bw:  { label:'Tasking — 509th BW',          group:'Tasking',      events:'tasking orders for the 509th Bomb Wing' },
-  tasking_2bw:    { label:'Tasking — 2nd BW',            group:'Tasking',      events:'tasking orders for the 2nd Bomb Wing' },
-  roster_7bw:     { label:'Roster — 7th BW',             group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' },
-  roster_509bw:   { label:'Roster — 509th BW',           group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' },
-  roster_2bw:     { label:'Roster — 2nd BW',             group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' },
-  admin_pilots:   { label:'Admin — Pilot Actions',       group:'Admin',        events:'approved, denied, rank/role changes' },
-  admin_training: { label:'Admin — Training & Certs',    group:'Admin',        events:'cert_awarded, cert_revoked' },
-  admin_site:     { label:'Admin — Site Changes',        group:'Admin',        events:'news, roles, wings, webhooks' },
-  admin_all:      { label:'Admin — All Events (audit)',  group:'Admin',        events:'everything' },
-};
+// Per-wing channels are generated from the live wing list, so a wing
+// added in Wing Manager gets its own flight log / fleet / tasking /
+// roster webhook slots automatically. Keys stay flights_<wingId> etc.
+function buildWhChannels() {
+  const ch = {};
+  const ids = wingIdList();
+  ids.forEach(id => { ch['flights_' + id] = { label: wingShortName(id) + ' Flight Log', group:'Wing Flights', events:'flight_logged, flight_deleted' }; });
+  ch.flight_plans = { label:'Flight Plans', group:'Wing Flights', events:'flight_plan_saved' };
+  ids.forEach(id => { ch['fleet_' + id] = { label: wingShortName(id) + ' Fleet Status', group:'Wing Fleet', events:'aircraft added/removed/moved — auto-posts full fleet + locations' }; });
+  ch.events  = { label:'Events Announcements', group:'Community', events:'event scheduled (with optional @mention)' };
+  ch.tasking = { label:'Tasking — All Command', group:'Tasking', events:'command-wide tasking orders' };
+  ids.forEach(id => { ch['tasking_' + id] = { label:'Tasking — ' + wingShortName(id), group:'Tasking', events:'tasking orders for the ' + getWingName(id) }; });
+  ids.forEach(id => { ch['roster_' + id] = { label:'Roster — ' + wingShortName(id), group:'Wing Rosters', events:'living roster message — auto-updates on approve/edit/deny and unregistered-member changes' }; });
+  ch.admin_pilots   = { label:'Admin — Pilot Actions',      group:'Admin', events:'approved, denied, rank/role changes' };
+  ch.admin_training = { label:'Admin — Training & Certs',   group:'Admin', events:'cert_awarded, cert_revoked' };
+  ch.admin_site     = { label:'Admin — Site Changes',       group:'Admin', events:'news, roles, wings, webhooks' };
+  ch.admin_all      = { label:'Admin — All Events (audit)', group:'Admin', events:'everything' };
+  return ch;
+}
+let WH_CHANNELS = buildWhChannels();
 let _adminWhConfig = {};
 
 async function adminLoadWebhooks() {
+  WH_CHANNELS = buildWhChannels();
   try {
     const s = await db.collection('settings').doc('webhooks').get();
     _adminWhConfig = s.exists ? (s.data().channels || {}) : {};
@@ -3142,6 +3517,7 @@ async function adminFetchAuditPage(reset) {
       training_added:'var(--green)', training_updated:'var(--gold)', training_removed:'var(--red)',
       application_denied:'var(--red)', training_cert_awarded:'var(--gold)',
       roster_extra_added:'var(--green)', roster_extra_updated:'var(--gold)', roster_extra_removed:'var(--red)',
+      wing_added:'var(--green)', wing_updated:'var(--gold)', wing_removed:'var(--red)',
     };
 
     const html = entries.map(function(e) {
