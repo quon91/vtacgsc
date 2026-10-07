@@ -22,6 +22,13 @@
 .st-maintenance{background:rgba(224,144,48,.12);color:var(--amber);border:1px solid rgba(224,144,48,.35)}
 .ac-edit-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%;padding-top:10px;margin-top:6px;border-top:1px dashed var(--border)}
 .ac-edit-row input,.ac-edit-row select{font-size:12px;padding:6px 10px}
+.ac-edit-row label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.ac-sq{display:inline-block;font-size:10px;font-weight:700;border-radius:9px;padding:1px 8px;margin-left:6px;vertical-align:middle;font-family:var(--sans)}
+.sq-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.sq-chip{padding:5px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--card);color:var(--text3);font-family:var(--sans)}
+.sq-group{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);margin:18px 0 8px;display:flex;align-items:center;gap:8px}
+.sq-group:first-child{margin-top:0}
+.sq-group .cnt{color:var(--text3);font-weight:600;letter-spacing:0}
 </style>
 </head>
 <body>
@@ -46,7 +53,7 @@
 
   <!-- ADD AIRCRAFT — command staff only -->
   <div class="card" id="ac-add-card" style="display:none;margin-bottom:20px">
-    <div class="card-header"><div class="card-icon">➕</div><div class="card-title">Add aircraft to this wing</div></div>
+    <div class="card-header"><div class="card-icon">➕</div><div class="card-title" id="ac-add-title">Add aircraft to this wing</div></div>
     <div class="card-body">
       <div class="form-row">
         <div class="form-group">
@@ -56,6 +63,18 @@
         <div class="form-group">
           <label>Nickname <span style="color:var(--text3)">(nose art name)</span></label>
           <input type="text" id="ac-nick" placeholder='e.g. "Lets Roll"' maxlength="40">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Squadron</label>
+          <select id="ac-sq"></select>
+          <div class="form-hint">Leave on "Wing pool" for jets shared across the whole wing.</div>
+        </div>
+        <div class="form-group">
+          <label>Aircraft type</label>
+          <select id="ac-type"></select>
+          <div class="form-hint">Types come from Master Admin → Wing Manager.</div>
         </div>
       </div>
       <div class="form-row">
@@ -73,9 +92,11 @@
           </select>
         </div>
       </div>
-      <button class="btn btn-primary" onclick="addAircraft()">+ Add aircraft</button>
+      <button class="btn btn-primary" id="ac-add-btn" onclick="addAircraft()">+ Add aircraft</button>
     </div>
   </div>
+
+  <div class="sq-filters" id="sq-filters"></div>
 
   <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
     <div id="fleet-count" style="font-size:12px;color:var(--text3)"></div>
@@ -106,27 +127,44 @@ function canManageFleet(pilot) {
   });
 }
 function esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+function jsq(s) { return esc(String(s == null ? '' : s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")); }
 
 const STATUS = {
   available:   { label: 'Available',   cls: 'st-available',   emoji: '🟢' },
   inflight:    { label: 'In Flight',   cls: 'st-inflight',    emoji: '🔵' },
-  offstation: { label: 'Off Station', cls: 'st-offstation', emoji: '🚀' },
+  offstation:  { label: 'Off Station', cls: 'st-offstation',  emoji: '🚀' },
   maintenance: { label: 'Maintenance', cls: 'st-maintenance', emoji: '🟠' },
 };
 
-let activeWing = '7bw';
-let fleet = [];        // aircraft for the active wing
+// ── FLEET DOC SHAPE ──────────────────────────────────────────
+//   fleet/{id}: { wing, squadron (id or null = wing pool), type,
+//                 tail, nickname, location, status, updated… }
+// Wings, squadrons and aircraft types all come from the LIVE wing
+// list (Master Admin → Wing Manager) via firebase-config.js.
+let activeWing = null;
+let activeSq   = '__all';   // '__all' | '__pool' | squadron id
+let fleet = [];             // aircraft for the active wing
+let allTails = {};          // normalised tail → {wing, id}, across every wing
 let canEdit = false;
-let whChannels = {};   // Discord webhook config from settings/webhooks
+let whChannels = {};
+
+// Older docs have no type → the wing's main type. No squadron → wing pool.
+function typeOf(a)  { return a.type || wingAircraftList(a.wing)[0] || ''; }
+function sqName(wing, sq) { return sq ? (getSqName(wing, sq) || sq) : 'Wing pool'; }
+function normTail(t) { return String(t || '').trim().toUpperCase().replace(/\s+/g, ''); }
+function sqIds(wing) {
+  return Object.keys((WINGS[wing] && WINGS[wing].squadrons) || {})
+    .sort(function(a, b){ return String(getSqName(wing, a)).localeCompare(String(getSqName(wing, b)), undefined, { numeric: true }); });
+}
 
 // ── EMBED TEMPLATES (Master Admin → Discord Webhooks → Embed Appearance)
 let _embedTpls = null;
 async function getEmbedTpl(key) {
   if (_embedTpls === null) {
     try { const s = await db.collection('settings').doc('embedTemplates').get(); _embedTpls = s.exists ? (s.data().templates || {}) : {}; }
-    catch(e) { _embedTpls = {}; }
+    catch(e) { console.warn('embed templates unavailable:', e.message); _embedTpls = {}; }
   }
   return _embedTpls[key] || {};
 }
@@ -140,6 +178,10 @@ function onAuthReady(user, pilot) {
     document.getElementById('ac-add-card').style.display = 'block';
     document.getElementById('post-discord-btn').style.display = 'inline-flex';
   }
+  const ids = wingIdList();
+  // Open on the pilot's own wing (or ?wing= in the URL), else the first.
+  const want = new URLSearchParams(window.location.search).get('wing');
+  activeWing = (want && WINGS[want]) ? want : (pilot && WINGS[pilot.wing] ? pilot.wing : (ids[0] || null));
   renderWingTabs();
   loadWebhooks();
   loadFleet();
@@ -147,16 +189,17 @@ function onAuthReady(user, pilot) {
 
 function renderWingTabs() {
   const el = document.getElementById('wing-tabs');
-  el.innerHTML = Object.entries(WINGS).map(function(entry) {
-    const wid = entry[0], w = entry[1];
+  el.innerHTML = wingIdList().map(function(wid) {
+    const w = WINGS[wid], col = wingColor(wid);
     const active = wid === activeWing;
-    return '<button class="wt-btn" style="' + (active ? 'border-color:' + w.color + ';color:' + w.color + ';background:' + w.color + '14' : '') + '" onclick="switchWing(\'' + wid + '\')">'
-      + w.name + ' · ' + (w.aircraft && w.aircraft[0] ? w.aircraft[0] : '') + '</button>';
-  }).join('');
+    return '<button class="wt-btn" style="' + (active ? 'border-color:' + esc(col) + ';color:' + esc(col) + ';background:' + esc(col) + '14' : '') + '" onclick="switchWing(\'' + jsq(wid) + '\')">'
+      + esc(w.name) + ' · ' + esc(wingAircraftList(wid).join(' / ')) + '</button>';
+  }).join('') || '<div style="font-size:13px;color:var(--text3)">No wings set up yet — add one in Master Admin → Wing Manager.</div>';
 }
 
 function switchWing(wid) {
   activeWing = wid;
+  activeSq = '__all';
   renderWingTabs();
   loadFleet();
 }
@@ -165,100 +208,231 @@ async function loadWebhooks() {
   try {
     const s = await db.collection('settings').doc('webhooks').get();
     whChannels = s.exists ? (s.data().channels || {}) : {};
-  } catch(e) { whChannels = {}; }
+  } catch(e) { console.warn('webhooks unavailable:', e.message); whChannels = {}; }
 }
 
 async function loadFleet() {
   document.getElementById('fleet-list').innerHTML = '<div class="empty-state"><p>Loading fleet…</p></div>';
+  if (!activeWing) { fleet = []; renderAll(); return; }
   try {
-    const snap = await db.collection('fleet').where('wing','==',activeWing).get();
-    fleet = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); });
+    // Whole fleet in one read: the active wing's jets for display, and
+    // every tail so a tail can't be registered twice across the command
+    // (the flight log matches tails to jets).
+    const snap = await db.collection('fleet').get();
+    allTails = {};
+    fleet = [];
+    snap.docs.forEach(function(d) {
+      const a = Object.assign({}, d.data(), { id: d.id });
+      if (a.tail) allTails[normTail(a.tail)] = { wing: a.wing, id: a.id };
+      if (a.wing === activeWing) fleet.push(a);
+    });
     fleet.sort(function(a,b){ return (a.tail||'').localeCompare(b.tail||''); });
-  } catch(e) { fleet = []; }
+  } catch(e) {
+    console.error('fleet load:', e);
+    fleet = [];
+    document.getElementById('fleet-list').innerHTML = '<div class="alert alert-error">Could not load the fleet: ' + esc(e.message) + '</div>';
+    return;
+  }
+  renderAll();
+}
+
+function renderAll() {
+  renderAddForm();
+  renderSqFilters();
   renderFleet();
 }
+
+// Add form: squadron + type pickers for the active wing.
+function renderAddForm() {
+  const w = WINGS[activeWing];
+  document.getElementById('ac-add-title').textContent = w ? 'Add aircraft to ' + w.name : 'Add aircraft';
+  document.getElementById('ac-add-btn').disabled = !w;
+  const sqSel = document.getElementById('ac-sq');
+  const keepSq = activeSq !== '__all' && activeSq !== '__pool' ? activeSq : '';
+  sqSel.innerHTML = '<option value="">Wing pool — no squadron</option>'
+    + (w ? sqIds(activeWing).map(function(sq){ return '<option value="' + esc(sq) + '"' + (sq === keepSq ? ' selected' : '') + '>' + esc(getSqName(activeWing, sq)) + '</option>'; }).join('') : '');
+  const types = w ? wingAircraftList(activeWing) : [];
+  document.getElementById('ac-type').innerHTML = types.length
+    ? types.map(function(t){ return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('')
+    : '<option value="">No aircraft set for this wing</option>';
+  const base = wingBaseIcao(activeWing);
+  document.getElementById('ac-loc').placeholder = 'e.g. ' + (base || 'KDYS');
+}
+
+function renderSqFilters() {
+  const el = document.getElementById('sq-filters');
+  if (!WINGS[activeWing]) { el.innerHTML = ''; return; }
+  const col = wingColor(activeWing);
+  const chip = function(val, label, n) {
+    const on = activeSq === val;
+    return '<button class="sq-chip" style="' + (on ? 'border-color:' + esc(col) + ';color:' + esc(col) + ';background:' + esc(col) + '14' : '') + '" onclick="filterSq(\'' + jsq(val) + '\')">'
+      + esc(label) + ' <span style="opacity:.6">' + n + '</span></button>';
+  };
+  const ids = sqIds(activeWing);
+  const pool = fleet.filter(function(a){ return !a.squadron || ids.indexOf(a.squadron) === -1; }).length;
+  el.innerHTML = chip('__all', 'All squadrons', fleet.length)
+    + ids.map(function(sq){ return chip(sq, getSqName(activeWing, sq), fleet.filter(function(a){ return a.squadron === sq; }).length); }).join('')
+    + chip('__pool', 'Wing pool', pool);
+}
+function filterSq(val) { activeSq = val; renderAll(); }
 
 function renderFleet() {
   const w = WINGS[activeWing] || {};
   const el = document.getElementById('fleet-list');
-  document.getElementById('fleet-count').textContent = fleet.length + ' aircraft · ' + (w.name || '') + ' · ' + (w.base || '');
-  if (!fleet.length) {
-    el.innerHTML = '<div class="empty-state"><div class="icon">🛩</div><p>No aircraft registered for this wing yet' + (canEdit ? ' — add the first one above' : '') + '</p></div>';
+  const col = wingColor(activeWing);
+  const ids = sqIds(activeWing);
+  const inSq = function(a, sq) { return sq === '__pool' ? (!a.squadron || ids.indexOf(a.squadron) === -1) : a.squadron === sq; };
+  const shown = activeSq === '__all' ? fleet : fleet.filter(function(a){ return inSq(a, activeSq); });
+  document.getElementById('fleet-count').textContent = shown.length + ' of ' + fleet.length + ' aircraft · ' + (w.name || '') + (w.base ? ' · ' + w.base : '');
+  if (!activeWing) { el.innerHTML = ''; return; }
+  if (!shown.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🛩</div><p>No aircraft ' + (activeSq === '__all' ? 'registered for this wing' : 'in this squadron') + ' yet' + (canEdit ? ' — add one above' : '') + '</p></div>';
     return;
   }
-  el.innerHTML = fleet.map(function(a) {
-    const st = STATUS[a.status] || STATUS.available;
-    const staffRow = canEdit
-      ? '<div class="ac-edit-row">'
-        + '<input type="text" id="loc-' + a.id + '" value="' + esc(a.location || '') + '" placeholder="ICAO" maxlength="8" style="width:90px;font-family:var(--mono);text-transform:uppercase">'
-        + '<select id="st-' + a.id + '">'
-        +   Object.entries(STATUS).map(function(e){ return '<option value="' + e[0] + '"' + (a.status===e[0]?' selected':'') + '>' + e[1].label + '</option>'; }).join('')
-        + '</select>'
-        + '<button class="btn btn-primary btn-xs" onclick="updateAircraft(\'' + a.id + '\')">Update</button>'
-        + '<div style="flex:1"></div>'
-        + '<button class="btn btn-danger btn-xs" onclick="deleteAircraft(\'' + a.id + '\')">Remove</button>'
-        + '</div>'
-      : '';
-    return '<div class="ac-card" style="border-left:3px solid ' + (w.color || '#c8a951') + '">'
-      + '<div class="ac-icon">🛩</div>'
-      + '<div class="ac-info">'
-      +   '<div class="ac-tail">' + esc(a.tail || '—') + (a.nickname ? ' <span class="ac-nick">&ldquo;' + esc(a.nickname) + '&rdquo;</span>' : '') + '</div>'
-      +   '<div class="ac-meta">' + esc(a.type || (w.aircraft && w.aircraft[0]) || '') + ' · 📍 ' + esc(a.location || 'Unknown') + (a.updatedBy ? ' · updated by ' + esc(a.updatedBy) : '') + '</div>'
-      + '</div>'
-      + '<span class="ac-status ' + st.cls + '">' + st.label + '</span>'
-      + staffRow
-      + '</div>';
+  // Group by squadron (in squadron order, wing pool last).
+  const groups = (activeSq === '__all' ? ids.concat(['__pool']) : [activeSq])
+    .map(function(sq){ return { sq: sq, list: shown.filter(function(a){ return inSq(a, sq); }) }; })
+    .filter(function(g){ return g.list.length; });
+  const multiType = wingAircraftList(activeWing).length > 1 || fleet.some(function(a){ return a.type && typeOf(a) !== wingAircraftList(activeWing)[0]; });
+  el.innerHTML = groups.map(function(g) {
+    const head = '<div class="sq-group"><span>' + esc(g.sq === '__pool' ? 'Wing pool' : getSqName(activeWing, g.sq)) + '</span><span class="cnt">' + g.list.length + ' aircraft</span></div>';
+    return head + g.list.map(function(a){ return cardHtml(a, col, multiType); }).join('');
   }).join('');
 }
 
+function cardHtml(a, col, multiType) {
+  const st = STATUS[a.status] || STATUS.available;
+  const sqLabel = (a.squadron && WINGS[activeWing].squadrons[a.squadron]) ? getSqName(activeWing, a.squadron) : 'Wing pool';
+  const staffRow = canEdit ? editRowHtml(a) : '';
+  return '<div class="ac-card" style="border-left:3px solid ' + esc(col) + '">'
+    + '<div class="ac-icon">🛩</div>'
+    + '<div class="ac-info">'
+    +   '<div class="ac-tail">' + esc(a.tail || '—') + (a.nickname ? ' <span class="ac-nick">&ldquo;' + esc(a.nickname) + '&rdquo;</span>' : '')
+    +     '<span class="ac-sq" style="background:' + esc(col) + '1f;color:' + esc(col) + ';border:1px solid ' + esc(col) + '55">' + esc(sqLabel) + '</span></div>'
+    +   '<div class="ac-meta">' + esc(typeOf(a)) + ' · 📍 ' + esc(a.location || 'Unknown') + (a.updatedBy ? ' · updated by ' + esc(a.updatedBy) : '') + '</div>'
+    + '</div>'
+    + '<span class="ac-status ' + st.cls + '">' + st.label + '</span>'
+    + staffRow
+    + '</div>';
+}
+
+// Staff controls: location, status, squadron, type, and moving the
+// jet to another wing (needed before a wing can be removed).
+function editRowHtml(a) {
+  const id = jsq(a.id);
+  const sqOpts = '<option value="">Wing pool</option>' + sqIds(activeWing).map(function(sq) {
+    return '<option value="' + esc(sq) + '"' + (a.squadron === sq ? ' selected' : '') + '>' + esc(getSqName(activeWing, sq)) + '</option>';
+  }).join('');
+  const types = wingAircraftList(activeWing).slice();
+  const cur = typeOf(a);
+  if (cur && types.indexOf(cur) === -1) types.push(cur);   // keep a type the wing no longer lists
+  const typeOpts = types.map(function(t){ return '<option value="' + esc(t) + '"' + (t === cur ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('');
+  const wingOpts = wingIdList().map(function(wid){ return '<option value="' + esc(wid) + '"' + (wid === activeWing ? ' selected' : '') + '>' + esc(wingShortName(wid)) + '</option>'; }).join('');
+  return '<div class="ac-edit-row">'
+    + '<input type="text" id="loc-' + esc(a.id) + '" value="' + esc(a.location || '') + '" placeholder="ICAO" maxlength="8" style="width:80px;font-family:var(--mono);text-transform:uppercase" title="Location">'
+    + '<select id="st-' + esc(a.id) + '" title="Status">'
+    +   Object.entries(STATUS).map(function(e){ return '<option value="' + e[0] + '"' + (a.status===e[0]?' selected':'') + '>' + e[1].label + '</option>'; }).join('')
+    + '</select>'
+    + '<select id="sq-' + esc(a.id) + '" title="Squadron">' + sqOpts + '</select>'
+    + '<select id="ty-' + esc(a.id) + '" title="Aircraft type">' + typeOpts + '</select>'
+    + '<select id="wg-' + esc(a.id) + '" title="Wing — pick another wing to transfer this jet">' + wingOpts + '</select>'
+    + '<button class="btn btn-primary btn-xs" onclick="updateAircraft(\'' + id + '\')">Update</button>'
+    + '<div style="flex:1"></div>'
+    + '<button class="btn btn-danger btn-xs" onclick="deleteAircraft(\'' + id + '\')">Remove</button>'
+    + '</div>';
+}
+
 async function addAircraft() {
-  const tail = document.getElementById('ac-tail').value.trim();
-  const nick = document.getElementById('ac-nick').value.trim().replace(/^["\u201c]|["\u201d]$/g, '');
+  if (!WINGS[activeWing]) return;
+  const tail = document.getElementById('ac-tail').value.trim().toUpperCase();
+  const nick = document.getElementById('ac-nick').value.trim().replace(/^["“]|["”]$/g, '');
   const loc  = document.getElementById('ac-loc').value.trim().toUpperCase();
   const st   = document.getElementById('ac-status').value;
+  const sq   = document.getElementById('ac-sq').value || null;
+  const type = document.getElementById('ac-type').value;
   if (!tail) { toast('Enter a tail number', 'error'); return; }
-  if (fleet.some(function(a){ return (a.tail||'').toLowerCase() === tail.toLowerCase(); })) {
-    toast('That tail number is already in this wing\'s fleet', 'error'); return;
+  if (!type) { toast('This wing has no aircraft types — add one in Master Admin → Wing Manager', 'error'); return; }
+  const dup = allTails[normTail(tail)];
+  if (dup) {
+    toast(tail + ' is already registered' + (dup.wing === activeWing ? ' in this wing' : ' with ' + (getWingName(dup.wing) || dup.wing)), 'error');
+    return;
   }
-  const w = WINGS[activeWing] || {};
+  const w = WINGS[activeWing];
+  const btn = document.getElementById('ac-add-btn');
+  btn.disabled = true;
   try {
     await db.collection('fleet').add({
       wing: activeWing,
+      squadron: sq,
+      type: type,
       tail: tail,
       nickname: nick,
-      type: (w.aircraft && w.aircraft[0]) || '',
-      location: loc || (w.base ? w.base.match(/\(([A-Z0-9]+)\)/)?.[1] || '' : ''),
+      location: loc || wingBaseIcao(activeWing),
       status: st,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy: currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '',
     });
-    logAudit('fleet_aircraft_added', 'Aircraft added to ' + (w.name||activeWing) + ': ' + tail + (nick ? ' "' + nick + '"' : ''));
+    logAudit('fleet_aircraft_added', 'Aircraft added to ' + w.name + (sq ? ' / ' + sqName(activeWing, sq) : '') + ': ' + tail + ' (' + type + ')' + (nick ? ' "' + nick + '"' : ''));
     document.getElementById('ac-tail').value = '';
     document.getElementById('ac-nick').value = '';
     document.getElementById('ac-loc').value = '';
-    toast('Aircraft added!');
+    // Squadron, type and status stay picked so several jets can be entered back to back.
+    toast(tail + ' added ✓');
     await loadFleet();
-    postFleetStatus(false);
-  } catch(e) { toast('Error: ' + e.message, 'error'); }
+    postFleetStatus(false, activeWing);
+  } catch(e) {
+    console.error('add aircraft:', e);
+    toast('Error: ' + e.message, 'error');
+  } finally { btn.disabled = false; }
 }
 
 async function updateAircraft(id) {
-  const loc = document.getElementById('loc-' + id).value.trim().toUpperCase();
-  const st  = document.getElementById('st-' + id).value;
   const ac  = fleet.find(function(a){ return a.id === id; });
+  if (!ac) { toast('That aircraft no longer exists', 'error'); return; }
+  const loc  = document.getElementById('loc-' + id).value.trim().toUpperCase();
+  const st   = document.getElementById('st-' + id).value;
+  const wing = document.getElementById('wg-' + id).value || activeWing;
+  const moving = wing !== activeWing;
+  // A squadron belongs to one wing, so a transfer drops it into the
+  // new wing's pool; the type falls back to the new wing's main type
+  // if the new wing doesn't fly this one.
+  let sq   = moving ? null : (document.getElementById('sq-' + id).value || null);
+  let type = document.getElementById('ty-' + id).value || typeOf(ac);
+  if (moving && wingAircraftList(wing).length && wingAircraftList(wing).indexOf(type) === -1) {
+    if (!confirm(getWingName(wing) + ' doesn\'t list ' + type + '. Transfer ' + ac.tail + ' and set it to ' + wingAircraftList(wing)[0] + '?\n\nCancel keeps it as ' + type + '.')) {
+      // keep type
+    } else {
+      type = wingAircraftList(wing)[0];
+    }
+  }
+  if (moving && !confirm('Transfer ' + ac.tail + ' from ' + getWingName(activeWing) + ' to ' + getWingName(wing) + '? It goes into that wing\'s pool — assign a squadron there afterwards.')) return;
+  const data = {
+    location: loc,
+    status: st,
+    squadron: sq,
+    type: type,
+    wing: wing,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedBy: currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '',
+  };
   try {
-    await db.collection('fleet').doc(id).update({
-      location: loc,
-      status: st,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedBy: currentPilot ? (currentPilot.displayName || currentPilot.callsign || '') : '',
-    });
-    logAudit('fleet_aircraft_updated', 'Aircraft updated: ' + (ac ? ac.tail : id) + ' → 📍 ' + (loc||'—') + ' · ' + (STATUS[st]?STATUS[st].label:st));
-    toast('Aircraft updated');
+    await db.collection('fleet').doc(id).update(data);
+    const bits = [];
+    if (moving) bits.push('moved to ' + getWingName(wing));
+    if (!moving && (ac.squadron || null) !== sq) bits.push('squadron ' + sqName(activeWing, sq));
+    if (typeOf(ac) !== type) bits.push('type ' + type);
+    bits.push('📍 ' + (loc || '—'));
+    bits.push(STATUS[st] ? STATUS[st].label : st);
+    logAudit('fleet_aircraft_updated', 'Aircraft updated: ' + ac.tail + ' → ' + bits.join(' · '));
+    toast(moving ? ac.tail + ' transferred to ' + getWingName(wing) + ' ✓' : 'Aircraft updated');
     await loadFleet();
-    postFleetStatus(false);
-  } catch(e) { toast('Error: ' + e.message, 'error'); }
+    postFleetStatus(false, activeWing);
+    if (moving) postFleetStatus(false, wing);
+  } catch(e) {
+    console.error('update aircraft:', e);
+    toast('Error: ' + e.message, 'error');
+  }
 }
 
 async function deleteAircraft(id) {
@@ -269,8 +443,11 @@ async function deleteAircraft(id) {
     logAudit('fleet_aircraft_removed', 'Aircraft removed: ' + (ac ? ac.tail : id));
     toast('Aircraft removed');
     await loadFleet();
-    postFleetStatus(false);
-  } catch(e) { toast('Error: ' + e.message, 'error'); }
+    postFleetStatus(false, activeWing);
+  } catch(e) {
+    console.error('delete aircraft:', e);
+    toast('Error: ' + e.message, 'error');
+  }
 }
 
 async function logAudit(type, notes) {
@@ -281,28 +458,26 @@ async function logAudit(type, notes) {
       details: { notes: notes },
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
     });
-  } catch(e) {}
+  } catch(e) { console.warn('audit skipped:', e.message); }
 }
 
 // ── DISCORD FLEET STATUS — LIVE MESSAGE ──────────────────────
-// Instead of posting a new message on every change, each wing has
-// ONE living fleet-status message in its Discord channel that gets
-// EDITED in place. The message id is stored in settings/fleetStatus;
-// if the Discord message was deleted, the next update recreates it
-// and stores the new id.
+// Each wing has ONE living fleet-status message in its Discord
+// channel that gets EDITED in place. The message id is stored in
+// settings/fleetStatus; if the Discord message was deleted, the next
+// update recreates it and stores the new id.
 async function upsertFleetMessage(wing, url, payload) {
   let ids = {};
   try {
     const s = await db.collection('settings').doc('fleetStatus').get();
     ids = s.exists ? (s.data().messages || {}) : {};
-  } catch(e) {}
+  } catch(e) { console.warn('fleetStatus unavailable:', e.message); }
   const mid = ids[wing];
   if (mid) {
     try {
       const r = await fetch(url + '/messages/' + mid, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (r.ok) return true;   // edited the existing message ✓
-    } catch(e) {}
-    // fell through: message was deleted or PATCH failed → repost
+      if (r.ok) return true;
+    } catch(e) { console.warn('fleet PATCH failed, reposting:', e.message); }
   }
   try {
     const sep = url.includes('?') ? '&' : '?';
@@ -311,43 +486,57 @@ async function upsertFleetMessage(wing, url, payload) {
       const msg = await r.json().catch(function(){ return null; });
       if (msg && msg.id) {
         ids[wing] = msg.id;
-        db.collection('settings').doc('fleetStatus').set({ messages: ids }, { merge: true }).catch(function(){});
+        db.collection('settings').doc('fleetStatus').set({ messages: ids }, { merge: true })
+          .catch(function(e){ console.warn('fleetStatus save failed:', e.message); });
       }
       return true;
     }
-  } catch(e) {}
+  } catch(e) { console.error('fleet POST failed:', e); }
   return false;
 }
 
-async function postFleetStatus(manual) {
-  const ch = whChannels['fleet_' + activeWing];
+// Posts the given wing's fleet (read fresh, so a transfer updates
+// both wings correctly). Jets are listed squadron by squadron.
+async function postFleetStatus(manual, wing) {
+  wing = wing || activeWing;
+  const ch = whChannels['fleet_' + wing];
   const url = ch && ch.url;
   if (!url) {
     if (manual) toast('No fleet webhook set for this wing — add one in Master Admin → Discord Webhooks', 'warn');
     return;
   }
-  const w = WINGS[activeWing] || {};
+  let list = [];
+  try {
+    const snap = await db.collection('fleet').where('wing', '==', wing).get();
+    list = snap.docs.map(function(d){ return Object.assign({}, d.data(), { id: d.id }); });
+  } catch(e) { console.error('fleet status read:', e); if (manual) toast('Could not read the fleet: ' + e.message, 'error'); return; }
+  const ids = sqIds(wing);
+  const order = function(a) { const i = ids.indexOf(a.squadron); return i === -1 ? 999 : i; };
+  list.sort(function(a, b){ return (order(a) - order(b)) || (a.tail||'').localeCompare(b.tail||''); });
+  const w = WINGS[wing] || {};
+  const multiType = wingAircraftList(wing).length > 1;
   const tpl = await getEmbedTpl('fleet_status');
   const vars = {
-    wing: w.name || activeWing,
-    count: String(fleet.length),
-    aircraft: (w.aircraft && w.aircraft[0]) || '',
+    wing: w.name || wing,
+    count: String(list.length),
+    aircraft: wingAircraftList(wing).join(', '),
     base: w.base || '',
     by: currentPilot?.displayName || currentPilot?.callsign || 'Command',
   };
-  const fields = fleet.slice(0, 25).map(function(a) {
+  const fields = list.slice(0, 25).map(function(a) {
     const st = STATUS[a.status] || STATUS.available;
+    const sqLbl = (a.squadron && w.squadrons && w.squadrons[a.squadron]) ? (w.squadrons[a.squadron].callsign || getSqName(wing, a.squadron)) : 'Pool';
     return {
       name: a.tail + (a.nickname ? ' — "' + a.nickname + '"' : ''),
-      value: st.emoji + ' ' + st.label + ' · 📍 **' + (a.location || 'Unknown') + '**',
+      value: st.emoji + ' ' + st.label + ' · 📍 **' + (a.location || 'Unknown') + '**\n' + sqLbl + (multiType ? ' · ' + typeOf(a) : ''),
       inline: true,
     };
   });
   const payload = {
     embeds: [{
-      color: tplColor(tpl.color, parseInt((w.color || '#c8a951').replace('#',''), 16)),
+      color: tplColor(tpl.color, wingColorInt(wing)),
       title: fillTpl(tpl.title || '🛩 {wing} — Fleet Status', vars),
-      description: fleet.length
+      description: list.length
         ? fillTpl(tpl.desc || '{count} aircraft assigned', vars) + ' · ' + vars.aircraft + ' · ' + vars.base
         : 'No aircraft currently registered.',
       fields: fields,
@@ -355,7 +544,7 @@ async function postFleetStatus(manual) {
       timestamp: new Date().toISOString(),
     }]
   };
-  const ok = await upsertFleetMessage(activeWing, url, payload);
+  const ok = await upsertFleetMessage(wing, url, payload);
   if (manual) {
     if (ok) toast('Discord fleet status updated ✓');
     else toast('Discord update failed — check the webhook URL', 'error');
