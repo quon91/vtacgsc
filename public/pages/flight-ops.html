@@ -784,7 +784,8 @@ function buildLogTailList(){
   const list=wingFleet.concat(allFleet().filter(a=>!mineIds[a.id]));
   dl.innerHTML=list.map(a=>{
     const tag=a.status==='maintenance'?' · MAINTENANCE':a.status==='inflight'?' · in flight':'';
-    const lbl=(a.nickname?'"'+a.nickname+'" · ':'')+fleetTypeOf(a)+' · '+wingShortName(a.wing)+' · '+(a.location||'?')+tag;
+    const sq=a.squadron&&WINGS[a.wing]&&WINGS[a.wing].squadrons[a.squadron]?getSqName(a.wing,a.squadron):'';
+    const lbl=(a.nickname?'"'+a.nickname+'" · ':'')+fleetTypeOf(a)+' · '+wingShortName(a.wing)+(sq?' / '+sq:'')+' · '+(a.location||'?')+tag;
     return '<option value="'+esc2(a.tail||'')+'">'+esc2(lbl)+'</option>';
   }).join('');
 }
@@ -1075,7 +1076,7 @@ async function postWingFleetStatus(wing){
     if(!url)return;
     const snap=await db.collection('fleet').where('wing','==',wing).get();
     const list=snap.docs.map(d=>d.data()).sort((a,b)=>(a.tail||'').localeCompare(b.tail||''));
-    const ST={available:'🟢 Available',inflight:'🔵 In Flight',maintenance:'🟠 Maintenance'};
+    const ST={available:'🟢 Available',inflight:'🔵 In Flight',offstation:'🚀 Off Station',maintenance:'🟠 Maintenance'};
     const tpl=await getEmbedTpl('fleet_status');
     const multiType=wingAircraftList(wing).length>1;
     const vars={wing:getWingName(wing),count:String(list.length),aircraft:wingAircraftList(wing).join(', '),base:(WINGS[wing]&&WINGS[wing].base)||'',by:myPilot?.callsign||myPilot?.displayName||'Pilot'};
