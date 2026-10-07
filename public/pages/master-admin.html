@@ -668,7 +668,7 @@
       <label>Squadrons</label>
       <div id="wm-sq-list" style="margin-top:6px"></div>
       <button type="button" class="btn btn-outline btn-xs" style="margin-top:6px" onclick="wmAddSquadron()">+ Add a squadron</button>
-      <div class="form-hint">Squadron ID is a short code (e.g. 23bs) and can't be changed after saving. A squadron with pilots or unregistered members in it can't be removed until they're moved.</div>
+      <div class="form-hint">Squadron ID is a short code (e.g. 23bs) and can't be changed after saving. A squadron with pilots, unregistered members or fleet jets in it can't be removed until they're moved.</div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('wing-modal')">Cancel</button>
@@ -3048,10 +3048,8 @@ async function wingOccupants(wingId, sqId) {
     const xs = await db.collection('rosterExtras').get();
     xs.docs.forEach(d => { const x = d.data(); if (x.wing === wingId && (!sqId || x.squadron === sqId)) out.extras.push(x.name || d.id); });
   } catch(e) { console.warn('rosterExtras check skipped:', e.message); }
-  if (!sqId) {
-    const fs = await db.collection('fleet').where('wing', '==', wingId).get();
-    fs.docs.forEach(d => out.fleet.push(d.data().tail || d.id));
-  }
+  const fs = await db.collection('fleet').where('wing', '==', wingId).get();
+  fs.docs.forEach(d => { const a = d.data(); if (!sqId || a.squadron === sqId) out.fleet.push(a.tail || d.id); });
   return out;
 }
 function occupantSummary(o) {
@@ -3095,8 +3093,8 @@ async function saveWingModal() {
     const removedSq = wmState.origSq.filter(sid => !seen[sid]);
     for (const sid of removedSq) {
       const occ = await wingOccupants(id, sid);
-      if (occ.pilots.length || occ.extras.length) {
-        toast('Can\'t remove ' + (getSqName(id, sid) || sid) + ' — still has ' + occupantSummary(occ) + '. Move them first.', 'error');
+      if (occ.pilots.length || occ.extras.length || occ.fleet.length) {
+        toast('Can\'t remove ' + (getSqName(id, sid) || sid) + ' — still has ' + occupantSummary(occ) + '. Move them first (jets: Fleet page).', 'error');
         btn.disabled = false;
         return;
       }
