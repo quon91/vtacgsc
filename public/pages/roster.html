@@ -152,9 +152,6 @@
   <!-- Wing filter — only visible when Global Strike is selected -->
   <div class="roster-filters" id="wing-filters" style="display:flex">
     <button class="rf-btn active" onclick="filterWing(null,this)">All Wings</button>
-    <button class="rf-btn" onclick="filterWing('7bw',this)">7th BW</button>
-    <button class="rf-btn" onclick="filterWing('509bw',this)">509th BW</button>
-    <button class="rf-btn" onclick="filterWing('2bw',this)">2nd BW</button>
   </div>
 
   <input type="text" id="roster-search" placeholder="Search by callsign..." style="width:100%;max-width:320px;margin-bottom:20px" oninput="renderRosterList()">
@@ -379,7 +376,17 @@ let rosterExtras = [];
 // the My Profile button AND the pilot avatar. This function must NOT
 // touch the nav, or it erases the avatar.
 function onAuthReady(user, pilot) {
+  renderWingFilters();
   loadRoster();
+}
+
+// Wing filter buttons come from the live wing list (Wing Manager).
+function renderWingFilters() {
+  const el = document.getElementById('wing-filters');
+  el.innerHTML = '<button class="rf-btn' + (activeWingFilter ? '' : ' active') + '" onclick="filterWing(null,this)">All Wings</button>'
+    + wingIdList().map(function(id) {
+        return '<button class="rf-btn' + (activeWingFilter === id ? ' active' : '') + '" onclick="filterWing(\'' + escAttr(id) + '\',this)">' + esc(wingShortName(id)) + '</button>';
+      }).join('');
 }
 
 async function loadRoster() {
