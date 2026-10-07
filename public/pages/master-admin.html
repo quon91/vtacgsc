@@ -640,6 +640,11 @@
         <div class="form-hint">Put the ICAO in brackets — the Sortie Generator uses it as the default departure.</div>
       </div>
     </div>
+    <div class="form-group">
+      <label>Location <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+      <input type="text" id="wm-location" maxlength="60" placeholder="e.g. Minot, ND">
+      <div class="form-hint">Shown after the base on the home page and wing page.</div>
+    </div>
     <div class="form-row">
       <div class="form-group">
         <label>Wing color</label>
@@ -2955,7 +2960,7 @@ function openWingModal(id) {
     editing: id || null,
     aircraft: w ? (w.aircraft || []).slice() : [],
     squadrons: w ? Object.entries(w.squadrons || {}).sort((a,b) => sqSortFn(id)(a[0], b[0]))
-      .map(([sqId, sq]) => ({ id: sqId, name: sq.name || '', callsign: sq.callsign || '', type: sq.type || 'active', isNew: false })) : [],
+      .map(([sqId, sq]) => ({ id: sqId, name: sq.name || '', nickname: sq.nickname || '', callsign: sq.callsign || '', type: sq.type || 'active', isNew: false })) : [],
     origSq: w ? Object.keys(w.squadrons || {}) : [],
   };
   document.getElementById('wm-title').textContent = w ? 'Edit ' + w.name : 'Add a Wing';
@@ -2965,6 +2970,7 @@ function openWingModal(id) {
   document.getElementById('wm-name').value  = w ? (w.name || '') : '';
   document.getElementById('wm-short').value = w ? (w.shortName || '') : '';
   document.getElementById('wm-base').value  = w ? (w.base || '') : '';
+  document.getElementById('wm-location').value = w ? (w.location || '') : '';
   document.getElementById('wm-color').value = w && /^#[0-9a-fA-F]{6}$/.test(w.color || '') ? w.color : '#c8a951';
   document.getElementById('wm-order').value = w ? (w.order != null ? w.order : wingIdList().indexOf(id)) : wingIdList().length;
   const idEl = document.getElementById('wm-id');
@@ -3016,6 +3022,8 @@ function renderWmSquadrons() {
         oninput="wmState.squadrons[${i}].id=this.value.trim().toLowerCase()" style="width:90px;font-family:var(--mono);font-size:12px;text-transform:lowercase">
       <input type="text" value="${esc(sq.name)}" placeholder="Squadron name" maxlength="60"
         oninput="wmState.squadrons[${i}].name=this.value" style="flex:2;min-width:160px;font-size:12px">
+      <input type="text" value="${esc(sq.nickname || '')}" placeholder="Nickname" maxlength="40"
+        oninput="wmState.squadrons[${i}].nickname=this.value" style="width:120px;font-size:12px">
       <input type="text" value="${esc(sq.callsign)}" placeholder="Callsign" maxlength="16"
         oninput="wmState.squadrons[${i}].callsign=this.value" style="width:100px;font-size:12px;text-transform:uppercase">
       <select onchange="wmState.squadrons[${i}].type=this.value" style="width:auto;font-size:12px">
@@ -3025,7 +3033,7 @@ function renderWmSquadrons() {
     </div>`).join('');
 }
 function wmAddSquadron() {
-  wmState.squadrons.push({ id: '', name: '', callsign: '', type: 'active', isNew: true });
+  wmState.squadrons.push({ id: '', name: '', nickname: '', callsign: '', type: 'active', isNew: true });
   renderWmSquadrons();
   const rows = document.querySelectorAll('#wm-sq-list > div');
   const last = rows[rows.length - 1];
@@ -3067,6 +3075,7 @@ async function saveWingModal() {
   const name = document.getElementById('wm-name').value.trim().replace(/\s+/g, ' ');
   const shortName = document.getElementById('wm-short').value.trim();
   const base = document.getElementById('wm-base').value.trim();
+  const location = document.getElementById('wm-location').value.trim();
   const color = document.getElementById('wm-color').value;
   const order = parseInt(document.getElementById('wm-order').value, 10);
 
@@ -3104,6 +3113,7 @@ async function saveWingModal() {
     wmState.squadrons.forEach(sq => {
       squadrons[sq.id] = {
         name: String(sq.name).trim(),
+        nickname: String(sq.nickname || '').trim().replace(/^["“]|["”]$/g, ''),
         callsign: String(sq.callsign || '').trim().toUpperCase(),
         type: SQ_TYPES[sq.type] ? sq.type : 'active',
         deleted: false,
@@ -3112,7 +3122,7 @@ async function saveWingModal() {
     removedSq.forEach(sid => { squadrons[sid] = { deleted: true }; });
 
     const data = {
-      name: name, shortName: shortName, base: base, color: color,
+      name: name, shortName: shortName, base: base, location: location, color: color,
       aircraft: wmState.aircraft.slice(),
       order: isNaN(order) ? wingIdList().length : order,
       squadrons: squadrons,
