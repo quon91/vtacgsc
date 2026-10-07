@@ -113,7 +113,10 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 40
-        && request.resource.data.wing in ['7bw','509bw','2bw']
+        // Any wing that exists in the Wing Manager (wing ids are
+        // short lowercase slugs like '7bw' or '5bw').
+        && request.resource.data.wing is string
+        && request.resource.data.wing.matches('^[a-z0-9]{2,12}$')
         && (request.resource.data.get('squadron', null) == null
             || request.resource.data.squadron is string);
       allow delete: if isMasterAdmin();
@@ -274,7 +277,10 @@ service cloud.firestore {
       allow delete: if isMasterAdmin() || isCommandStaff();
     }
 
-    // ── WINGS (names, callsign pools, logos) ─────────────────
+    // ── WINGS (names, callsign pools, logos, squadrons, aircraft)
+    // Master Admin → Wing Manager creates / edits / removes wings
+    // here (removal sets deleted:true). Wing commanders may still
+    // edit their own wing's history, logo and callsigns.
     match /wings/{wingId} {
       allow read: if isSignedIn();
       allow write: if isMasterAdmin() || isWingCommanderOf(wingId);
