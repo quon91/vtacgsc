@@ -54,7 +54,7 @@
 <div class="wings-hero">
   <div class="hero-eyebrow">Order of Battle</div>
   <h1 class="hero-title">Our <span>Wings</span></h1>
-  <p class="hero-sub">Three wings. Six squadrons. One command.</p>
+  <p class="hero-sub" id="wings-hero-sub">One command.</p>
 </div>
 
 <div class="container page-body">
@@ -75,16 +75,16 @@
 <script src="/js/firebase-config.js"></script>
 <script src="/js/nav.js"></script>
 <script>
-// Wing cards render from the LIVE wing config (the same WINGS
-// object firebase-config loads with your Firestore overrides), so
-// renamed wings/squadrons, changed bases, and uploaded wing logos
-// from Master Admin all show here automatically.
-const WING_ORDER = ['7bw', '509bw', '2bw'];
-const WING_SHORT = { '7bw': '7 BW', '509bw': '509 BW', '2bw': '2 BW' };
-
+// Wing cards render from the LIVE wing list (the same WINGS object
+// firebase-config loads with Master Admin → Wing Manager changes), so
+// added/removed wings, squadrons, aircraft, renamed bases and logos
+// all show here automatically, in the Wing Manager's display order.
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function safeColor(c) { return /^#[0-9a-fA-F]{3,8}$/.test(String(c || '')) ? c : '#c8a951'; }
+const NUM_WORDS = ['No','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve'];
+function countWord(n) { return NUM_WORDS[n] || String(n); }
 
 function onAuthReady(user, pilot) {
   renderWingCards();
@@ -92,29 +92,31 @@ function onAuthReady(user, pilot) {
 
 function renderWingCards() {
   const el = document.getElementById('wing-cards');
-  const ids = WING_ORDER.filter(function(id){ return WINGS[id]; })
-    .concat(Object.keys(WINGS).filter(function(id){ return WING_ORDER.indexOf(id) === -1; }));
+  const ids = wingIdList();
+  const sqCount = ids.reduce(function(n, id){ return n + Object.keys(WINGS[id].squadrons || {}).length; }, 0);
+  document.getElementById('wings-hero-sub').textContent =
+    countWord(ids.length) + ' wing' + (ids.length===1?'':'s') + '. ' + countWord(sqCount) + ' squadron' + (sqCount===1?'':'s') + '. One command.';
   if (!ids.length) {
     el.innerHTML = '<div class="empty-state"><p>No wings configured yet.</p></div>';
     return;
   }
   el.innerHTML = ids.map(function(id) {
     const w = WINGS[id];
-    const color = w.color || '#c8a951';
+    const color = safeColor(w.color);
     const squadrons = Object.values(w.squadrons || {});
     const logo = w.logoUrl
       ? '<img class="wc-logo" src="' + esc(w.logoUrl) + '" alt="" onerror="this.style.display=\'none\'">'
       : '';
-    return '<a href="/pages/wing.html?id=' + id + '" class="wing-card" style="border-top-color:' + color + '">'
+    return '<a href="/pages/wing.html?id=' + encodeURIComponent(id) + '" class="wing-card" style="border-top-color:' + color + '">'
       + '<div class="wc-head">' + logo + '<div>'
       +   '<div class="wc-label" style="color:' + color + '">' + esc(w.name || id) + '</div>'
-      +   '<div class="wc-name" style="color:' + color + '">' + esc(w.shortName || WING_SHORT[id] || id.toUpperCase()) + '</div>'
+      +   '<div class="wc-name" style="color:' + color + '">' + esc(wingShortName(id)) + '</div>'
       + '</div></div>'
       + '<div class="wc-base">📍 ' + esc(w.base || '') + '</div>'
       + '<div class="wc-squads">' + squadrons.map(function(sq) {
           return '<div class="wc-squad">⬥ ' + esc(sq.name || '') + '</div>';
         }).join('') + '</div>'
-      + '<div class="wc-aircraft" style="color:' + color + '">' + esc((w.aircraft && w.aircraft[0]) || '') + '</div>'
+      + '<div class="wc-aircraft" style="color:' + color + '">' + esc((w.aircraft || []).join(' · ')) + '</div>'
       + '<div class="wc-link" style="color:' + color + '">View Wing →</div>'
       + '</a>';
   }).join('');
