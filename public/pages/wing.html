@@ -44,12 +44,13 @@
     </a>
     <div class="nav-links" id="nav-links">
       <a href="/index.html">Home</a>
+      <a href="/pages/wings.html" class="active">Wings</a>
       <a href="/pages/roster.html">Roster</a>
-      <a href="/pages/history.html">History</a>
-      <a href="/pages/bases.html">Bases</a>
+      <a href="/pages/fleet.html">Fleet</a>
+      <a href="/pages/events.html">Events</a>
+      <a href="/pages/sop.html">SOPs</a>
       <a href="/pages/training/index.html">Training</a>
-      <a href="/pages/flights.html">Flight Log</a>
-      <a href="/pages/flight-plan.html">Flight Planner</a>
+      <a href="/pages/flight-ops.html">Flight Ops</a>
     </div>
     <div class="nav-right" id="nav-right-area">
       <a href="/pages/login.html" class="btn btn-outline btn-sm">Login</a>
@@ -173,8 +174,9 @@ function onAuthReady(user, pilot) {
   const navArea = document.getElementById('nav-right-area');
   if (user && pilot && pilot.status === 'active') {
     navArea.innerHTML = '<a href="/pages/profile.html" class="btn btn-outline btn-sm">My Profile</a>';
-    canEdit = pilot.role === 'master_admin' ||
-              ((pilot.role === 'wing_commander' || pilot.role === 'sq_commander') && pilot.wing === wingId);
+    const rids = getPilotRoleIds(pilot);
+    canEdit = isMasterAdminPilot(pilot) ||
+              ((rids.includes('wing_commander') || rids.includes('sq_commander')) && pilot.wing === wingId);
     if (canEdit) {
       document.body.classList.add('editable-mode');
       const editBtn = document.getElementById('history-edit-btn');
@@ -189,12 +191,19 @@ function onAuthReady(user, pilot) {
 }
 
 async function loadWing() {
-  try {
-    let doc = await db.collection('wings').doc(wingId).get();
-    wingData = doc.exists ? doc.data() : WINGS[wingId];
-  } catch(e) { wingData = WINGS[wingId]; }
+  // WINGS is the live, merged wing list (built-in defaults + Wing
+  // Manager edits + history/logo), loaded by firebase-config.js.
+  // Using the raw Firestore doc lost the name/base of built-in wings
+  // whose doc only holds overrides like a logo or callsign pool.
+  wingData = WINGS[wingId] ? JSON.parse(JSON.stringify(WINGS[wingId])) : null;
 
-  if (!wingData) { document.getElementById('wing-name').textContent = 'Wing not found'; return; }
+  if (!wingData) {
+    document.getElementById('wing-name').textContent = 'Wing not found';
+    document.getElementById('wing-base').innerHTML = 'This wing doesn\'t exist or was removed. <a href="/pages/wings.html" style="color:var(--gold)">See all wings →</a>';
+    ['history-content','sq-list'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
+    return;
+  }
+  document.title = wingData.name + ' — VTAC GSC';
 
   const color = wingData.color || '#c8a951';
   document.getElementById('wing-hero').style.background = 'radial-gradient(ellipse at top, ' + color + '15, transparent 60%)';
@@ -233,13 +242,13 @@ async function loadStatsAndRoster() {
     renderRoster(pilots);
     window._wingPilots = pilots;
     renderSquadrons();
-  } catch(e) {}
+  } catch(e) { console.error('wing roster/stats:', e); }
 }
 
 function renderCommanderBanner(pilots) {
   const el = document.getElementById('commander-banner');
-  const commander = pilots.find(p => p.role === 'wing_commander');
-  const deputies  = pilots.filter(p => p.role === 'sq_commander');
+  const commander = pilots.find(p => getPilotRoleIds(p).includes('wing_commander'));
+  const deputies  = pilots.filter(p => getPilotRoleIds(p).includes('sq_commander'));
   if (!commander && !deputies.length) { el.innerHTML = ''; return; }
   const color = wingData.color || '#c8a951';
   el.innerHTML = `
@@ -321,6 +330,7 @@ async function saveHistory() {
   try {
     await db.collection('wings').doc(wingId).set({ history: text }, { merge: true });
     wingData.history = text;
+    if (WINGS[wingId]) WINGS[wingId].history = text;
     document.getElementById('history-content').textContent = text || 'No history written yet for this wing.';
     closeModal('history-modal');
     toast('Wing history saved!');
