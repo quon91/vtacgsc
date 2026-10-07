@@ -62,6 +62,102 @@ const WINGS = {
   }
 };
 
+// ── LIVE WINGS (Master Admin → Wing Manager) ─────────────────
+// The object above is only the built-in fallback. On every page
+// load, once signed in, loadWingsFromFirestore() merges the `wings`
+// collection on top of it, so wings, squadrons and aircraft added or
+// edited in the Wing Manager show up site-wide. WINGS is mutated in
+// place (never reassigned), so every page keeps the same reference.
+//   wings/{id}.deleted == true            → wing removed
+//   wings/{id}.squadrons.{sq}.deleted     → squadron removed
+//   wings/{id}.aircraft                   → full aircraft list
+const DEFAULT_WINGS = JSON.parse(JSON.stringify(WINGS));
+const DEFAULT_WING_ORDER = Object.keys(DEFAULT_WINGS);
+
+function applyWingDocs(docs) {
+  const base = JSON.parse(JSON.stringify(DEFAULT_WINGS));
+  Object.keys(WINGS).forEach(function(k){ delete WINGS[k]; });
+  const ids = Object.keys(base).concat(Object.keys(docs).filter(function(k){ return !base[k]; }));
+  ids.forEach(function(id) {
+    const def = base[id] || {};
+    const r = docs[id] || {};
+    if (r.deleted === true) return;
+    if (!base[id] && !r.name) return;           // stray partial doc, not a real wing
+    const sqs = Object.assign({}, def.squadrons || {});
+    Object.keys(r.squadrons || {}).forEach(function(sid) {
+      sqs[sid] = Object.assign({}, sqs[sid] || {}, r.squadrons[sid] || {});
+    });
+    Object.keys(sqs).forEach(function(sid) {
+      if (!sqs[sid] || sqs[sid].deleted === true) { delete sqs[sid]; return; }
+      if (!sqs[sid].name) sqs[sid].name = sid;
+    });
+    const w = Object.assign({}, def, r, { squadrons: sqs });
+    delete w.deleted;
+    w.aircraft = (Array.isArray(w.aircraft) ? w.aircraft : (def.aircraft || [])).filter(Boolean);
+    if (!w.name)  w.name  = id;
+    if (!w.color) w.color = '#c8a951';
+    WINGS[id] = w;
+  });
+  return WINGS;
+}
+
+async function loadWingsFromFirestore() {
+  try {
+    const snap = await db.collection('wings').get();
+    const docs = {};
+    snap.docs.forEach(function(d){ docs[d.id] = d.data() || {}; });
+    applyWingDocs(docs);
+  } catch(e) {
+    console.warn('Live wings unavailable, using built-in wings:', e.message);
+  }
+  return WINGS;
+}
+
+// ── WING HELPERS — use these instead of hardcoding '7bw' etc. ──
+function wingIdList() {
+  return Object.keys(WINGS).sort(function(a, b) {
+    const oa = (WINGS[a].order != null) ? Number(WINGS[a].order) : (DEFAULT_WING_ORDER.indexOf(a) >= 0 ? DEFAULT_WING_ORDER.indexOf(a) : 100);
+    const ob = (WINGS[b].order != null) ? Number(WINGS[b].order) : (DEFAULT_WING_ORDER.indexOf(b) >= 0 ? DEFAULT_WING_ORDER.indexOf(b) : 100);
+    return (oa - ob) || String(WINGS[a].name).localeCompare(String(WINGS[b].name));
+  });
+}
+// "7th Bomb Wing" → "7th BW" unless a shortName is set
+function wingShortName(id) {
+  const w = WINGS[id];
+  if (!w) return id || '';
+  if (w.shortName) return w.shortName;
+  const m = String(w.name || '').match(/^(\S+)\s+(\S)\S*\s+Wing$/i);
+  return m ? m[1] + ' ' + m[2].toUpperCase() + 'W' : (w.name || id);
+}
+function wingAircraftList(id) { return ((WINGS[id] && WINGS[id].aircraft) || []).slice(); }
+function allAircraftTypes() {
+  const out = [];
+  wingIdList().forEach(function(id) {
+    wingAircraftList(id).forEach(function(a){ if (out.indexOf(a) === -1) out.push(a); });
+  });
+  return out;
+}
+function wingForAircraft(type) {
+  return wingIdList().find(function(id){ return wingAircraftList(id).indexOf(type) !== -1; }) || null;
+}
+function wingBaseIcao(id) {
+  const m = String((WINGS[id] && WINGS[id].base) || '').match(/\(([A-Z0-9]{3,4})\)/);
+  return m ? m[1] : '';
+}
+function wingColor(id) { return (WINGS[id] && WINGS[id].color) || '#c8a951'; }
+function wingColorInt(id) {
+  const c = wingColor(id);
+  return /^#[0-9a-fA-F]{6}$/.test(c) ? parseInt(c.slice(1), 16) : 0xc8a951;
+}
+// <option> list of every live wing. labelFn(id) overrides the text.
+function wingOptionsHtml(selected, labelFn) {
+  const e = function(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  return wingIdList().map(function(id) {
+    const txt = labelFn ? labelFn(id) : (WINGS[id].name || id);
+    return '<option value="' + e(id) + '"' + (id === selected ? ' selected' : '') + '>' + e(txt) + '</option>';
+  }).join('');
+}
+
 // ── RANK STRUCTURE ───────────────────────────────────────────
 const RANKS = [
   { id: 'rec',   name: 'Recruit',            abbr: 'REC',  level: 0 },
@@ -407,6 +503,7 @@ auth.onAuthStateChanged(async (user) => {
     // before auth just produced a harmless-but-noisy permissions warning
     // on the login/register pages.
     await loadRolesFromFirestore();
+    await loadWingsFromFirestore();
     currentUser = user;
     try {
       const doc = await db.collection('pilots').doc(user.uid).get();
@@ -513,7 +610,7 @@ function getRankAbbr(rankId) {
   return RANKS.find(r => r.id === rankId)?.abbr || rankId;
 }
 function getWingName(wingId) { return WINGS[wingId]?.name || wingId; }
-function getSqName(wingId, sqId) { return WINGS[wingId]?.squadrons[sqId]?.name || sqId; }
+function getSqName(wingId, sqId) { return WINGS[wingId]?.squadrons?.[sqId]?.name || sqId; }
 
 function formatDate(ts) {
   if (!ts) return '—';
