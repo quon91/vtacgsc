@@ -13,13 +13,10 @@
   padding: 24px; text-decoration: none; color: inherit;
   transition: border-color .15s, transform .15s; display: block;
 }
-.wing-card:hover { transform: translateY(-3px); }
-.wing-card.w-7bw   { border-top: 3px solid var(--gold); }
-.wing-card.w-509bw { border-top: 3px solid var(--blue); }
-.wing-card.w-2bw   { border-top: 3px solid var(--green); }
-.wing-card:hover.w-7bw   { border-color: var(--gold); }
-.wing-card:hover.w-509bw { border-color: var(--blue); }
-.wing-card:hover.w-2bw   { border-color: var(--green); }
+.wing-card:hover { transform: translateY(-3px); border-color: var(--wc, var(--gold)); }
+.wing-card { border-top: 3px solid var(--wc, var(--gold)); }
+.wc-head { display: flex; align-items: center; gap: 12px; }
+.wc-logo { width: 44px; height: 44px; border-radius: 10px; object-fit: contain; background: var(--card2); flex-shrink: 0; }
 .wc-label { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 6px; }
 .wc-name  { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
 .wc-base  { font-size: 13px; color: var(--text2); margin-bottom: 14px; }
@@ -96,9 +93,9 @@
     <div class="strip-stat"><div class="val" id="stat-pilots">—</div><div class="lbl">Active Pilots</div></div>
     <div class="strip-stat"><div class="val" id="stat-flights">—</div><div class="lbl">Total Flights</div></div>
     <div class="strip-stat"><div class="val" id="stat-hours">—</div><div class="lbl">Flight Hours</div></div>
-    <div class="strip-stat"><div class="val">3</div><div class="lbl">Wings</div></div>
-    <div class="strip-stat"><div class="val">6</div><div class="lbl">Squadrons</div></div>
-    <div class="strip-stat"><div class="val">3</div><div class="lbl">Aircraft Types</div></div>
+    <div class="strip-stat"><div class="val" id="stat-wings">—</div><div class="lbl">Wings</div></div>
+    <div class="strip-stat"><div class="val" id="stat-squadrons">—</div><div class="lbl">Squadrons</div></div>
+    <div class="strip-stat"><div class="val" id="stat-types">—</div><div class="lbl">Aircraft Types</div></div>
   </div>
 </div>
 
@@ -116,44 +113,9 @@
 
   <div class="section">
     <div class="section-label">Our Wings</div>
-    <div class="wing-cards">
-
-      <a href="/pages/wing.html?id=7bw" class="wing-card w-7bw">
-        <div class="wc-label" style="color:var(--gold)">7th Bomb Wing</div>
-        <div class="wc-name" style="color:var(--gold)">7 BW</div>
-        <div class="wc-base">📍 Dyess AFB (KDYS) — Abilene, TX</div>
-        <div class="wc-squads">
-          <div class="wc-squad">⬥ 28th Bomb Squadron "Mohawks"</div>
-          <div class="wc-squad">⬥ 9th Bomb Squadron "Tigers"</div>
-        </div>
-        <div class="wc-aircraft" style="color:var(--gold)">B-1B Lancer</div>
-        <div class="wc-link" style="color:var(--gold)">View Wing →</div>
-      </a>
-
-      <a href="/pages/wing.html?id=509bw" class="wing-card w-509bw">
-        <div class="wc-label" style="color:var(--blue)">509th Bomb Wing</div>
-        <div class="wc-name" style="color:var(--blue)">509 BW</div>
-        <div class="wc-base">📍 Whiteman AFB (KSZL) — Knob Noster, MO</div>
-        <div class="wc-squads">
-          <div class="wc-squad">⬥ 13th Bomb Squadron "Devil's Advocates"</div>
-        </div>
-        <div class="wc-aircraft" style="color:var(--blue)">B-2 Spirit</div>
-        <div class="wc-link" style="color:var(--blue)">View Wing →</div>
-      </a>
-
-      <a href="/pages/wing.html?id=2bw" class="wing-card w-2bw">
-        <div class="wc-label" style="color:var(--green)">2nd Bomb Wing</div>
-        <div class="wc-name" style="color:var(--green)">2 BW</div>
-        <div class="wc-base">📍 Barksdale AFB (KBAD) — Bossier City, LA</div>
-        <div class="wc-squads">
-          <div class="wc-squad">⬥ 96th Bomb Squadron</div>
-          <div class="wc-squad">⬥ 343rd Bomb Squadron</div>
-          <div class="wc-squad">⬥ 11th Bomb Squadron</div>
-        </div>
-        <div class="wc-aircraft" style="color:var(--green)">B-52H Stratofortress</div>
-        <div class="wc-link" style="color:var(--green)">View Wing →</div>
-      </a>
-
+    <!-- Built from the live wing list (Master Admin → Wing Manager) by renderWingCards(). -->
+    <div class="wing-cards" id="wing-cards">
+      <div class="empty-state"><p>Loading wings…</p></div>
     </div>
   </div>
 
@@ -218,10 +180,83 @@ function toggleMobileNav() { document.getElementById('nav-links').classList.togg
 // rules, silently leaving stats, news and the slideshow empty.
 // (Nav auth UI is handled entirely by nav.js updateNavUI.)
 function onAuthReady(user, pilot) {
+  renderWingCards();
   loadStats();
-  loadRecentFlights();
   loadNews();
   loadSlideshow();
+}
+
+// ── OUR WINGS ────────────────────────────────────────────────
+// Cards, counts and the hero line come from the LIVE wing list
+// (firebase-config.js merges Master Admin → Wing Manager into WINGS),
+// so added/removed wings, squadrons and aircraft show here.
+const NUM_WORDS = ['No','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve'];
+function countWord(n) { return NUM_WORDS[n] || String(n); }
+function safeColor(c) { return /^#[0-9a-fA-F]{3,8}$/.test(String(c || '')) ? c : '#c8a951'; }
+
+function renderWingCards() {
+  const el = document.getElementById('wing-cards');
+  const ids = wingIdList();
+  const sqCount = ids.reduce(function(n, id){ return n + Object.keys(WINGS[id].squadrons || {}).length; }, 0);
+  const types = allAircraftTypes().length;
+  document.getElementById('stat-wings').textContent = ids.length;
+  document.getElementById('stat-squadrons').textContent = sqCount;
+  document.getElementById('stat-types').textContent = types;
+  updateHeroCounts(ids.length, sqCount);
+  if (!ids.length) { el.innerHTML = '<div class="empty-state"><p>No wings configured yet.</p></div>'; return; }
+  el.innerHTML = ids.map(function(id) {
+    const w = WINGS[id];
+    const col = safeColor(w.color);
+    const logo = safeUrl(w.logoUrl);
+    const sqs = Object.keys(w.squadrons || {})
+      .sort(function(a, b){ return String(w.squadrons[a].name).localeCompare(String(w.squadrons[b].name), undefined, { numeric: true }); })
+      .map(function(k){ return w.squadrons[k]; });
+    return '<a href="/pages/wing.html?id=' + encodeURIComponent(id) + '" class="wing-card" style="--wc:' + col + '">'
+      + '<div class="wc-head">' + (logo ? '<img class="wc-logo" src="' + logo + '" alt="" onerror="this.style.display=\'none\'">' : '') + '<div>'
+      +   '<div class="wc-label" style="color:' + col + '">' + esc(w.name || id) + '</div>'
+      +   '<div class="wc-name" style="color:' + col + '">' + esc(wingShortName(id)) + '</div>'
+      + '</div></div>'
+      + '<div class="wc-base">📍 ' + esc(w.base || '') + (w.location ? ' — ' + esc(w.location) : '') + '</div>'
+      + '<div class="wc-squads">' + sqs.map(function(sq) {
+          return '<div class="wc-squad">⬥ ' + esc(sq.name || '') + (sq.nickname ? ' &ldquo;' + esc(sq.nickname) + '&rdquo;' : '') + '</div>';
+        }).join('') + '</div>'
+      + '<div class="wc-aircraft" style="color:' + col + '">' + esc((w.aircraft || []).join(' · ')) + '</div>'
+      + '<div class="wc-link" style="color:' + col + '">View Wing →</div>'
+      + '</a>';
+  }).join('');
+}
+
+// The hero line may be customised in Master Admin → Customize Site.
+// Only the "Three wings. Six squadrons." counting phrase is swapped
+// for live numbers; any other custom text is left exactly as written.
+// Re-checked once later in case nav.js applies the saved text after us.
+let _heroCounts = null;
+function updateHeroCounts(wings, sqs) {
+  _heroCounts = { wings: wings, sqs: sqs };
+  applyHeroCounts();
+  setTimeout(applyHeroCounts, 1500);
+}
+function applyHeroCounts() {
+  const el = document.getElementById('hero-sub-text');
+  if (!el || !_heroCounts) return;
+  const phrase = countWord(_heroCounts.wings) + ' wing' + (_heroCounts.wings === 1 ? '' : 's') + '. '
+               + countWord(_heroCounts.sqs) + ' squadron' + (_heroCounts.sqs === 1 ? '' : 's') + '.';
+  const re = /\b(No|One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Eleven|Twelve|\d+) wings?\. (No|One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Eleven|Twelve|\d+) squadrons?\./i;
+  if (re.test(el.textContent)) el.textContent = el.textContent.replace(re, phrase);
+}
+
+function tsMillis(t) {
+  if (!t) return 0;
+  if (typeof t.toMillis === 'function') return t.toMillis();
+  if (typeof t.seconds === 'number') return t.seconds * 1000;
+  return 0;
+}
+// When the flight was logged; falls back to its flight date.
+function flightMillis(f) {
+  const t = tsMillis(f.loggedAt);
+  if (t) return t;
+  const d = f.flightDate ? Date.parse(f.flightDate + 'T12:00:00Z') : NaN;
+  return isNaN(d) ? 0 : d;
 }
 
 async function loadStats() {
@@ -235,34 +270,38 @@ async function loadStats() {
     let totalMins = 0;
     flightsSnap.forEach(function(d){ totalMins += (d.data().durationMins || 0); });
     document.getElementById('stat-hours').textContent = Math.round(totalMins / 60);
+    renderRecentFlights(flightsSnap.docs.map(function(d){ return d.data(); }));
   } catch(e) { console.error('loadStats:', e); }
 }
 
-async function loadRecentFlights() {
+// Newest five by when they were logged. No orderBy — that silently
+// drops flights missing loggedAt; the flights are already loaded above.
+function renderRecentFlights(all) {
   try {
-    const snap = await db.collection('flights').orderBy('loggedAt','desc').limit(5).get();
-    if (snap.empty) return;
+    const recent = all.slice().sort(function(a, b){ return flightMillis(b) - flightMillis(a); }).slice(0, 5);
+    if (!recent.length) return;
     const list = document.getElementById('recent-flights');
     list.innerHTML = '';
-    snap.forEach(function(d) {
-      const f = d.data();
+    recent.forEach(function(f) {
       list.innerHTML += '<div class="flight-row fade-in">'
         + '<div><div class="flight-route">' + esc(f.departure) + ' <span class="flight-arrow">→</span> ' + esc(f.arrival) + '</div>'
-        + '<div class="flight-meta">' + esc(f.pilotCallsign || 'Unknown') + ' · ' + esc(f.aircraft || '—') + ' · ' + esc(formatDate(f.loggedAt)) + '</div></div>'
+        + '<div class="flight-meta">' + esc(f.pilotCallsign || 'Unknown') + ' · ' + esc(f.aircraft || '—') + (f.tail ? ' · ' + esc(f.tail) : '') + ' · ' + esc(f.flightDate || formatDate(f.loggedAt)) + '</div></div>'
         + '<div class="flight-duration">' + Math.floor((f.durationMins||0)/60) + 'h ' + ((f.durationMins||0)%60) + 'm</div>'
         + '</div>';
     });
-  } catch(e) { console.error('loadRecentFlights:', e); }
+  } catch(e) { console.error('renderRecentFlights:', e); }
 }
 
 async function loadNews() {
   try {
-    const snap = await db.collection('news').orderBy('createdAt','desc').limit(5).get();
+    // No orderBy (standing rule) — sort newest-first client-side.
+    const snap = await db.collection('news').get();
     if (snap.empty) return;
+    const items = snap.docs.map(function(d){ return d.data(); })
+      .sort(function(a, b){ return tsMillis(b.createdAt) - tsMillis(a.createdAt); }).slice(0, 5);
     const list = document.getElementById('news-list');
     list.innerHTML = '';
-    snap.forEach(function(d) {
-      const n = d.data();
+    items.forEach(function(n) {
       list.innerHTML += '<div class="news-item">'
         + '<div class="news-date">' + esc(formatDate(n.createdAt)) + '</div>'
         + '<div class="news-title">' + esc(n.title) + '</div>'
