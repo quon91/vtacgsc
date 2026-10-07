@@ -33,25 +33,28 @@ const WINGS = {
   '7bw': {
     name: '7th Bomb Wing',
     base: 'Dyess AFB (KDYS)',
+    location: 'Abilene, TX',
     aircraft: ['B-1B Lancer'],
     color: '#c8a951',
     squadrons: {
-      '28bs': { name: '28th Bomb Squadron', callsign: 'BONE' },
-      '9bs':  { name: '9th Bomb Squadron',  callsign: 'WOLF' },
+      '28bs': { name: '28th Bomb Squadron', callsign: 'BONE', nickname: 'Mohawks' },
+      '9bs':  { name: '9th Bomb Squadron',  callsign: 'WOLF', nickname: 'Tigers' },
     }
   },
   '509bw': {
     name: '509th Bomb Wing',
     base: 'Whiteman AFB (KSZL)',
+    location: 'Knob Noster, MO',
     aircraft: ['B-2 Spirit'],
     color: '#4a90d9',
     squadrons: {
-      '13bs': { name: '13th Bomb Squadron', callsign: 'SPIRIT' },
+      '13bs': { name: '13th Bomb Squadron', callsign: 'SPIRIT', nickname: "Devil's Advocates" },
     }
   },
   '2bw': {
     name: '2nd Bomb Wing',
     base: 'Barksdale AFB (KBAD)',
+    location: 'Bossier City, LA',
     aircraft: ['B-52H Stratofortress'],
     color: '#3dba6e',
     squadrons: {
