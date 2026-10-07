@@ -111,25 +111,20 @@ select.search-input{min-width:140px;flex:0}
   <div id="log-btn-wrap" style="display:none;margin-bottom:18px;text-align:center">
     <a href="#" onclick="openLogModal();return false" class="btn btn-primary">+ Log a Flight</a>
   </div>
+  <!-- Wing tabs and per-wing stats are built from the live wing list
+       (Master Admin → Wing Manager) by buildWingUI(). -->
   <div class="wing-tabs" id="wing-tabs">
-    <button class="wing-tab t-all" onclick="setTab('all',this)">🌐 All Wings</button>
-    <button class="wing-tab" onclick="setTab('7bw',this)">7th BW — B-1B</button>
-    <button class="wing-tab" onclick="setTab('509bw',this)">509th BW — B-2</button>
-    <button class="wing-tab" onclick="setTab('2bw',this)">2nd BW — B-52H</button>
-    <button class="wing-tab" id="my-tab" style="display:none" onclick="setTab('mine',this)">👤 My Flights</button>
+    <button class="wing-tab" data-tab="all" onclick="setTab('all',this)">🌐 All Wings</button>
+    <button class="wing-tab" id="my-tab" data-tab="mine" style="display:none" onclick="setTab('mine',this)">👤 My Flights</button>
   </div>
-  <div class="fl-stats">
+  <div class="fl-stats" id="fl-stats">
     <div class="fl-stat"><div class="fl-stat-val" id="st-total">0</div><div class="fl-stat-lbl">Total Flights</div></div>
     <div class="fl-stat"><div class="fl-stat-val" id="st-hours">0</div><div class="fl-stat-lbl">Flight Hours</div></div>
-    <div class="fl-stat"><div class="fl-stat-val" id="st-7bw">0</div><div class="fl-stat-lbl">7th BW</div></div>
-    <div class="fl-stat"><div class="fl-stat-val" id="st-509bw">0</div><div class="fl-stat-lbl">509th BW</div></div>
-    <div class="fl-stat"><div class="fl-stat-val" id="st-2bw">0</div><div class="fl-stat-lbl">2nd BW</div></div>
   </div>
   <div class="search-bar">
-    <input class="search-input" id="fl-search" placeholder="Search pilot, route, aircraft…" oninput="render()">
+    <input class="search-input" id="fl-search" placeholder="Search pilot, route, aircraft, tail…" oninput="render()">
     <select class="search-input" id="fl-acft" onchange="render()">
       <option value="">All aircraft</option>
-      <option>B-1B Lancer</option><option>B-2 Spirit</option><option>B-52H Stratofortress</option>
     </select>
     <select class="search-input" id="fl-type" onchange="render()">
       <option value="">All flight types</option>
@@ -233,12 +228,6 @@ select.search-input{min-width:140px;flex:0}
           <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
             <select id="cr-wing-filter" onchange="loadCommunityRoutes()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:12px">
               <option value="">All Wings</option>
-              <option value="7bw">7th BW — B-1B</option>
-              <option value="509bw">509th BW — B-2</option>
-              <option value="2bw">2nd BW — B-52H</option>
-              <option value="cross">Cross-Wing</option>
-              <option value="training">Training</option>
-              <option value="other">Other</option>
             </select>
             <button class="btn btn-outline btn-sm" onclick="loadCommunityRoutes()">🔄 Refresh</button>
           </div>
@@ -288,8 +277,6 @@ select.search-input{min-width:140px;flex:0}
           <div class="form-group"><label>Aircraft</label>
             <select id="fp-aircraft" onchange="updateRoute();renderTailOptions()">
               <option value="B-1B Lancer">B-1B Lancer</option>
-              <option value="B-2 Spirit">B-2 Spirit</option>
-              <option value="B-52H Stratofortress">B-52H Stratofortress</option>
             </select>
           </div>
           <div class="form-group"><label>Cruise altitude (ft)</label>
@@ -379,7 +366,7 @@ select.search-input{min-width:140px;flex:0}
     </div>
     <div class="form-row">
       <div class="form-group"><label>Aircraft</label>
-        <select id="lf-acft"><option>B-1B Lancer</option><option>B-2 Spirit</option><option>B-52H Stratofortress</option></select>
+        <select id="lf-acft"><option>B-1B Lancer</option></select>
       </div>
       <div class="form-group"><label>Flight time</label>
         <div style="display:flex;gap:8px;align-items:center">
@@ -388,10 +375,11 @@ select.search-input{min-width:140px;flex:0}
         </div>
       </div>
     </div>
-    <div class="form-group" id="lf-tail-wrap" style="display:none">
-      <label>Airframe flown (tail number)</label>
-      <select id="lf-tail"></select>
-      <div class="form-hint">From your wing's fleet. Logging the flight moves this jet to the arrival field and marks it Available again — the wing's Discord fleet channel gets the update.</div>
+    <div class="form-group" id="lf-tail-wrap">
+      <label>Tail number <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+      <input type="text" id="lf-tail" list="lf-tail-list" placeholder="e.g. 86-0110" maxlength="20" autocomplete="off" style="font-family:var(--mono);text-transform:uppercase" oninput="onLogTailInput()">
+      <datalist id="lf-tail-list"></datalist>
+      <div class="form-hint" id="lf-tail-hint">Type any tail number, or pick one from the fleet list. A registered jet is moved to the arrival field and marked Available when you log the flight.</div>
     </div>
     <div class="form-group"><label>Notes (optional)</label><textarea id="lf-notes" placeholder="Mission type, training event…"></textarea></div>
     <div class="modal-footer">
@@ -425,9 +413,6 @@ select.search-input{min-width:140px;flex:0}
       <div class="form-group">
         <label>Aircraft</label>
         <select id="cr-acft">
-          <option value="B-1B Lancer">B-1B Lancer</option>
-          <option value="B-2 Spirit">B-2 Spirit</option>
-          <option value="B-52H Stratofortress">B-52H Stratofortress</option>
           <option value="Any">Any aircraft</option>
         </select>
       </div>
@@ -440,9 +425,6 @@ select.search-input{min-width:140px;flex:0}
       <div class="form-group">
         <label>Category</label>
         <select id="cr-category">
-          <option value="7bw">7th BW — B-1B Routes</option>
-          <option value="509bw">509th BW — B-2 Routes</option>
-          <option value="2bw">2nd BW — B-52H Routes</option>
           <option value="cross">Cross-Wing Transit</option>
           <option value="training">Training Area</option>
           <option value="other">Other</option>
@@ -531,6 +513,8 @@ function tplColor(hex,fallback){return (hex&&/^#[0-9a-fA-F]{6}$/.test(hex))?pars
 
 function onAuthReady(user,pilot){
   const p=pilot||(typeof currentPilot!=='undefined'?currentPilot:null);
+  myPilot=(user&&p&&p.status==='active')?p:null;
+  buildWingUI();
   if(user&&p&&p.status==='active'){
     myPilot=p; isLoggedIn=true;
     canDelAny=(typeof isMasterAdminPilot==='function'&&isMasterAdminPilot(p))||(typeof hasPermission==='function'&&hasPermission(p,'delete_flights'));
@@ -549,7 +533,81 @@ function onAuthReady(user,pilot){
 // ══════════════════════════════════════════════════════════════
 //  FLIGHT LOG DECK
 // ══════════════════════════════════════════════════════════════
-const WING_COLORS={'7bw':'var(--gold)','509bw':'var(--blue)','2bw':'var(--green)'};
+// ── LIVE WING UI ──────────────────────────────────────────────
+// Everything wing- or aircraft-specific on this page is built from
+// the live WINGS list (Master Admin → Wing Manager), so a new wing,
+// squadron or aircraft type shows up here with no code change.
+const ROUTE_CATS={cross:{label:'Cross-Wing',full:'Cross-Wing Transit',color:'var(--amber)'},training:{label:'Training',full:'Training Area',color:'var(--blue2)'},other:{label:'Other',full:'Other',color:'var(--text3)'}};
+function wingDotColor(w){return WINGS[w]?wingColor(w):'var(--text3)';}
+function getWingAbbr(w){return wingShortName(w);}
+function acftShort(a){return String(a||'').split(' ')[0];}
+function ensureOption(sel,val){
+  if(!sel||!val)return;
+  if(![...sel.options].some(o=>o.value===val)){const o=document.createElement('option');o.value=val;o.textContent=val;sel.appendChild(o);}
+}
+function setSelectValue(id,val){const s=document.getElementById(id);if(!s||!val)return;ensureOption(s,val);s.value=val;}
+function esc2(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function optList(arr){return arr.map(a=>'<option value="'+esc2(a)+'">'+esc2(a)+'</option>').join('');}
+
+// Aircraft dropdown for the log modal — the pilot's wing first.
+function fillLogAircraft(keep){
+  const sel=document.getElementById('lf-acft');
+  const mine=myPilot&&myPilot.wing?wingAircraftList(myPilot.wing):[];
+  const rest=allAircraftTypes().filter(a=>mine.indexOf(a)===-1);
+  let html='';
+  if(mine.length&&rest.length) html='<optgroup label="'+esc2(wingShortName(myPilot.wing))+'">'+optList(mine)+'</optgroup><optgroup label="Other wings">'+optList(rest)+'</optgroup>';
+  else html=optList(mine.concat(rest));
+  sel.innerHTML=html||'<option value="">—</option>';
+  if(keep)setSelectValue('lf-acft',keep);
+}
+
+function buildWingUI(){
+  const ids=wingIdList();
+  // Tabs: All · each wing · My Flights
+  const tabs=document.getElementById('wing-tabs');
+  const allBtn=tabs.querySelector('[data-tab="all"]'), myBtn=document.getElementById('my-tab');
+  tabs.querySelectorAll('[data-wingtab]').forEach(b=>b.remove());
+  ids.forEach(id=>{
+    const b=document.createElement('button');
+    b.className='wing-tab'; b.dataset.tab=id; b.dataset.wingtab='1';
+    const ac=wingAircraftList(id).map(acftShort).join(' / ');
+    b.textContent=wingShortName(id)+(ac?' — '+ac:'');
+    b.onclick=function(){setTab(id,b);};
+    tabs.insertBefore(b,myBtn);
+  });
+  // Per-wing stat tiles
+  const stats=document.getElementById('fl-stats');
+  stats.querySelectorAll('[data-wingstat]').forEach(e=>e.remove());
+  ids.forEach(id=>{
+    const d=document.createElement('div');
+    d.className='fl-stat'; d.dataset.wingstat='1';
+    d.innerHTML='<div class="fl-stat-val" id="st-w-'+esc2(id)+'" style="color:'+esc2(wingColor(id))+'">0</div><div class="fl-stat-lbl">'+esc2(wingShortName(id))+'</div>';
+    stats.appendChild(d);
+  });
+  // Aircraft lists
+  const types=allAircraftTypes();
+  document.getElementById('fl-acft').innerHTML='<option value="">All aircraft</option>'+optList(types);
+  const fp=document.getElementById('fp-aircraft'), fpPrev=fp.value;
+  fp.innerHTML=optList(types);
+  const myFirst=myPilot&&myPilot.wing?wingAircraftList(myPilot.wing)[0]:'';
+  fp.value=(fpPrev&&types.indexOf(fpPrev)!==-1)?fpPrev:(myFirst||types[0]||'');
+  document.getElementById('cr-acft').innerHTML=optList(types)+'<option value="Any">Any aircraft</option>';
+  fillLogAircraft();
+  // Community route categories: each wing + cross / training / other
+  const catOpts=ids.map(id=>'<option value="'+esc2(id)+'">'+esc2(wingShortName(id))+' Routes</option>').join('')
+    +Object.entries(ROUTE_CATS).map(e=>'<option value="'+e[0]+'">'+esc2(e[1].full)+'</option>').join('');
+  document.getElementById('cr-category').innerHTML=catOpts;
+  document.getElementById('cr-wing-filter').innerHTML='<option value="">All Wings</option>'
+    +ids.map(id=>'<option value="'+esc2(id)+'">'+esc2(wingShortName(id))+'</option>').join('')
+    +Object.entries(ROUTE_CATS).map(e=>'<option value="'+e[0]+'">'+esc2(e[1].label)+'</option>').join('');
+  // Hide built-in squadron-route groups for wings that were removed
+  ['7bw','509bw','2bw'].forEach(id=>{
+    const g=document.getElementById('rg-'+id);
+    if(g&&!WINGS[id]){g.style.display='none';if(g.previousElementSibling)g.previousElementSibling.style.display='none';}
+  });
+  setTab(activeTab==='mine'||WINGS[activeTab]?activeTab:'all',tabs.querySelector('[data-tab="'+(WINGS[activeTab]||activeTab==='mine'?activeTab:'all')+'"]')||allBtn,true);
+  updateRoute();
+}
 
 // ── FLIGHT TYPE ───────────────────────────────────────────────
 const FLIGHT_TYPES = {
@@ -637,16 +695,23 @@ function refreshFlightStats(){
   const mins=allFlights.reduce((s,f)=>s+(f.durationMins||0),0);
   document.getElementById('st-total').textContent=allFlights.length;
   document.getElementById('st-hours').textContent=Math.round(mins/60);
-  document.getElementById('st-7bw').textContent=allFlights.filter(f=>f.wing==='7bw').length;
-  document.getElementById('st-509bw').textContent=allFlights.filter(f=>f.wing==='509bw').length;
-  document.getElementById('st-2bw').textContent=allFlights.filter(f=>f.wing==='2bw').length;
+  wingIdList().forEach(id=>{
+    const el=document.getElementById('st-w-'+id);
+    if(el)el.textContent=allFlights.filter(f=>f.wing===id).length;
+  });
+  // Old flights may carry aircraft no wing lists any more — keep them filterable.
+  const sel=document.getElementById('fl-acft');
+  allFlights.forEach(f=>{if(f.aircraft)ensureOption(sel,f.aircraft);});
 }
 
-function setTab(tab,btn){
+function setTab(tab,btn,noRender){
   activeTab=tab;
-  document.querySelectorAll('.wing-tab').forEach(b=>b.className='wing-tab');
-  btn.classList.add('t-'+tab);
-  render();
+  document.querySelectorAll('.wing-tab').forEach(b=>{b.className='wing-tab';b.style.borderBottomColor='';b.style.color='';});
+  if(btn){
+    const col=tab==='all'?'var(--gold)':tab==='mine'?'var(--amber)':wingColor(tab);
+    btn.style.borderBottomColor=col; btn.style.color=col;
+  }
+  if(!noRender)render();
 }
 
 function render(){
@@ -663,7 +728,7 @@ function render(){
   if(!list.length){el.innerHTML='<div class="empty-state"><div class="icon">✈️</div><p>No flights match this filter.</p></div>';return;}
   el.innerHTML=list.map(f=>{
     const h=Math.floor((f.durationMins||0)/60),m=(f.durationMins||0)%60;
-    const col=WING_COLORS[f.wing]||'var(--text3)';
+    const col=wingDotColor(f.wing);
     const canDel=canDelAny||(myPilot&&f.pilotUid===myPilot.uid);
     const dstr=fmtFlightDate(f);
     const ftl=flightTypeLabel(f), ftc=flightTypeColor(f);
@@ -683,8 +748,6 @@ function render(){
   }).join('');
 }
 
-function getWingAbbr(w){return{'7bw':'7th BW','509bw':'509th BW','2bw':'2nd BW'}[w]||w;}
-
 async function delFlight(id){
   if(!confirm('Delete this flight?'))return;
   const f=allFlights.find(x=>x.id===id);
@@ -699,26 +762,47 @@ async function delFlight(id){
   toast('Flight deleted');
 }
 
-// Builds the airframe picker. selId pre-selects a tail; if that tail
-// isn't in the current pilot's wing fleet (a commander editing another
-// wing's flight) it's preserved as an extra option so saving can't
-// silently wipe it.
-function buildLogTailOptions(selId, fallbackTail){
-  const tw=document.getElementById('lf-tail-wrap');
-  const sel=document.getElementById('lf-tail');
-  if(!wingFleet.length && !selId){ tw.style.display='none'; return; }
-  tw.style.display='block';
-  let html='<option value="">— no assigned airframe —</option>';
-  const known=wingFleet.some(function(a){return a.id===selId;});
-  if(selId && !known){
-    html+='<option value="'+selId+'">'+(fallbackTail||'(current airframe)')+' · from another wing</option>';
-  }
-  html+=wingFleet.map(a=>{
-    const tag=a.status==='maintenance'?' — MAINTENANCE':a.status==='inflight'?' — in flight (yours?)':'';
-    return `<option value="${a.id}" ${a.status==='maintenance'&&a.id!==selId?'disabled':''}>${a.tail}${a.nickname?' "'+a.nickname+'"':''} · 📍${a.location||'?'}${tag}</option>`;
+// ── TAIL NUMBER (free text + fleet suggestions) ───────────────
+// The tail box takes ANY tail number. If what's typed matches a jet
+// in the registered fleet, the flight is linked to it (fleetId) and
+// logging moves that jet to the arrival field. Anything else is
+// saved as plain text on the flight.
+function normTail(s){return String(s||'').trim().toUpperCase().replace(/\s+/g,'');}
+function knownFleet(){
+  const seen={},out=[];
+  wingFleet.concat(allFleet()).forEach(a=>{if(a&&a.id&&!seen[a.id]){seen[a.id]=1;out.push(a);}});
+  return out;
+}
+function matchFleetTail(text){
+  const t=normTail(text);
+  if(!t)return null;
+  return knownFleet().find(a=>normTail(a.tail)===t)||null;
+}
+function buildLogTailList(){
+  const dl=document.getElementById('lf-tail-list');
+  const mineIds={};wingFleet.forEach(a=>mineIds[a.id]=1);
+  const list=wingFleet.concat(allFleet().filter(a=>!mineIds[a.id]));
+  dl.innerHTML=list.map(a=>{
+    const tag=a.status==='maintenance'?' · MAINTENANCE':a.status==='inflight'?' · in flight':'';
+    const lbl=(a.nickname?'"'+a.nickname+'" · ':'')+fleetTypeOf(a)+' · '+wingShortName(a.wing)+' · '+(a.location||'?')+tag;
+    return '<option value="'+esc2(a.tail||'')+'">'+esc2(lbl)+'</option>';
   }).join('');
-  sel.innerHTML=html;
-  sel.value=selId||'';
+}
+function onLogTailInput(){
+  const v=document.getElementById('lf-tail').value;
+  const hint=document.getElementById('lf-tail-hint');
+  const ac=matchFleetTail(v);
+  if(!normTail(v)){hint.textContent='Type any tail number, or pick one from the fleet list. A registered jet is moved to the arrival field and marked Available when you log the flight.';hint.style.color='';return;}
+  if(!ac){hint.textContent='Not in the registered fleet — it will be saved on the flight as typed.';hint.style.color='';return;}
+  const t=fleetTypeOf(ac);
+  if(t)setSelectValue('lf-acft',t);
+  if(ac.status==='maintenance'){
+    hint.textContent='⚠ '+ac.tail+' is in maintenance. The tail is saved on the flight, but the jet will not be moved.';
+    hint.style.color='var(--amber)';
+  }else{
+    hint.textContent='✓ '+ac.tail+(ac.nickname?' "'+ac.nickname+'"':'')+' · '+wingShortName(ac.wing)+' · at '+(ac.location||'?')+' — moves to your arrival field when logged.';
+    hint.style.color='var(--green2)';
+  }
 }
 
 function openLogModal(){
@@ -735,7 +819,8 @@ function openLogModal(){
   ['lf-dep','lf-arr','lf-notes'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('lf-durh').value='';
   document.getElementById('lf-durm').value='';
-  if(myPilot.wing){const m={'7bw':'B-1B Lancer','509bw':'B-2 Spirit','2bw':'B-52H Stratofortress'};document.getElementById('lf-acft').value=m[myPilot.wing]||'B-1B Lancer';}
+  document.getElementById('lf-tail').value='';
+  fillLogAircraft(myPilot.wing?wingAircraftList(myPilot.wing)[0]:'');
   // "Fill from" — the pilot's saved flight plans + the SimBrief OFP
   // fetched in the Planner deck. Picking one auto-fills everything.
   const fillSel=document.getElementById('lf-fill');
@@ -751,8 +836,8 @@ function openLogModal(){
   });
   fillSel.innerHTML=opts;
   fillSel.value='';
-  // Tail number picker — shown only when the wing has a registered fleet
-  buildLogTailOptions('', '');
+  buildLogTailList();
+  onLogTailInput();
   document.getElementById('log-modal').classList.add('open');
 }
 
@@ -770,7 +855,7 @@ function openEditFlight(id){
   document.getElementById('lf-dep').value=f.departure||'';
   document.getElementById('lf-arr').value=f.arrival||'';
   document.getElementById('lf-notes').value=f.notes||'';
-  if(f.aircraft)document.getElementById('lf-acft').value=f.aircraft;
+  fillLogAircraft(f.aircraft||'');
   const mins=f.durationMins||0;
   document.getElementById('lf-durh').value=Math.floor(mins/60);
   document.getElementById('lf-durm').value=mins%60;
@@ -780,7 +865,10 @@ function openEditFlight(id){
   document.getElementById('lf-ftype').value=f.flightType||'';
   document.getElementById('lf-ftype-other').value=(f.flightType==='other')?(f.flightTypeOther||''):'';
   onFlightTypeChange();
-  buildLogTailOptions(f.fleetId||'', f.tail||'');
+  buildLogTailList();
+  document.getElementById('lf-tail').value=f.tail||'';
+  onLogTailInput();
+  if(f.aircraft)setSelectValue('lf-acft',f.aircraft);   // keep what was logged, even if the tail suggests another type
   document.getElementById('log-modal').classList.add('open');
 }
 
@@ -809,6 +897,8 @@ function applyLogFill(){
     if(bt)setLogDuration(Math.round(bt/60));
     const du=parseInt(sbData.params?.date_utc)||0;              // OFP date → flight date
     if(du){const d=new Date(du*1000); if(!isNaN(d))document.getElementById('lf-date').value=isoFromDate(d);}
+    const reg=sbData.aircraft?.reg;                              // OFP registration → tail
+    if(reg){document.getElementById('lf-tail').value=String(reg).toUpperCase();onLogTailInput();}
     return;
   }
   if(v.startsWith('plan:')){
@@ -816,12 +906,10 @@ function applyLogFill(){
     if(!p)return;
     document.getElementById('lf-dep').value=p.departure||'';
     document.getElementById('lf-arr').value=p.arrival||'';
-    if(p.aircraft)document.getElementById('lf-acft').value=p.aircraft;
     setLogDuration(parseEstMinutes(p.estTime));
-    // Match the plan's reserved tail in the picker
-    if(p.fleetId&&wingFleet.some(function(a){return a.id===p.fleetId;})){
-      document.getElementById('lf-tail').value=p.fleetId;
-    }
+    // The plan's reserved tail
+    if(p.tail){document.getElementById('lf-tail').value=p.tail;onLogTailInput();}
+    if(p.aircraft)setSelectValue('lf-acft',p.aircraft);
   }
 }
 function closeModal(){document.getElementById('log-modal').classList.remove('open');editingFlightId=null;}
@@ -839,12 +927,13 @@ async function submitFlight(){
   if(ftype==='other'&&!ftypeOther){toast('Describe the flight type, or pick another category','error');return;}
   if(editingFlightId){ return saveFlightEdit(dep,arr,dur,flightDate,ftype,ftypeOther); }
   const fillV=document.getElementById('lf-fill').value;
-  const tailSel=document.getElementById('lf-tail');
-  const fleetId=(wingFleet.length&&tailSel)?tailSel.value:'';
-  const ac=fleetId?wingFleet.find(a=>a.id===fleetId):null;
+  const tailText=normTail(document.getElementById('lf-tail').value);
+  const ac=matchFleetTail(tailText);
+  const movable=!!(ac&&ac.status!=='maintenance');
   const flight={pilotUid:currentUser.uid,pilotCallsign:myPilot.callsign||myPilot.displayName||'Unknown',wing:myPilot.wing,squadron:myPilot.squadron,departure:dep,arrival:arr,aircraft:document.getElementById('lf-acft').value,durationMins:dur,notes:document.getElementById('lf-notes').value.trim(),flightDate:flightDate,loggedAt:firebase.firestore.FieldValue.serverTimestamp()};
   if(ftype){ flight.flightType=ftype; if(ftype==='other') flight.flightTypeOther=ftypeOther; }
-  if(ac){flight.fleetId=ac.id;flight.tail=ac.tail||'';flight.tailNickname=ac.nickname||'';}
+  if(ac){flight.fleetId=ac.id;flight.tail=ac.tail||tailText;flight.tailNickname=ac.nickname||'';}
+  else if(tailText){flight.tail=tailText;}
   if(fillV&&fillV.startsWith('plan:'))flight.planId=fillV.slice(5);
   if(fillV==='simbrief')flight.fromSimBrief=true;
   try{
@@ -852,13 +941,13 @@ async function submitFlight(){
     await db.collection('pilots').doc(currentUser.uid).update({totalFlights:firebase.firestore.FieldValue.increment(1),flightHours:firebase.firestore.FieldValue.increment(dur/60)});
     // Release the airframe at the destination — best-effort, never
     // fails the flight log itself.
-    if(ac){
+    if(movable){
       try{
         await db.collection('fleet').doc(ac.id).update({location:arr,status:'available',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:myPilot.callsign||myPilot.displayName||''});
-        postWingFleetStatus(myPilot.wing);
+        postWingFleetStatus(ac.wing||myPilot.wing);
       }catch(e){console.warn('Fleet update skipped:',e.message);}
     }
-    logAudit('flight_logged', (myPilot.callsign||'Pilot')+' logged '+dep+' → '+arr+' ('+flight.aircraft+')',
+    logAudit('flight_logged', (myPilot.callsign||'Pilot')+' logged '+dep+' → '+arr+' ('+flight.aircraft+(flight.tail?' · '+flight.tail:'')+')',
              {pilotCallsign:myPilot.callsign||'', departure:dep, arrival:arr});
     closeModal();toast('Flight logged ✓');loadFlights();loadWingFleet();loadFleetAll();
     // Discord webhook — wing flight log channel
@@ -868,8 +957,8 @@ async function submitFlight(){
       if(u){
         const tpl=await getEmbedTpl('flight_logged');
         const ftLabel=flightTypeLabel(flight);
-        const vars={pilot:myPilot.callsign||'Unknown',route:dep+' → '+arr,aircraft:flight.aircraft,tail:ac?ac.tail:'',wing:getWingAbbr(myPilot.wing),type:ftLabel||'—',date:flightDate};
-        const emb={color:tplColor(tpl.color,0xc8a951),title:fillTpl(tpl.title||'✈ Flight Logged',vars),fields:[{name:'Pilot',value:vars.pilot,inline:true},{name:'Route',value:vars.route,inline:true},{name:'Aircraft',value:flight.aircraft+(ac?' · '+ac.tail+(ac.nickname?' "'+ac.nickname+'"':''):''),inline:true},{name:'Date',value:flightDate,inline:true}].concat(ftLabel?[{name:'Type',value:ftLabel,inline:true}]:[]),timestamp:new Date().toISOString()};
+        const vars={pilot:myPilot.callsign||'Unknown',route:dep+' → '+arr,aircraft:flight.aircraft,tail:flight.tail||'',wing:getWingAbbr(myPilot.wing),type:ftLabel||'—',date:flightDate};
+        const emb={color:tplColor(tpl.color,wingColorInt(myPilot.wing)),title:fillTpl(tpl.title||'✈ Flight Logged',vars),fields:[{name:'Pilot',value:vars.pilot,inline:true},{name:'Route',value:vars.route,inline:true},{name:'Aircraft',value:flight.aircraft+(flight.tail?' · '+flight.tail+(flight.tailNickname?' "'+flight.tailNickname+'"':''):''),inline:true},{name:'Date',value:flightDate,inline:true}].concat(ftLabel?[{name:'Type',value:ftLabel,inline:true}]:[]),timestamp:new Date().toISOString()};
         if(tpl.footer)emb.footer={text:fillTpl(tpl.footer,vars)};
         fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({embeds:[emb]})}).catch(()=>{});
       }
@@ -885,9 +974,8 @@ async function saveFlightEdit(dep,arr,dur,flightDate,ftype,ftypeOther){
   const orig=allFlights.find(x=>x.id===id);
   if(!orig){toast('Flight not found','error');return;}
   const DEL=firebase.firestore.FieldValue.delete();
-  const tailSel=document.getElementById('lf-tail');
-  const fleetId=tailSel?tailSel.value:'';
-  const ac=fleetId?wingFleet.find(a=>a.id===fleetId):null;
+  const tailText=normTail(document.getElementById('lf-tail').value);
+  const ac=matchFleetTail(tailText);
   const upd={
     departure:dep, arrival:arr,
     aircraft:document.getElementById('lf-acft').value,
@@ -899,8 +987,9 @@ async function saveFlightEdit(dep,arr,dur,flightDate,ftype,ftypeOther){
   };
   if(ftype){ upd.flightType=ftype; upd.flightTypeOther=(ftype==='other')?ftypeOther:DEL; }
   else { upd.flightType=DEL; upd.flightTypeOther=DEL; }
-  if(ac){ upd.fleetId=ac.id; upd.tail=ac.tail||''; upd.tailNickname=ac.nickname||''; }
-  else if(fleetId&&fleetId===orig.fleetId){ /* airframe unchanged and not in this pilot's fleet — leave it be */ }
+  if(ac){ upd.fleetId=ac.id; upd.tail=ac.tail||tailText; upd.tailNickname=ac.nickname||''; }
+  else if(tailText&&orig.fleetId&&tailText===normTail(orig.tail)){ /* same linked tail, jet not loaded here — leave the link */ upd.tail=orig.tail; }
+  else if(tailText){ upd.tail=tailText; upd.fleetId=DEL; upd.tailNickname=DEL; }
   else { upd.fleetId=DEL; upd.tail=DEL; upd.tailNickname=DEL; }
   try{
     await db.collection('flights').doc(id).update(upd);
@@ -911,13 +1000,13 @@ async function saveFlightEdit(dep,arr,dur,flightDate,ftype,ftypeOther){
         .update({flightHours:firebase.firestore.FieldValue.increment(delta/60)}).catch(()=>{});
     }
     // Destination or airframe changed → park the jet at the new arrival.
-    if(ac&&(arr!==orig.arrival||ac.id!==orig.fleetId)){
+    if(ac&&ac.status!=='maintenance'&&(arr!==orig.arrival||ac.id!==orig.fleetId)){
       try{
         await db.collection('fleet').doc(ac.id).update({location:arr,status:'available',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:myPilot.callsign||myPilot.displayName||''});
         postWingFleetStatus(ac.wing||orig.wing||myPilot.wing);
       }catch(e){console.warn('Fleet update skipped:',e.message);}
     }
-    const after=Object.assign({},orig,{departure:dep,arrival:arr,durationMins:dur,flightDate:flightDate,aircraft:upd.aircraft,notes:upd.notes,flightType:ftype||'',flightTypeOther:(ftype==='other')?ftypeOther:''});
+    const after=Object.assign({},orig,{departure:dep,arrival:arr,durationMins:dur,flightDate:flightDate,aircraft:upd.aircraft,notes:upd.notes,flightType:ftype||'',flightTypeOther:(ftype==='other')?ftypeOther:'',tail:tailText});
     closeModal(); toast('Flight updated ✓');
     loadFlights(); loadWingFleet(); loadFleetAll();
     sendDiscordFlightEdit(orig,after);
@@ -942,6 +1031,8 @@ async function sendDiscordFlightEdit(before,after){
       chg.push('Date:     '+(before.flightDate||'not set')+'  =>  '+(after.flightDate||'not set'));
     if((before.aircraft||'')!==(after.aircraft||''))
       chg.push('Aircraft: '+(before.aircraft||'none')+'  =>  '+(after.aircraft||'none'));
+    if(normTail(before.tail)!==normTail(after.tail))
+      chg.push('Tail:     '+(before.tail||'none')+'  =>  '+(after.tail||'none'));
     if(flightTypeLabel(before)!==flightTypeLabel(after))
       chg.push('Type:     '+(flightTypeLabel(before)||'not set')+'  =>  '+(flightTypeLabel(after)||'not set'));
     const fields=[{name:'Pilot',value:vars.pilot,inline:true},{name:'Route',value:vars.route,inline:true}];
@@ -984,12 +1075,12 @@ async function postWingFleetStatus(wing){
     if(!url)return;
     const snap=await db.collection('fleet').where('wing','==',wing).get();
     const list=snap.docs.map(d=>d.data()).sort((a,b)=>(a.tail||'').localeCompare(b.tail||''));
-    const W={'7bw':{name:'7th Bomb Wing',color:0xc8a951},'509bw':{name:'509th Bomb Wing',color:0x4a90d9},'2bw':{name:'2nd Bomb Wing',color:0x3dba6e}};
     const ST={available:'🟢 Available',inflight:'🔵 In Flight',maintenance:'🟠 Maintenance'};
     const tpl=await getEmbedTpl('fleet_status');
-    const vars={wing:(W[wing]||{}).name||wing,count:String(list.length),aircraft:'',base:'',by:myPilot?.callsign||myPilot?.displayName||'Pilot'};
-    const fields=list.slice(0,25).map(a=>({name:a.tail+(a.nickname?' — "'+a.nickname+'"':''),value:(ST[a.status]||ST.available)+' · 📍 **'+(a.location||'Unknown')+'**',inline:true}));
-    const payload={embeds:[{color:tplColor(tpl.color,(W[wing]||{}).color||0xc8a951),title:fillTpl(tpl.title||'🛩 {wing} — Fleet Status',vars),description:fillTpl(tpl.desc||'{count} aircraft on strength',vars),fields:fields,footer:{text:fillTpl(tpl.footer||'Updated by {by} · VTAC Global Strike Command',vars)},timestamp:new Date().toISOString()}]};
+    const multiType=wingAircraftList(wing).length>1;
+    const vars={wing:getWingName(wing),count:String(list.length),aircraft:wingAircraftList(wing).join(', '),base:(WINGS[wing]&&WINGS[wing].base)||'',by:myPilot?.callsign||myPilot?.displayName||'Pilot'};
+    const fields=list.slice(0,25).map(a=>({name:a.tail+(a.nickname?' — "'+a.nickname+'"':''),value:(multiType?fleetTypeOf(a)+' · ':'')+(ST[a.status]||ST.available)+' · 📍 **'+(a.location||'Unknown')+'**',inline:true}));
+    const payload={embeds:[{color:tplColor(tpl.color,wingColorInt(wing)),title:fillTpl(tpl.title||'🛩 {wing} — Fleet Status',vars),description:fillTpl(tpl.desc||'{count} aircraft on strength',vars),fields:fields,footer:{text:fillTpl(tpl.footer||'Updated by {by} · VTAC Global Strike Command',vars)},timestamp:new Date().toISOString()}]};
     upsertFleetMessage(wing,url,payload);
   }catch(e){}
 }
@@ -1055,7 +1146,7 @@ function loadSquadronRoute(wing, idx) {
   const mid = parts.slice(1, -1);
   document.getElementById('fp-dep').value = dep;
   document.getElementById('fp-arr').value = arr;
-  document.getElementById('fp-aircraft').value = r.acft;
+  setSelectValue('fp-aircraft', r.acft);
   document.getElementById('fp-altitude').value = r.alt;
   waypoints = mid;
   renderWaypoints();
@@ -1109,7 +1200,7 @@ const BUILTIN_AIRPORTS = {
   KNFW:{lat:32.77,lon:-97.44},
 };
 const SORTIE_TYPES = ['Cross Country','Training Sortie','Low-Level / Terrain','Strike Mission','Air Refueling','Navigation Proficiency','Instrument Check'];
-const WING_BASE = { '7bw':'KDYS', '509bw':'KSZL', '2bw':'KBAD' };
+// Home base comes from the live wing's base text, e.g. "Dyess AFB (KDYS)".
 
 function randomZulu() {
   const h = (new Date().getUTCHours() + 1 + Math.floor(Math.random()*6)) % 24;
@@ -1381,7 +1472,7 @@ async function generateSortie() {
   resBox.style.display = 'none';
 
   let dep = document.getElementById('rs-dep').value.trim().toUpperCase();
-  if (!dep) dep = WING_BASE[myPilot?.wing] || WING_BASE[TYPE_WING[document.getElementById('fp-aircraft').value]] || 'KDYS';
+  if (!dep) dep = wingBaseIcao(myPilot?.wing) || wingBaseIcao(wingForAircraft(document.getElementById('fp-aircraft').value)) || 'KDYS';
   let arr = document.getElementById('rs-arr').value.trim().toUpperCase();
   if (!arr) {
     const pool = SORTIE_FIELDS.filter(function(f){ return f !== dep; });
@@ -1429,7 +1520,8 @@ async function generateSortie() {
       ? ['Local Area Orientation','Low-Level / Terrain','Air Refueling','Training Sortie','Navigation Proficiency'][Math.floor(Math.random()*5)]
       : SORTIE_TYPES[Math.floor(Math.random() * SORTIE_TYPES.length)];
     const step  = randomZulu();
-    const routeAlt = ({'B-1B Lancer':[31000,33000,35000,37000],'B-2 Spirit':[36000,38000,40000],'B-52H Stratofortress':[31000,33000,35000]}[acft] || [35000])[Math.floor(Math.random()*3)];
+    const altChoices = ({'B-1B Lancer':[31000,33000,35000,37000],'B-2 Spirit':[36000,38000,40000],'B-52H Stratofortress':[31000,33000,35000]}[acft] || [31000,33000,35000]);
+    const routeAlt = altChoices[Math.floor(Math.random()*altChoices.length)];
 
     // Load into the planner
     sbData = null;
@@ -1474,7 +1566,15 @@ function switchTab(id, btn) {
 }
 
 // ── FLEET TIE-IN (planner side) ───────────────────────────────
-const TYPE_WING = { 'B-1B Lancer':'7bw', 'B-2 Spirit':'509bw', 'B-52H Stratofortress':'2bw' };
+// A wing can fly several aircraft types now, so the planner's tail
+// list is every registered jet of the chosen TYPE. Fleet docs carry
+// `type`; older docs without one count as their wing's first type.
+function allFleet(){ return [].concat.apply([], Object.values(fleetByWing)); }
+function fleetTypeOf(a){ return (a && (a.type || wingAircraftList(a.wing)[0])) || ''; }
+function fleetForType(type){
+  return allFleet().filter(a => fleetTypeOf(a) === type)
+    .sort((a,b)=>(a.tail||'').localeCompare(b.tail||''));
+}
 
 async function loadFleetAll() {
   try {
@@ -1492,8 +1592,7 @@ async function loadFleetAll() {
 function renderTailOptions() {
   const wrap = document.getElementById('fp-tail-wrap');
   if (!wrap) return;
-  const wing = TYPE_WING[document.getElementById('fp-aircraft').value];
-  const list = fleetByWing[wing] || [];
+  const list = fleetForType(document.getElementById('fp-aircraft').value);
   if (!list.length) { wrap.style.display = 'none'; updateTailSummary(); return; }
   wrap.style.display = 'block';
   const sel = document.getElementById('fp-tail');
@@ -1501,7 +1600,7 @@ function renderTailOptions() {
   sel.innerHTML = '<option value="">— no airframe assignment —</option>' + list.map(a => {
     const busy = a.status === 'inflight' || a.status === 'maintenance';
     const tag = a.status === 'inflight' ? ' — IN FLIGHT' : a.status === 'maintenance' ? ' — MAINTENANCE' : '';
-    return `<option value="${a.id}" ${busy ? 'disabled' : ''}>${a.tail}${a.nickname ? ' "' + a.nickname + '"' : ''} · 📍${a.location || '?'}${tag}</option>`;
+    return `<option value="${esc2(a.id)}" ${busy ? 'disabled' : ''}>${esc2(a.tail)}${a.nickname ? ' "' + esc2(a.nickname) + '"' : ''} · ${esc2(wingShortName(a.wing))} · 📍${esc2(a.location || '?')}${tag}</option>`;
   }).join('');
   if (prev && [...sel.options].some(o => o.value === prev && !o.disabled)) sel.value = prev;
   sel.onchange = updateTailSummary;
@@ -1511,8 +1610,7 @@ function renderTailOptions() {
 function getSelectedTail() {
   const sel = document.getElementById('fp-tail');
   if (!sel || document.getElementById('fp-tail-wrap').style.display === 'none' || !sel.value) return null;
-  const wing = TYPE_WING[document.getElementById('fp-aircraft').value];
-  return (fleetByWing[wing] || []).find(a => a.id === sel.value) || null;
+  return allFleet().find(a => a.id === sel.value) || null;
 }
 
 function updateTailSummary() {
@@ -1773,7 +1871,7 @@ function loadPlan(id) {
   document.getElementById('fp-arr').value = p.arrival||'';
   waypoints = p.waypoints||[];
   renderWaypoints();
-  document.getElementById('fp-aircraft').value = p.aircraft||'B-1B Lancer';
+  setSelectValue('fp-aircraft', p.aircraft || allAircraftTypes()[0]);
   document.getElementById('fp-altitude').value = p.altitude||'';
   document.getElementById('fp-speed').value = p.speed||'';
   document.getElementById('fp-deptime').value = p.departureTime||'';
@@ -1813,14 +1911,8 @@ async function sendDiscordFlightPlan(plan) {
 }
 
 // ── COMMUNITY ROUTES ─────────────────────────────────────────
-const WING_COLORS_CR = {
-  '7bw': 'var(--gold)', '509bw': 'var(--blue)', '2bw': 'var(--green)',
-  'cross': 'var(--amber)', 'training': 'var(--blue2)', 'other': 'var(--text3)'
-};
-const CATEGORY_LABELS = {
-  '7bw':'7th BW', '509bw':'509th BW', '2bw':'2nd BW',
-  'cross':'Cross-Wing', 'training':'Training', 'other':'Other'
-};
+function crColor(cat){ return ROUTE_CATS[cat] ? ROUTE_CATS[cat].color : (WINGS[cat] ? wingColor(cat) : 'var(--text3)'); }
+function crLabel(cat){ return ROUTE_CATS[cat] ? ROUTE_CATS[cat].label : (WINGS[cat] ? wingShortName(cat) : (cat || 'Other')); }
 
 async function loadCommunityRoutes() {
   const el = document.getElementById('community-routes-list');
@@ -1845,7 +1937,7 @@ async function loadCommunityRoutes() {
     el.innerHTML = docs.map(d => {
       const r = d.data();
       window._crCache[d.id] = r;
-      const color = WING_COLORS_CR[r.category] || 'var(--text3)';
+      const color = crColor(r.category);
       const canDelete = isLoggedIn && (currentUser && currentUser.uid === r.pilotUid || canDelAny);
       const routeHtml = r.route ? '<div class="cr-airway">' + r.route + '</div>' : '';
       const notesHtml = r.notes ? '<div class="cr-notes-text">' + r.notes + '</div>' : '';
@@ -1862,7 +1954,7 @@ async function loadCommunityRoutes() {
         + '<span style="color:var(--text2)">' + (r.pilotCallsign || 'Unknown') + '</span>'
         + '</div></div>'
         + '<span class="cr-badge" style="background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44">'
-        + (CATEGORY_LABELS[r.category] || r.category) + '</span>'
+        + esc(crLabel(r.category)) + '</span>'
         + '</div>'
         + routeHtml
         + notesHtml
@@ -1897,7 +1989,7 @@ async function loadCommunityRouteById(id) {
   const mid = parts.length > 2 ? parts.slice(1, -1) : [];
   document.getElementById('fp-dep').value = dep;
   document.getElementById('fp-arr').value = arr;
-  if (r.aircraft && r.aircraft !== 'Any') document.getElementById('fp-aircraft').value = r.aircraft;
+  if (r.aircraft && r.aircraft !== 'Any') setSelectValue('fp-aircraft', r.aircraft);
   if (r.altitude) document.getElementById('fp-altitude').value = r.altitude;
   waypoints = mid;
   renderWaypoints();
@@ -1929,7 +2021,7 @@ function openSubmitRouteModal() {
   if (dep) document.getElementById('cr-dep').value = dep;
   if (arr) document.getElementById('cr-arr').value = arr;
   if (routeStr && routeStr !== '—') document.getElementById('cr-route').value = routeStr;
-  if (acft) document.getElementById('cr-acft').value = acft;
+  if (acft) setSelectValue('cr-acft', acft);
   if (alt) document.getElementById('cr-alt').value = alt;
   document.getElementById('submit-route-modal').classList.add('open');
 }
